@@ -63,14 +63,13 @@ For Vercel: set these as Environment Variables in the Vercel dashboard.
 ## Dev Commands
 ```bash
 npm install
-npm run dev        # game only — http://localhost:5174 (no AI features)
-npm run dev:ai     # full stack — runs Vite + /api serverless functions via Vercel CLI
+npm run dev        # starts at http://localhost:5174 — includes AI Story Generator
 npm run build      # production build → dist/
 npm run preview    # preview production build
 ```
 
-> **AI Story Generator** requires `npm run dev:ai` locally (uses `vercel dev`).
-> For game-only development, `npm run dev` is faster.
+> **AI Story Generator** works with `npm run dev`. Vite serves `/api/generate`
+> as a built-in middleware plugin. Requires `ANTHROPIC_API_KEY` in `.env`.
 
 ## Deployment (Vercel)
 1. Push to GitHub (repo: Sugo69/FamilyFeud)

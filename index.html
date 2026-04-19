@@ -821,7 +821,7 @@
                 });
                 const ct = res.headers.get('content-type') || '';
                 if (!ct.includes('application/json')) {
-                    throw new Error('API not available in standard dev mode.\n\nStop the server and run:\n  npm run dev:ai\n\nThis starts Vercel\'s local runtime which serves the /api/generate function. Also make sure ANTHROPIC_API_KEY is set in your .env file.');
+                    throw new Error('Unexpected server response. Make sure ANTHROPIC_API_KEY is set in your .env file and restart npm run dev.');
                 }
                 const data = await res.json();
                 if (data.error) throw new Error(data.error);
