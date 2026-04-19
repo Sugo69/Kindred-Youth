@@ -288,6 +288,11 @@
                 </div>
 
                 <div id="backlog-list"></div>
+
+                <div style="margin-top:30px; padding:16px; border:2px dashed #333; border-radius:12px; text-align:center;">
+                    <p style="color:#555; font-family:'Orbitron',sans-serif; font-size:0.7rem; margin:0 0 10px 0; text-transform:uppercase; letter-spacing:1px;">One-Time Seed — Remove after use</p>
+                    <button class="admin-btn danger" onclick="window.seedBacklogItems()" style="font-size:0.8rem;">⚡ Seed 6 Backlog Items</button>
+                </div>
             </div>
 
             <!-- ADMIN VIEW -->
@@ -558,6 +563,47 @@
                 renderBacklog();
             });
         }
+
+        const SEED_ITEMS = [
+            {
+                priority: 'P0',
+                batchIds: ['BATCH-1'],
+                description: "No-Code Content Editor — Teacher's Portal. Allow a teacher to paste a URL (e.g. churchofjesuschrist.org lesson page) and use AI to auto-generate the round questions and answers. Moves the app from a one-time hardcoded game into a reusable platform any teacher or youth leader can use for any topic (Passover, New Testament, Church History, etc.) without touching JavaScript. Includes an in-app editor to review/edit AI-generated questions before going live."
+            },
+            {
+                priority: 'P1',
+                batchIds: ['BATCH-2'],
+                description: "Distributed Wireless Buzzers — Phone-as-Buzzer (Player Mode). Add a third 'Player Mode' accessed via QR code displayed on the monitor. The two students at the front scan with their phones. First to tap their screen locks out the other, instantly flashing their team color on the TV and playing a buzzer sound. Removes admin bias in Face-Off and makes the game feel like a real high-stakes game show."
+            },
+            {
+                priority: 'P1',
+                batchIds: ['BATCH-1'],
+                description: "Active Cinematic Transitions. When 'Next Round' is triggered, play a 2-3 second animated scene (e.g. monolith rising, data-sea parting) instead of an instant jump. Hides data loading, builds tension, and elevates production quality. Include 'Sudden Death' music that auto-plays when scores are within 10 points at Round 10."
+            },
+            {
+                priority: 'P2',
+                batchIds: ['BATCH-2'],
+                description: "Audience Participation Poll. Display a QR code at the start of each round so the non-playing audience (up to 10 kids) can vote on what they think the #1 answer is. If the playing team lands the #1 answer, show a 'Crowd Favorite!' badge on the TV. Keeps the full room engaged, not just the two teams playing."
+            },
+            {
+                priority: 'P2',
+                batchIds: ['BATCH-3'],
+                description: "Session Memory & Season Standings. For recurring weekly classes, persist squad scores across sessions. Add a Leaderboard tab tracking Light vs Star squad over a full semester. Track MVPs (most points per player), and show a Hall of Fame pre-show loop on the TV monitor before each game starts."
+            },
+            {
+                priority: 'P1',
+                batchIds: ['BATCH-2'],
+                description: "Scripture Display & Hybrid Game Mode. Integrate a second engagement format alongside Family Feud: display a scripture from the weekly lesson and ask a related question (inspired by the Exodus Matching Game in the repo). Support pop-up video clips on the weekly topic. Family Feud tests knowledge breadth; the scripture format tests reading comprehension. Both modes should be selectable from the Teacher's Portal (Evolution #1)."
+            }
+        ];
+
+        window.seedBacklogItems = async () => {
+            if (backlogItems.length > 0) { alert('Backlog already has items — seed skipped.'); return; }
+            const colRef = collection(db, 'artifacts', appId, 'public', 'data', 'backlogItems');
+            for (let i = 0; i < SEED_ITEMS.length; i++) {
+                await addDoc(colRef, { seqId: i + 1, createdAt: Date.now() + i, ...SEED_ITEMS[i] });
+            }
+        };
 
         window.addBacklogItem = async () => {
             const priority = document.getElementById('bl-priority').value;
