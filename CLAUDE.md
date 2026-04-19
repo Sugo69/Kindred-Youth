@@ -34,6 +34,11 @@ Firebase config is injected via Vite env vars (never hardcoded). All vars prefix
 
 For Vercel: set these as Environment Variables in the Vercel dashboard.
 
+## Anthropic API (AI Story Generator)
+- `ANTHROPIC_API_KEY` — server-side only (not VITE_ prefixed, never exposed to browser)
+- Used by `api/generate.js` Vercel serverless function
+- Calls `claude-sonnet-4-6` to generate user stories + implementation guides per batch
+
 ## Game Rules / Logic
 - 10 rounds of Exodus-themed questions (see `gameData` array in `index.html`)
 - 3 strikes = opponent gets steal opportunity
@@ -58,10 +63,14 @@ For Vercel: set these as Environment Variables in the Vercel dashboard.
 ## Dev Commands
 ```bash
 npm install
-npm run dev        # starts at http://localhost:5174
+npm run dev        # game only — http://localhost:5174 (no AI features)
+npm run dev:ai     # full stack — runs Vite + /api serverless functions via Vercel CLI
 npm run build      # production build → dist/
 npm run preview    # preview production build
 ```
+
+> **AI Story Generator** requires `npm run dev:ai` locally (uses `vercel dev`).
+> For game-only development, `npm run dev` is faster.
 
 ## Deployment (Vercel)
 1. Push to GitHub (repo: Sugo69/FamilyFeud)
