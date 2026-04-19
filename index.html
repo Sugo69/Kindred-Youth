@@ -393,9 +393,11 @@
             <h2>🤖 AI Story Generator</h2>
             <p>Select a batch — Claude will write user stories, an implementation plan, test cases, and a validation checklist you can execute directly in Claude Code.</p>
 
-            <select class="ai-select" id="ai-batch-select" onchange="window.previewBatch(this.value)">
-                <option value="">— Select Batch ID —</option>
-            </select>
+            <div id="ai-batch-row">
+                <select class="ai-select" id="ai-batch-select" onchange="window.previewBatch(this.value)">
+                    <option value="">— Select Batch ID —</option>
+                </select>
+            </div>
 
             <div id="ai-items-preview"></div>
 
@@ -726,6 +728,7 @@
                     </div>
                     <div class="bl-actions">
                         <button class="bl-edit-btn" onclick="window.editBacklogItem('${item._docId}')">Edit</button>
+                        <button class="bl-edit-btn" style="border-color:var(--neon-purple);color:var(--neon-purple);" onclick="window.openAiModal('${item._docId}')">🤖 Story</button>
                         <button class="bl-del-btn" onclick="window.deleteBacklogItem('${item._docId}')">Delete</button>
                     </div>
                 </div>`;
@@ -747,22 +750,37 @@
         // --- AI Story Generator ---
         let aiContent = '', aiCurrentBatch = '';
 
-        window.openAiModal = () => {
-            const batches = [...new Set(backlogItems.flatMap(i => i.batchIds || []))].sort();
+        window.openAiModal = (singleDocId) => {
             const sel = document.getElementById('ai-batch-select');
-            sel.innerHTML = '<option value="">— Select Batch ID —</option>' +
-                batches.map(b => `<option value="${b}">${b} (${backlogItems.filter(i=>(i.batchIds||[]).includes(b)).length} items)</option>`).join('');
+            const batchRow = document.getElementById('ai-batch-row');
             document.getElementById('ai-output-section').style.display = 'none';
             document.getElementById('ai-status').style.display = 'none';
             document.getElementById('ai-idle-close').style.display = 'block';
-            document.getElementById('ai-items-preview').innerHTML = '';
+
+            if (singleDocId) {
+                // Single-item mode: hide batch selector, show item directly
+                const item = backlogItems.find(i => i._docId === singleDocId);
+                if (!item) return;
+                sel.value = '';
+                batchRow.style.display = 'none';
+                document.getElementById('ai-modal').dataset.singleDocId = singleDocId;
+                window.previewBatch(null, [item]);
+            } else {
+                // Batch mode
+                batchRow.style.display = 'block';
+                delete document.getElementById('ai-modal').dataset.singleDocId;
+                const batches = [...new Set(backlogItems.flatMap(i => i.batchIds || []))].sort();
+                sel.innerHTML = '<option value="">— Select Batch ID —</option>' +
+                    batches.map(b => `<option value="${b}">${b} (${backlogItems.filter(i=>(i.batchIds||[]).includes(b)).length} items)</option>`).join('');
+                document.getElementById('ai-items-preview').innerHTML = '';
+            }
             document.getElementById('ai-modal').style.display = 'block';
         };
 
         window.closeAiModal = () => { document.getElementById('ai-modal').style.display = 'none'; };
 
-        window.previewBatch = (batchId) => {
-            const items = batchId ? backlogItems.filter(i => (i.batchIds || []).includes(batchId)) : [];
+        window.previewBatch = (batchId, overrideItems) => {
+            const items = overrideItems || (batchId ? backlogItems.filter(i => (i.batchIds || []).includes(batchId)) : []);
             document.getElementById('ai-items-preview').innerHTML = items.length
                 ? `<div style="margin-bottom:8px; color:#555; font-family:'Orbitron',sans-serif; font-size:0.65rem; text-transform:uppercase; letter-spacing:1px;">${items.length} item${items.length!==1?'s':''} selected</div>` +
                   items.map(i => `<div class="ai-preview-item">
@@ -774,10 +792,20 @@
         };
 
         window.generateStories = async () => {
-            const batchId = document.getElementById('ai-batch-select').value;
-            if (!batchId) { alert('Please select a batch.'); return; }
-            const items = backlogItems.filter(i => (i.batchIds || []).includes(batchId));
-            if (!items.length) { alert('No items in this batch.'); return; }
+            const modal = document.getElementById('ai-modal');
+            const singleDocId = modal.dataset.singleDocId;
+            let items, batchId;
+            if (singleDocId) {
+                const item = backlogItems.find(i => i._docId === singleDocId);
+                if (!item) return;
+                items = [item];
+                batchId = `BL-${String(item.seqId).padStart(3,'0')}`;
+            } else {
+                batchId = document.getElementById('ai-batch-select').value;
+                if (!batchId) { alert('Please select a batch.'); return; }
+                items = backlogItems.filter(i => (i.batchIds || []).includes(batchId));
+                if (!items.length) { alert('No items in this batch.'); return; }
+            }
             const btn = document.getElementById('ai-gen-btn');
             const status = document.getElementById('ai-status');
             btn.disabled = true;
