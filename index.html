@@ -11,7 +11,11 @@
             --bg-dark: #0a0a12;
             --neon-pink: #ff007f;
             --neon-cyan: #00f2ff;
+            --neon-purple: #7c3aed;
             --text-silver: #e0e0e0;
+            --surface: #111118;
+            --border: #1e1e2e;
+            --text-muted: #666680;
         }
 
         * { box-sizing: border-box; }
@@ -27,6 +31,250 @@
                 linear-gradient(rgba(10,10,18,0.98), rgba(10,10,18,0.98)),
                 repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,242,255,0.03) 2px, rgba(0,242,255,0.03) 4px);
         }
+
+        /* ── Auth screens ── */
+        .auth-screen {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 20%, #0d1a2e 0%, var(--bg-dark) 70%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .auth-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 48px 40px;
+            width: 100%;
+            max-width: 420px;
+            text-align: center;
+        }
+
+        .auth-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 40px rgba(0,242,255,0.4);
+            letter-spacing: 4px;
+            margin-bottom: 4px;
+        }
+
+        .auth-subtitle {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+        }
+
+        .auth-desc {
+            color: #888;
+            font-size: 0.95rem;
+            margin-bottom: 32px;
+            line-height: 1.5;
+        }
+
+        .google-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            width: 100%;
+            padding: 14px 24px;
+            background: #fff;
+            color: #333;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .google-btn:hover { opacity: 0.9; }
+        .google-btn svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+        .auth-error {
+            margin-top: 16px;
+            color: var(--neon-pink);
+            font-size: 0.88rem;
+            display: none;
+        }
+
+        .noaccess-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-pink);
+            font-size: 1.4rem;
+            margin-bottom: 16px;
+        }
+
+        .btn-danger {
+            padding: 10px 24px;
+            background: var(--neon-pink);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: opacity 0.2s;
+            margin-top: 8px;
+        }
+
+        .btn-danger:hover { opacity: 0.85; }
+
+        /* ── Classroom picker modal ── */
+        #picker-modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.85);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9998;
+        }
+
+        #picker-modal.open { display: flex; }
+
+        .picker-box {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 36px 32px;
+            width: 100%;
+            max-width: 440px;
+        }
+
+        .picker-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            color: var(--neon-cyan);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .picker-sub {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 24px;
+        }
+
+        .picker-btn {
+            width: 100%;
+            padding: 16px 20px;
+            background: #0d0d1f;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-silver);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: left;
+            transition: border-color 0.2s, background 0.2s;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .picker-btn:hover {
+            border-color: var(--neon-cyan);
+            background: rgba(0,242,255,0.05);
+        }
+
+        .picker-btn-meta {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .picker-signout {
+            margin-top: 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            text-decoration: underline;
+        }
+
+        .picker-signout:hover { color: var(--neon-pink); }
+
+        /* ── Top bar ── */
+        #topbar {
+            position: fixed;
+            top: 14px;
+            right: 18px;
+            z-index: 200;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        #classroom-badge {
+            display: none;
+            padding: 5px 12px;
+            background: rgba(0,242,255,0.08);
+            border: 1px solid rgba(0,242,255,0.3);
+            border-radius: 8px;
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            max-width: 200px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        #admin-link {
+            display: none;
+            padding: 7px 14px;
+            background: rgba(17,17,24,0.85);
+            border: 1px solid #1e1e2e;
+            border-radius: 8px;
+            color: #666680;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-decoration: none;
+            text-transform: uppercase;
+            backdrop-filter: blur(6px);
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        #admin-link:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+
+        #signout-btn {
+            display: none;
+            padding: 7px 14px;
+            background: rgba(17,17,24,0.85);
+            border: 1px solid #1e1e2e;
+            border-radius: 8px;
+            color: #666680;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-transform: uppercase;
+            backdrop-filter: blur(6px);
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        #signout-btn:hover { border-color: var(--neon-pink); color: var(--neon-pink); }
 
         /* ── Hero ── */
         .hero {
@@ -49,12 +297,6 @@
             color: var(--neon-pink);
             letter-spacing: 0.1em;
             margin: 0 0 12px;
-        }
-        .hero-sub {
-            color: #555;
-            font-size: 0.95rem;
-            max-width: 460px;
-            margin: 0 auto;
         }
 
         /* ── Sections ── */
@@ -175,53 +417,265 @@
 </head>
 <body>
 
-    <!-- ── Admin link (top-right) ── -->
-    <a href="admin.html" style="position:fixed; top:14px; right:18px; z-index:200; padding:7px 14px; background:rgba(17,17,24,0.85); border:1px solid #1e1e2e; border-radius:8px; color:#666680; font-family:'Rajdhani',sans-serif; font-size:0.8rem; font-weight:700; letter-spacing:1px; text-decoration:none; text-transform:uppercase; backdrop-filter:blur(6px); transition:border-color 0.2s, color 0.2s;" onmouseover="this.style.borderColor='#00d4ff';this.style.color='#00d4ff'" onmouseout="this.style.borderColor='#1e1e2e';this.style.color='#666680'">⚙ Admin</a>
-
-    <!-- ── Hero ── -->
-    <div class="hero">
-        <h1 class="hero-logo">Kindred</h1>
-        <p class="hero-tagline">Youth Learning Together</p>
-    </div>
-
-    <!-- ── Game Catalog ── -->
-    <div class="section">
-        <h2 class="section-title">Game Catalog</h2>
-        <div class="catalog-grid">
-            <a href="games/common-ground.html" class="game-card cyan">
-                <div class="game-card-icon">🎯</div>
-                <h3 class="game-card-name">Common Ground</h3>
-                <p class="game-card-desc">Survey-style family feud game — find common ground with your class on scripture topics. Teams compete to uncover the top answers.</p>
-                <span class="game-card-tag">Survey · Teams · Live Sync</span>
-                <div class="game-card-play">Play →</div>
-            </a>
-
-            <a href="games/memory.html" class="game-card pink">
-                <div class="game-card-icon">🧩</div>
-                <h3 class="game-card-name">Scripture Scout</h3>
-                <p class="game-card-desc">Memory matching game — pair scripture references with key phrases and modern applications. Builds recall and sparks discussion.</p>
-                <span class="game-card-tag">Memory · Pairs · Discussion</span>
-                <div class="game-card-play">Play →</div>
-            </a>
+    <!-- ── Sign-in screen ── -->
+    <div id="signin-screen" class="auth-screen">
+        <div class="auth-card">
+            <div class="auth-logo">Kindred</div>
+            <div class="auth-subtitle">Youth Learning Together</div>
+            <p class="auth-desc">Sign in with your Google account to access your classroom and games.</p>
+            <button class="google-btn" id="google-signin-btn" onclick="window.signInGoogle()">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Sign in with Google
+            </button>
+            <div id="signin-error" class="auth-error"></div>
         </div>
     </div>
 
-    <!-- ── Display Scale ── -->
-    <div class="section">
-        <h2 class="section-title">Classroom Display Scale</h2>
-        <div class="admin-box">
-            <p style="color:#555; font-family:'Rajdhani',sans-serif; font-size:0.9rem; margin:0 0 16px;">Set once here — both games will use this scale. Adjust if the TV or projector clips the edges.</p>
-            <div class="scale-grid">
-                <button class="scale-btn" data-scale="0.55" onclick="setScale(0.55)">📱 Mobile</button>
-                <button class="scale-btn" data-scale="0.75" onclick="setScale(0.75)">📟 Tablet</button>
-                <button class="scale-btn" data-scale="1.0" onclick="setScale(1.0)">🖥 HD 1080p</button>
-                <button class="scale-btn" data-scale="1.3" onclick="setScale(1.3)">📺 4K TV</button>
-                <span class="scale-note" id="scale-note">Scale: 100%</span>
+    <!-- ── No access screen ── -->
+    <div id="noaccess-screen" class="auth-screen" style="display:none;">
+        <div class="auth-card">
+            <div class="noaccess-title">No Classroom Assigned</div>
+            <p style="color:#888; margin-bottom:24px; line-height:1.5; font-size:0.95rem;">
+                Your account isn't linked to a classroom yet.<br>
+                Contact your administrator to get access.
+            </p>
+            <button class="btn-danger" onclick="window.doSignOut()">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- ── Classroom picker modal ── -->
+    <div id="picker-modal">
+        <div class="picker-box">
+            <div class="picker-title">Choose Your Classroom</div>
+            <p class="picker-sub">You're assigned to multiple classrooms. Select one to continue.</p>
+            <div id="picker-list"></div>
+            <button class="picker-signout" onclick="window.doSignOut()">Sign out</button>
+        </div>
+    </div>
+
+    <!-- ── Top bar (shown after auth) ── -->
+    <div id="topbar">
+        <span id="classroom-badge"></span>
+        <a href="admin.html" id="admin-link">⚙ Admin</a>
+        <button id="signout-btn" onclick="window.doSignOut()">Sign Out</button>
+    </div>
+
+    <!-- ── Main portal (hidden until auth resolves) ── -->
+    <div id="portal-content" style="display:none;">
+
+        <!-- ── Hero ── -->
+        <div class="hero">
+            <h1 class="hero-logo">Kindred</h1>
+            <p class="hero-tagline">Youth Learning Together</p>
+        </div>
+
+        <!-- ── Game Catalog ── -->
+        <div class="section">
+            <h2 class="section-title">Game Catalog</h2>
+            <div class="catalog-grid">
+                <a id="link-common-ground" href="games/common-ground.html" class="game-card cyan">
+                    <div class="game-card-icon">🎯</div>
+                    <h3 class="game-card-name">Common Ground</h3>
+                    <p class="game-card-desc">Survey-style family feud game — find common ground with your class on scripture topics. Teams compete to uncover the top answers.</p>
+                    <span class="game-card-tag">Survey · Teams · Live Sync</span>
+                    <div class="game-card-play">Play →</div>
+                </a>
+
+                <a id="link-memory" href="games/memory.html" class="game-card pink">
+                    <div class="game-card-icon">🧩</div>
+                    <h3 class="game-card-name">Scripture Scout</h3>
+                    <p class="game-card-desc">Memory matching game — pair scripture references with key phrases and modern applications. Builds recall and sparks discussion.</p>
+                    <span class="game-card-tag">Memory · Pairs · Discussion</span>
+                    <div class="game-card-play">Play →</div>
+                </a>
             </div>
         </div>
+
+        <!-- ── Display Scale ── -->
+        <div class="section">
+            <h2 class="section-title">Classroom Display Scale</h2>
+            <div class="admin-box">
+                <p style="color:#555; font-family:'Rajdhani',sans-serif; font-size:0.9rem; margin:0 0 16px;">Set once here — both games will use this scale. Adjust if the TV or projector clips the edges.</p>
+                <div class="scale-grid">
+                    <button class="scale-btn" data-scale="0.55" onclick="setScale(0.55)">📱 Mobile</button>
+                    <button class="scale-btn" data-scale="0.75" onclick="setScale(0.75)">📟 Tablet</button>
+                    <button class="scale-btn" data-scale="1.0" onclick="setScale(1.0)">🖥 HD 1080p</button>
+                    <button class="scale-btn" data-scale="1.3" onclick="setScale(1.3)">📺 4K TV</button>
+                    <span class="scale-note" id="scale-note">Scale: 100%</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="portal-footer">Kindred · LDS Youth Platform · Powered by Firebase + Claude</div>
     </div>
 
-    <div class="portal-footer">Kindred · LDS Youth Platform · Powered by Firebase + Claude</div>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import {
+            getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import {
+            getFirestore, collection, query, where, getDocs
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const ADMIN_EMAIL = 'lewiswf@gmail.com';
+        const APP_ID = 'exodus-feud-final-v10';
+        const SESSION_KEY = 'kindred_classroom_id';
+        const SESSION_NAME_KEY = 'kindred_classroom_name';
+
+        const firebaseConfig = {
+            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+            authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+            appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // ── Auth state driver ──
+        onAuthStateChanged(auth, async user => {
+            if (!user) {
+                showScreen('signin');
+                return;
+            }
+
+            if (user.email === ADMIN_EMAIL) {
+                enterPortal(null, 'admin');
+                return;
+            }
+
+            // Check sessionStorage for already-selected classroom
+            const savedRoom = sessionStorage.getItem(SESSION_KEY);
+            const savedName = sessionStorage.getItem(SESSION_NAME_KEY);
+            if (savedRoom) {
+                enterPortal(savedRoom, savedName);
+                return;
+            }
+
+            // Query classrooms assigned to this teacher
+            try {
+                const basePath = `artifacts/${APP_ID}/public/data`;
+                const classroomsCol = collection(db, `${basePath}/classrooms`);
+                const q = query(classroomsCol, where('teacherEmail', '==', user.email));
+                const snap = await getDocs(q);
+
+                if (snap.empty) {
+                    showScreen('noaccess');
+                    return;
+                }
+
+                const rooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+                if (rooms.length === 1) {
+                    const room = rooms[0];
+                    sessionStorage.setItem(SESSION_KEY, room.id);
+                    sessionStorage.setItem(SESSION_NAME_KEY, room.wardName || room.description || 'My Classroom');
+                    enterPortal(room.id, room.wardName || room.description);
+                } else {
+                    showPicker(rooms);
+                }
+            } catch (e) {
+                console.error('Classroom lookup failed:', e);
+                showScreen('noaccess');
+            }
+        });
+
+        function showScreen(name) {
+            document.getElementById('signin-screen').style.display = name === 'signin' ? 'flex' : 'none';
+            document.getElementById('noaccess-screen').style.display = name === 'noaccess' ? 'flex' : 'none';
+            document.getElementById('portal-content').style.display = 'none';
+            document.getElementById('picker-modal').classList.remove('open');
+            document.getElementById('topbar').style.opacity = '0';
+        }
+
+        function enterPortal(classroomId, label) {
+            // Hide auth screens
+            document.getElementById('signin-screen').style.display = 'none';
+            document.getElementById('noaccess-screen').style.display = 'none';
+            document.getElementById('picker-modal').classList.remove('open');
+            document.getElementById('portal-content').style.display = 'block';
+            document.getElementById('topbar').style.opacity = '1';
+
+            const isAdmin = label === 'admin';
+
+            // Update game card links
+            const suffix = classroomId ? `?room=${classroomId}` : '';
+            document.getElementById('link-common-ground').href = `games/common-ground.html${suffix}`;
+            document.getElementById('link-memory').href = `games/memory.html${suffix}`;
+
+            // Top bar
+            const badge = document.getElementById('classroom-badge');
+            const adminLink = document.getElementById('admin-link');
+            const signoutBtn = document.getElementById('signout-btn');
+
+            signoutBtn.style.display = 'block';
+
+            if (isAdmin) {
+                badge.style.display = 'none';
+                adminLink.style.display = 'block';
+            } else if (label) {
+                badge.textContent = '🏫 ' + label;
+                badge.style.display = 'block';
+                adminLink.style.display = 'none';
+            }
+        }
+
+        function showPicker(rooms) {
+            const list = document.getElementById('picker-list');
+            list.innerHTML = rooms.map(room => `
+                <button class="picker-btn" onclick="window.selectRoom('${room.id}', '${escAttr(room.wardName || room.description || 'Classroom')}')">
+                    <span>${escHtml(room.wardName || 'Unnamed Ward')}</span>
+                    <span class="picker-btn-meta">${escHtml(room.description || '')}</span>
+                </button>
+            `).join('');
+            document.getElementById('signin-screen').style.display = 'none';
+            document.getElementById('picker-modal').classList.add('open');
+        }
+
+        window.selectRoom = (id, name) => {
+            sessionStorage.setItem(SESSION_KEY, id);
+            sessionStorage.setItem(SESSION_NAME_KEY, name);
+            enterPortal(id, name);
+        };
+
+        window.signInGoogle = async () => {
+            const errEl = document.getElementById('signin-error');
+            const btn = document.getElementById('google-signin-btn');
+            errEl.style.display = 'none';
+            btn.disabled = true;
+            try {
+                await signInWithPopup(auth, provider);
+            } catch (e) {
+                // If auth/operation-not-allowed: Google Sign-In provider must be enabled in
+                // Firebase Console → Authentication → Sign-in method → Google.
+                if (e.code === 'auth/operation-not-allowed') {
+                    console.warn('Kindred: Google Sign-In is not enabled in Firebase Console. Enable it under Authentication → Sign-in method → Google.');
+                }
+                errEl.textContent = e.message;
+                errEl.style.display = 'block';
+                btn.disabled = false;
+            }
+        };
+
+        window.doSignOut = () => {
+            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(SESSION_NAME_KEY);
+            signOut(auth);
+        };
+
+        function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+        function escAttr(s) { return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+    </script>
 
     <script>
         const SCALE_LABELS = { 0.55: 'Mobile', 0.75: 'Tablet', 1.0: 'HD 1080p', 1.3: '4K TV' };

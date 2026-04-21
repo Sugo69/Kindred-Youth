@@ -209,6 +209,29 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                         })
                     })
 
+                    server.middlewares.use('/api/wled', (req, res) => {
+                        if (req.method !== 'POST') { res.statusCode = 405; res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ error: 'Method not allowed' })); return }
+                        let body = ''
+                        req.on('data', chunk => body += chunk)
+                        req.on('end', async () => {
+                            res.setHeader('Content-Type', 'application/json')
+                            try {
+                                const { ip, payload } = JSON.parse(body)
+                                if (!ip) { res.statusCode = 400; res.end(JSON.stringify({ error: 'No IP provided' })); return }
+                                await fetch(`http://${ip}/json/state`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(payload),
+                                    signal: AbortSignal.timeout(3000),
+                                })
+                                res.end(JSON.stringify({ ok: true }))
+                            } catch {
+                                res.statusCode = 502
+                                res.end(JSON.stringify({ error: 'WLED unreachable' }))
+                            }
+                        })
+                    })
+
                     server.middlewares.use('/api/generate', (req, res) => {
                         if (req.method !== 'POST') {
                             res.statusCode = 405

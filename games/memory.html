@@ -11,6 +11,64 @@
     <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <!-- Firebase for Lesson Library reads — anonymous auth required by Firestore rules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        const APP_ID = 'exodus-feud-final-v10';
+
+        // Classroom-scoped path — falls back to global when no ?room= param
+        const classroomId = new URLSearchParams(location.search).get('room');
+        window.__kindredClassroomId = classroomId;
+        window.__kindredBasePath = classroomId
+            ? `artifacts/${APP_ID}/public/data/classrooms/${classroomId}`
+            : `artifacts/${APP_ID}/public/data`;
+        window.__kindredGlobalBasePath = `artifacts/${APP_ID}/public/data`;
+
+        const firebaseConfig = {
+            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+            authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+            appId: import.meta.env.VITE_FIREBASE_APP_ID,
+        };
+
+        const fbApp = initializeApp(firebaseConfig);
+        const db = getFirestore(fbApp);
+        const auth = getAuth(fbApp);
+
+        // Sign in anonymously so Firestore rules allow reads
+        const _authReady = signInAnonymously(auth).catch(e => console.warn('Anon auth failed:', e));
+
+        // Load lesson library entries that have memory content
+        window.loadMemoryLibrary = async function() {
+            try {
+                await _authReady;
+                const snap = await getDocs(collection(db, `${window.__kindredGlobalBasePath}/lessonLibrary`));
+                return snap.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .filter(e => e.memory?.pairs?.length);
+            } catch(e) {
+                console.warn('Memory library load failed:', e);
+                return [];
+            }
+        };
+
+        // Load a single library entry's memory content
+        window.loadMemoryFromLibrary = async function(lessonId) {
+            await _authReady;
+            const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/lessonLibrary/${lessonId}`));
+            if (!snap.exists()) throw new Error('Library entry not found');
+            const data = snap.data();
+            if (!data.memory?.pairs?.length) throw new Error('No memory content in this library entry');
+            return data.memory;
+        };
+    </script>
+
     <style>
         .perspective-1000 { perspective: 1000px; }
         .transform-style-3d { transform-style: preserve-3d; }
@@ -98,6 +156,8 @@
             const [showSettings, setShowSettings] = useState(false);
             const retryTimerRef = useRef(null);
             const progressTimerRef = useRef(null);
+            const [libraryEntries, setLibraryEntries] = useState([]);
+            const [libraryLoading, setLibraryLoading] = useState(false);
 
             // Apply saved scale
             useEffect(() => {
@@ -165,6 +225,43 @@
 
             const canSabotage = activeCard && matched.length > 0 && matched.length % sabotageEvery === 0 && matched.length < cards.length / 2;
             const cols = pairsData.length <= 8 ? 4 : pairsData.length <= 12 ? 6 : 6;
+
+            // Load library when switching to the library view
+            useEffect(() => {
+                if (portalView === 'library' && window.loadMemoryLibrary) {
+                    let cancelled = false;
+                    setLibraryLoading(true);
+                    window.loadMemoryLibrary().then(entries => {
+                        if (!cancelled) {
+                            setLibraryEntries(entries);
+                            setLibraryLoading(false);
+                        }
+                    });
+                    return () => { cancelled = true; };
+                }
+            }, [portalView]);
+
+            const loadFromLibrary = async (entry) => {
+                // Cancel any pending retry timer so it can't overwrite library-loaded pairs
+                if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
+                try {
+                    setPortalLoading(true);
+                    setPortalStatus('Loading from library…');
+                    const memData = await window.loadMemoryFromLibrary(entry.id);
+                    clearInterval(progressTimerRef.current);
+                    setPairsData(memData.pairs);
+                    setLessonTopic(memData.topic || entry.name || 'Library Lesson');
+                    setGeneratedFromUrl(memData.sourceUrl || entry.url || '');
+                    setGeneratedAt(memData.generatedAt ? new Date(memData.generatedAt) : new Date());
+                    setGeneratedMedia({ videoLinks: memData.videoLinks || [], talkLinks: memData.talkLinks || [] });
+                    setPortalLoading(false);
+                    setPortalStatus(`✓ Loaded "${memData.topic || 'lesson'}" from library — ${memData.pairs.length} pairs. Ready to play!`);
+                    setPortalView('home');
+                } catch(err) {
+                    setPortalStatus(`⚠ ${err.message}`);
+                    setPortalLoading(false);
+                }
+            };
 
             // Teacher Portal — generate from lesson URL
             const generateFromLesson = async () => {
@@ -271,6 +368,11 @@
 
                             {portalView === 'home' && (
                                 <div className="flex gap-3 flex-wrap">
+                                    <button onClick={() => setPortalView('library')}
+                                        className="flex-1 px-4 py-3 border border-amber-500/50 text-amber-400 font-bold text-xs tracking-widest uppercase rounded-lg hover:bg-amber-500/10 transition-all"
+                                        style={{fontFamily:'Orbitron,sans-serif'}}>
+                                        📚 Library
+                                    </button>
                                     <button onClick={() => setPortalView('lesson')}
                                         className="flex-1 px-4 py-3 border border-cyan-500/50 text-cyan-400 font-bold text-xs tracking-widest uppercase rounded-lg hover:bg-cyan-500/10 transition-all"
                                         style={{fontFamily:'Orbitron,sans-serif'}}>
@@ -286,6 +388,49 @@
                                         style={{fontFamily:'Orbitron,sans-serif'}}>
                                         ↺ Default
                                     </button>
+                                </div>
+                            )}
+
+                            {portalView === 'library' && (
+                                <div>
+                                    <div className="text-xs text-slate-500 mb-3" style={{fontFamily:'Orbitron,sans-serif'}}>Select a pre-generated lesson — loads instantly, no API call</div>
+                                    {libraryLoading && (
+                                        <div className="text-xs text-amber-400 py-4 text-center" style={{fontFamily:'Orbitron,sans-serif'}}>Loading library…</div>
+                                    )}
+                                    {!libraryLoading && libraryEntries.length === 0 && (
+                                        <div className="text-center py-6">
+                                            <div className="text-2xl mb-2">📭</div>
+                                            <div className="text-slate-500 text-xs" style={{fontFamily:'Orbitron,sans-serif'}}>No library lessons yet</div>
+                                            <div className="text-slate-600 text-xs mt-1">Ask your admin to generate lessons in the Library tab</div>
+                                        </div>
+                                    )}
+                                    {libraryEntries.map(entry => (
+                                        <button key={entry.id} onClick={() => loadFromLibrary(entry)}
+                                            disabled={portalLoading}
+                                            className="w-full text-left mb-3 px-4 py-3 bg-slate-950 border border-amber-500/20 hover:border-amber-400/60 hover:bg-amber-500/5 rounded-xl transition-all disabled:opacity-50 group">
+                                            <div className="flex items-center justify-between gap-3">
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-amber-300 font-bold text-sm mb-0.5" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                        {entry.memory?.topic || entry.name || 'Library Lesson'}
+                                                    </div>
+                                                    <div className="text-slate-500 text-xs" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                        🧩 {(entry.memory?.pairs||[]).length} pairs &nbsp;·&nbsp; {entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleDateString() : ''}
+                                                    </div>
+                                                    {entry.url && (
+                                                        <div className="text-slate-700 text-xs mt-0.5 truncate" style={{fontFamily:'Rajdhani,sans-serif'}}>
+                                                            {entry.url.replace('https://www.','').slice(0,60)}{entry.url.length>70?'…':''}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <span className="text-amber-400 text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                    Load →
+                                                </span>
+                                            </div>
+                                        </button>
+                                    ))}
+                                    <button onClick={()=>{setPortalView('home');setPortalStatus('');}}
+                                        className="w-full mt-1 px-4 py-2.5 border border-slate-700 text-slate-500 text-xs font-bold uppercase rounded-lg hover:bg-slate-800 transition-all"
+                                        style={{fontFamily:'Orbitron,sans-serif'}}>← Back</button>
                                 </div>
                             )}
 

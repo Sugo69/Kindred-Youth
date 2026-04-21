@@ -692,6 +692,7 @@
             <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
             <button class="tab-btn" onclick="switchTab('teachers')">Teachers</button>
             <button class="tab-btn" onclick="switchTab('classrooms')">Classrooms</button>
+            <button class="tab-btn" onclick="switchTab('library')">Library</button>
             <button class="tab-btn" onclick="switchTab('backlog')">Backlog</button>
         </nav>
 
@@ -709,6 +710,10 @@
                 <div class="stat-card">
                     <div class="stat-label">Backlog Items</div>
                     <div class="stat-value" id="stat-backlog">—</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Library Lessons</div>
+                    <div class="stat-value" id="stat-library">—</div>
                 </div>
             </div>
 
@@ -780,6 +785,35 @@
                     <div class="empty-state-text">No classrooms yet. Add one above.</div>
                 </div>
             </div>
+        </div>
+
+        <!-- ── Library tab ── -->
+        <div id="tab-library" class="tab-pane">
+            <div class="section-head">
+                <div class="section-title">Lesson Library</div>
+            </div>
+
+            <div class="bl-box" style="margin-bottom:18px;">
+                <div style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.9rem; margin-bottom:12px;">Add Library Entry</div>
+                <div class="bl-form">
+                    <div class="bl-form-row">
+                        <input type="text" id="lib-name" placeholder="Lesson name (e.g. Come Follow Me — Lesson 20)" style="flex:2;">
+                        <input type="url" id="lib-url" placeholder="churchofjesuschrist.org lesson URL" style="flex:3;">
+                    </div>
+                    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                        <button class="bl-add-btn" onclick="window.addLibraryEntry()">+ Add Entry</button>
+                        <span id="lib-add-status" style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem; display:none;"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bl-box" style="margin-bottom:18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                <span id="lib-count" class="bl-count">0 entries</span>
+                <span id="lib-cost" style="color:var(--text-muted); font-family:'Orbitron',sans-serif; font-size:0.72rem;"></span>
+                <button class="bl-gen-btn" id="lib-gen-all-btn" onclick="window.generateAllLibrary()" style="margin-left:auto; display:none;">⚡ Generate All Missing</button>
+            </div>
+
+            <div id="library-list"></div>
         </div>
 
         <!-- ── Backlog tab ── -->
@@ -881,7 +915,7 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import {
             getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-            query, orderBy, onSnapshot, serverTimestamp
+            query, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const ADMIN_EMAIL = 'lewiswf@gmail.com';
@@ -958,6 +992,7 @@
             });
 
             initBacklog();
+            initLibrary();
         }
 
         // ── Teachers ──
@@ -1375,12 +1410,228 @@
                 setTimeout(() => btn.textContent = orig, 2000);
             });
         };
+
+        // ── Lesson Library ─────────────────────────────────────────
+        let libraryItems = [];
+        const libraryCol = collection(db, `${basePath}/lessonLibrary`);
+
+        function initLibrary() {
+            onSnapshot(query(libraryCol, orderBy('createdAt', 'asc')), snap => {
+                libraryItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderLibrary();
+                const count = libraryItems.length;
+                document.getElementById('stat-library').textContent = count;
+                const countEl = document.getElementById('lib-count');
+                if (countEl) countEl.textContent = `${count} entr${count !== 1 ? 'ies' : 'y'}`;
+                const costEl = document.getElementById('lib-cost');
+                const genAllBtn = document.getElementById('lib-gen-all-btn');
+                if (costEl) {
+                    const missing = libraryItems.filter(e => !e.commonGround || !e.memory).length;
+                    const estCost = (missing * 2 * 0.20).toFixed(2);
+                    costEl.textContent = missing > 0 ? `${missing} missing game type${missing !== 1 ? 's' : ''} · est. $${estCost}` : 'All generated ✓';
+                    if (genAllBtn) genAllBtn.style.display = missing > 0 ? 'block' : 'none';
+                }
+            });
+        }
+
+        const _libExpanded = new Set();
+
+        window.toggleLibraryDetails = (id) => {
+            const el = document.getElementById(`lib-details-${id}`);
+            const btn = document.getElementById(`lib-toggle-${id}`);
+            if (!el) return;
+            const open = el.style.display !== 'none';
+            el.style.display = open ? 'none' : 'block';
+            if (btn) btn.textContent = open ? '▼ Content' : '▲ Content';
+        };
+
+        function buildLibraryDetails(entry) {
+            const cg = entry.commonGround || {};
+            const mem = entry.memory || {};
+
+            // Deduplicate video links across both game types
+            const videos = [...new Set([...(cg.videoLinks||[]), ...(mem.videoLinks||[])])];
+            // Deduplicate talk links by URL
+            const talkMap = new Map();
+            [...(cg.talkLinks||[]), ...(mem.talkLinks||[])].forEach(t => {
+                const key = (t.url || t);
+                if (!talkMap.has(key)) talkMap.set(key, t);
+            });
+            const talks = [...talkMap.values()];
+
+            const hasAny = videos.length || talks.length || cg.rounds?.length || mem.pairs?.length;
+            if (!hasAny) return '';
+
+            let html = `<div id="lib-details-${entry.id}" style="display:none; margin-top:4px; padding-top:12px; border-top:1px solid var(--border);">`;
+
+            // ── Videos ──
+            if (videos.length) {
+                html += `<div style="margin-bottom:14px;">
+                    <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:var(--neon-amber); text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">🎬 Videos (${videos.length})</div>
+                    ${videos.map(v => `<div style="margin-bottom:4px;"><a href="${esc(v)}" target="_blank" style="color:#f59e0b; font-size:0.82rem; word-break:break-all; text-decoration:none; font-family:'Rajdhani',sans-serif;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(v)}</a></div>`).join('')}
+                </div>`;
+            }
+
+            // ── Conference talks / articles ──
+            if (talks.length) {
+                html += `<div style="margin-bottom:14px;">
+                    <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#a78bfa; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;">📖 Talks &amp; Articles (${talks.length})</div>
+                    ${talks.map(t => {
+                        const url = t.url || t;
+                        const label = t.label || url;
+                        return `<div style="margin-bottom:4px;"><a href="${esc(url)}" target="_blank" style="color:#a78bfa; font-size:0.82rem; word-break:break-all; text-decoration:none; font-family:'Rajdhani',sans-serif;" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">${esc(label)}</a></div>`;
+                    }).join('')}
+                </div>`;
+            }
+
+            // ── Common Ground rounds preview ──
+            if (cg.rounds?.length) {
+                html += `<div style="margin-bottom:14px;">
+                    <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">🎯 Common Ground — ${cg.rounds.length} Rounds</div>
+                    ${cg.rounds.map((r, i) => `
+                        <div style="background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.1); border-radius:8px; padding:10px 12px; margin-bottom:6px;">
+                            <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#444; margin-bottom:4px;">Round ${i+1}</div>
+                            <div style="color:var(--text); font-size:0.9rem; font-weight:600; margin-bottom:6px; font-family:'Rajdhani',sans-serif;">${esc(r.question||'')}</div>
+                            <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                                ${(r.answers||[]).map(a => `<span style="background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2); color:var(--neon-cyan); border-radius:4px; padding:2px 8px; font-size:0.72rem; font-family:'Rajdhani',sans-serif;">${esc(a.text)} <span style="color:var(--neon-pink); font-family:'Orbitron',sans-serif; font-size:0.58rem;">${a.points}</span></span>`).join('')}
+                            </div>
+                        </div>`).join('')}
+                </div>`;
+            }
+
+            // ── Scripture Scout pairs preview ──
+            if (mem.pairs?.length) {
+                html += `<div style="margin-bottom:6px;">
+                    <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#a78bfa; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">🧩 Scripture Scout — ${mem.pairs.length} Pairs</div>
+                    ${mem.pairs.map(p => `
+                        <div style="background:rgba(124,58,237,0.05); border:1px solid rgba(124,58,237,0.15); border-radius:8px; padding:10px 12px; margin-bottom:6px; display:flex; gap:10px; align-items:flex-start;">
+                            <span style="font-size:1.5rem; flex-shrink:0;">${p.icon||'📖'}</span>
+                            <div style="flex:1; min-width:0;">
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:3px;">
+                                    <span style="color:var(--neon-cyan); font-size:0.82rem; font-weight:700; font-family:'Orbitron',sans-serif;">${esc(p.cardA||'')}</span>
+                                    <span style="color:#444; font-size:0.7rem;">→</span>
+                                    <span style="color:#a78bfa; font-size:0.82rem; font-family:'Rajdhani',sans-serif;">${esc(p.cardB||'')}</span>
+                                </div>
+                                ${p.question ? `<div style="color:#666; font-size:0.78rem; font-style:italic; font-family:'Rajdhani',sans-serif;">${esc(p.question)}</div>` : ''}
+                                ${p.verse ? `<div style="color:#555; font-size:0.8rem; font-style:italic; margin-top:4px; font-family:'Rajdhani',sans-serif; border-left:2px solid rgba(124,58,237,0.3); padding-left:8px; line-height:1.5;">${esc(p.verse)}</div>` : ''}
+                            </div>
+                        </div>`).join('')}
+                </div>`;
+            }
+
+            html += `</div>`;
+            return html;
+        }
+
+        function renderLibrary() {
+            const list = document.getElementById('library-list');
+            if (!list) return;
+            if (!libraryItems.length) {
+                list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📚</div><div class="empty-state-text">No library entries yet. Add a lesson URL above.</div></div>`;
+                return;
+            }
+            list.innerHTML = libraryItems.map(entry => {
+                const hasCG = !!(entry.commonGround?.rounds?.length);
+                const hasMem = !!(entry.memory?.pairs?.length);
+                const cgDate = entry.commonGround?.generatedAt ? new Date(entry.commonGround.generatedAt).toLocaleDateString() : null;
+                const memDate = entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleDateString() : null;
+                const hasContent = hasCG || hasMem;
+                const detailsHtml = buildLibraryDetails(entry);
+                return `<div class="record-card" style="flex-direction:column; align-items:stretch; gap:0;">
+                    <div style="display:flex; align-items:center; gap:12px;">
+                        <div class="record-avatar" style="background:linear-gradient(135deg,#0d1a2e,#1a2a4a); color:var(--neon-cyan); font-size:1.2rem;">📚</div>
+                        <div class="record-info">
+                            <div class="record-name">${esc(entry.name || entry.id)}</div>
+                            <div class="record-meta">
+                                ${hasCG ? `<span style="color:var(--neon-cyan)">🎯 CG (${(entry.commonGround.rounds||[]).length} rounds${cgDate ? ', '+cgDate : ''})</span>` : '<span style="color:#444">🎯 CG —</span>'} &nbsp;
+                                ${hasMem ? `<span style="color:#a78bfa">🧩 Mem (${(entry.memory.pairs||[]).length} pairs${memDate ? ', '+memDate : ''})</span>` : '<span style="color:#444">🧩 Mem —</span>'}
+                            </div>
+                            ${entry.url ? `<div class="record-meta" style="word-break:break-all; margin-top:2px; color:#333;"><a href="${esc(entry.url)}" target="_blank" style="color:#333; text-decoration:none;" onmouseover="this.style.color='var(--neon-cyan)'" onmouseout="this.style.color='#333'">${esc(entry.url.slice(0,70))}${entry.url.length>70?'…':''}</a></div>` : ''}
+                        </div>
+                        <div class="record-actions">
+                            ${hasContent ? `<button id="lib-toggle-${entry.id}" class="btn-secondary" style="font-size:0.7rem; padding:5px 10px; white-space:nowrap;" onclick="window.toggleLibraryDetails('${entry.id}')">▼ Content</button>` : ''}
+                            ${!hasCG ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap;" onclick="window.generateLibraryGame('${entry.id}','common-ground')">⚡ CG</button>` : ''}
+                            ${!hasMem ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#a78bfa; color:#a78bfa;" onclick="window.generateLibraryGame('${entry.id}','memory')">⚡ Mem</button>` : ''}
+                            <button class="btn-icon" title="Delete" onclick="window.deleteLibraryEntry('${entry.id}', '${esc(entry.name||entry.id)}')">🗑</button>
+                        </div>
+                    </div>
+                    <div id="lib-status-${entry.id}" style="display:none; margin-top:10px; font-family:'Orbitron',sans-serif; font-size:0.72rem; color:var(--neon-cyan); padding:6px 10px; background:rgba(0,212,255,0.05); border-radius:6px; border:1px solid rgba(0,212,255,0.15);"></div>
+                    ${detailsHtml}
+                </div>`;
+            }).join('');
+        }
+
+        window.addLibraryEntry = async () => {
+            const name = document.getElementById('lib-name').value.trim();
+            const url = document.getElementById('lib-url').value.trim();
+            const statusEl = document.getElementById('lib-add-status');
+            if (!name || !url) { showLibStatus(statusEl, 'Name and URL required.', true); return; }
+            try {
+                await addDoc(libraryCol, { name, url, createdAt: Date.now() });
+                document.getElementById('lib-name').value = '';
+                document.getElementById('lib-url').value = '';
+                showLibStatus(statusEl, '✓ Entry added.', false);
+                showToast('Library entry added.');
+            } catch(e) {
+                showLibStatus(statusEl, `Error: ${e.message}`, true);
+            }
+        };
+
+        function showLibStatus(el, msg, isError) {
+            if (!el) return;
+            el.textContent = msg;
+            el.style.color = isError ? 'var(--neon-pink)' : 'var(--neon-cyan)';
+            el.style.display = 'inline';
+            setTimeout(() => { el.style.display = 'none'; }, 4000);
+        }
+
+        window.generateLibraryGame = async (entryId, gameType) => {
+            const entry = libraryItems.find(e => e.id === entryId);
+            if (!entry?.url) { showToast('Entry has no URL.', true); return; }
+            const statusEl = document.getElementById(`lib-status-${entryId}`);
+            if (statusEl) { statusEl.textContent = `⏳ Generating ${gameType === 'common-ground' ? 'Common Ground' : 'Scripture Scout'} — 30–45 seconds…`; statusEl.style.display = 'block'; }
+            try {
+                const resp = await fetch('/api/lesson-pipeline', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url: entry.url, gameType })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error || 'Pipeline failed');
+                const field = gameType === 'common-ground' ? 'commonGround' : 'memory';
+                await updateDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`), {
+                    [field]: { ...data, generatedAt: Date.now() }
+                });
+                if (statusEl) statusEl.style.display = 'none';
+                showToast(`✓ ${gameType === 'common-ground' ? 'Common Ground' : 'Scripture Scout'} generated for "${entry.name}"`);
+            } catch(e) {
+                if (statusEl) { statusEl.textContent = `⚠ ${e.message}`; statusEl.style.color = 'var(--neon-pink)'; }
+                showToast('Generation failed.', true);
+            }
+        };
+
+        window.generateAllLibrary = async () => {
+            const missing = libraryItems.filter(e => !e.commonGround || !e.memory);
+            if (!missing.length) { showToast('All entries already generated.'); return; }
+            showToast(`Generating ${missing.length * 2} game types — this will take a while…`);
+            for (const entry of missing) {
+                if (!entry.commonGround) await window.generateLibraryGame(entry.id, 'common-ground');
+                if (!entry.memory) await window.generateLibraryGame(entry.id, 'memory');
+            }
+        };
+
+        window.deleteLibraryEntry = async (entryId, name) => {
+            if (!confirm(`Delete library entry "${name}"? This cannot be undone.`)) return;
+            await deleteDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`));
+            showToast('Library entry deleted.');
+        };
+        // ── End Lesson Library ─────────────────────────────────────
     </script>
 
     <script>
         function switchTab(name) {
             document.querySelectorAll('.tab-btn').forEach((b, i) => {
-                const tabs = ['overview', 'teachers', 'classrooms', 'backlog'];
+                const tabs = ['overview', 'teachers', 'classrooms', 'library', 'backlog'];
                 b.classList.toggle('active', tabs[i] === name);
             });
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));

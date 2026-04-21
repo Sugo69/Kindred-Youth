@@ -341,13 +341,32 @@
                     <div class="admin-box">
                         <div class="tp-topbar">
                             <h3 style="color:var(--neon-cyan); margin:0; flex:1; font-size:1rem;">🎓 Teacher Portal — Common Ground</h3>
+                            <button class="admin-btn" style="white-space:nowrap; min-width:auto; padding:10px 16px; font-size:0.75rem; border-color:rgba(251,191,36,0.5); color:#fbbf24;" onclick="window.showLibraryView()">📚 Library</button>
                             <button class="admin-btn" style="white-space:nowrap; min-width:auto; padding:10px 16px; font-size:0.75rem;" onclick="window.openEditor('lesson')">🔗 From Lesson</button>
                             <button class="admin-btn" style="white-space:nowrap; min-width:auto; padding:10px 16px; font-size:0.75rem;" onclick="window.openEditor('url')">⚡ From URL</button>
                             <button class="admin-btn" style="white-space:nowrap; min-width:auto; padding:10px 16px; font-size:0.75rem;" onclick="window.openEditor('manual')">✏️ Manual</button>
                         </div>
                         <p style="color:#555; font-family:'Rajdhani',sans-serif; font-size:0.9rem; margin:10px 0 0 0;">Paste a churchofjesuschrist.org lesson URL to generate questions via the full lesson pipeline, paste any URL for quick generation, or build manually.</p>
                     </div>
+
                     <div id="tp-game-list"></div>
+                </div>
+
+                <!-- Lesson Library sub-view -->
+                <div id="tp-lessonlibrary-view" style="display:none;">
+                    <div class="admin-box">
+                        <div class="tp-topbar" style="margin-bottom:0;">
+                            <button class="admin-btn" style="min-width:auto; padding:10px 16px; font-size:0.75rem;" onclick="window.closeLibraryView()">← Back</button>
+                            <h3 style="color:#fbbf24; margin:0; flex:1; font-size:1rem; padding-left:10px;">📚 Lesson Library</h3>
+                        </div>
+                    </div>
+                    <div id="tp-library-entries"></div>
+                    <div id="tp-library-empty" style="display:none; padding:24px; text-align:center; color:#555; font-family:'Rajdhani',sans-serif;">
+                        No library lessons yet — ask your admin to generate lessons in the Admin Portal.
+                    </div>
+                    <div id="tp-library-loading" style="padding:24px; text-align:center; color:#555; font-family:'Rajdhani',sans-serif;">
+                        Loading library…
+                    </div>
                 </div>
 
                 <!-- Editor sub-view -->
@@ -436,7 +455,7 @@
                     <div class="btn-grid">
                         <button class="admin-btn" onclick="window.changeRound(1)">Next Round >></button>
                         <button class="admin-btn" onclick="window.changeRound(-1)">&lt;&lt; Prev</button>
-                        <button class="admin-btn danger" style="background: rgba(255,0,0,0.1)" onclick="window.cloudUpdate({gameOverTime: Date.now()})">🏁 End Game</button>
+                        <button class="admin-btn danger" style="background: rgba(255,0,0,0.1)" onclick="window.endGame()">🏁 End Game</button>
                     </div>
                 </div>
 
@@ -444,6 +463,22 @@
                     <h3 style="color:var(--neon-cyan); margin:0;">4. Reveal Answers</h3>
                     <div id="admin-q-display"></div>
                     <div id="admin-ans-list"></div>
+                </div>
+
+                <div class="admin-box">
+                    <h3 style="color:#ff9900; margin:0;">5. WLED Lighting</h3>
+                    <p style="color:#888; font-size:0.8rem; margin:8px 0;">ESP8266 running WLED on your classroom WiFi. Presets: 2=Strike, 3=Reveal, 4=Win, 5=Switch Play.</p>
+                    <div class="btn-grid" style="align-items:center;">
+                        <input type="text" id="wled-ip-input" placeholder="192.168.x.x or wled.local" style="flex:1; font-size:0.9rem;">
+                        <button class="admin-btn" onclick="window.wledTest()" style="border-color:#ff9900; color:#ff9900; white-space:nowrap;">Test</button>
+                        <button class="admin-btn" onclick="window.wledSaveIp()" style="white-space:nowrap;">Save</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; margin-top:10px;">
+                        <span style="color:#888; font-size:0.8rem; white-space:nowrap;">Brightness</span>
+                        <input type="range" id="wled-bri-slider" min="10" max="255" value="128" style="flex:1;" oninput="window.wledSetBri(this.value)">
+                        <span id="wled-bri-label" style="color:#ff9900; font-size:0.8rem; width:2em; text-align:right;">128</span>
+                    </div>
+                    <div id="wled-status" style="color:#888; font-size:0.8rem; margin-top:6px; min-height:1.2em;"></div>
                 </div>
             </div>
         </div>
@@ -472,7 +507,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, collection, addDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, collection, addDoc, deleteDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -487,6 +522,14 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = 'exodus-feud-final-v10';
+
+        // Classroom-scoped path — falls back to global when no ?room= param (dev/solo/monitor)
+        const classroomId = new URLSearchParams(location.search).get('room');
+        const basePath = classroomId
+            ? `artifacts/${appId}/public/data/classrooms/${classroomId}`
+            : `artifacts/${appId}/public/data`;
+        // Library always lives in the global path (admin populates, teachers read)
+        const globalBasePath = `artifacts/${appId}/public/data`;
 
         const gameData = [
             { level: "Round 1", question: "Name an Egyptian god that Jehovah discredited through the 10 plagues.", answers: [{ text: "Hapi (Nile)", points: 40 }, { text: "Heqet (Frog)", points: 30 }, { text: "Amun-Ra (Sun)", points: 20 }, { text: "Apis / Hathor", points: 10 }] },
@@ -511,12 +554,12 @@
 
             onAuthStateChanged(auth, (u) => {
                 user = u; if (!user) return;
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'feudSession', 'state');
+                const docRef = doc(db, `${basePath}/feudSession/state`);
                 onSnapshot(docRef, (snap) => {
                     if (snap.exists()) { sharedState = snap.data(); syncUI(); }
                     else { setDoc(docRef, sharedState); }
                 }, (error) => console.error("Firestore sync error:", error));
-                const activeGameRef = doc(db, 'artifacts', appId, 'public', 'data', 'activeGame', 'current');
+                const activeGameRef = doc(db, `${basePath}/activeGame/current`);
                 onSnapshot(activeGameRef, (snap) => {
                     if (snap.exists()) { const d = snap.data(); currentGameRounds = d.rounds?.length ? d.rounds : null; currentActiveGameId = d.gameId || null; }
                     else { currentGameRounds = null; currentActiveGameId = null; }
@@ -527,7 +570,7 @@
 
         window.cloudUpdate = (updates) => {
             if (!user) return;
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'feudSession', 'state');
+            const docRef = doc(db, `${basePath}/feudSession/state`);
             if (!updates.isUndo && !updates.isReset) {
                 const history = { ...sharedState }; delete history.prevState; updates.prevState = history;
             }
@@ -605,8 +648,10 @@
                     up.winTime = Date.now(); up.winningTeamId = team; up.strikes = 0; up.lastWinWasFaceOff = false;
                     if (team === 1) up.t1Score = (sharedState.t1Score || 0) + pts; else up.t2Score = (sharedState.t2Score || 0) + pts;
                     if (document.body.classList.contains('mode-admin')) scheduleAutoAdvance();
+                    wledTrigger('win', `${team === 1 ? sharedState.t1Name : sharedState.t2Name} WINS!`);
                 } else {
                     if (team === 1) up.t1Score = (sharedState.t1Score || 0) + pts; else up.t2Score = (sharedState.t2Score || 0) + pts;
+                    wledTrigger('reveal');
                 }
             }
             window.cloudUpdate(up);
@@ -614,12 +659,18 @@
 
         window.sendStrike = () => {
             let cur = (sharedState.strikes || 0); let up = { strikeTime: Date.now() };
-            if (cur < 3) { up.strikes = cur + 1; if (up.strikes === 3 && sharedState.activeTeam !== 0) up.activeTeam = (sharedState.activeTeam === 1) ? 2 : 1; }
-            else { up.winTime = Date.now(); up.winningTeamId = sharedState.originalTeamId; up.strikes = 0; up.lastWinWasFaceOff = false; if (document.body.classList.contains('mode-admin')) scheduleAutoAdvance(); }
+            if (cur < 3) { up.strikes = cur + 1; if (up.strikes === 3 && sharedState.activeTeam !== 0) up.activeTeam = (sharedState.activeTeam === 1) ? 2 : 1; wledTrigger(up.strikes === 3 ? 'steal' : 'strike', up.strikes === 3 ? 'STEAL!' : null); }
+            else { up.winTime = Date.now(); up.winningTeamId = sharedState.originalTeamId; up.strikes = 0; up.lastWinWasFaceOff = false; if (document.body.classList.contains('mode-admin')) scheduleAutoAdvance(); wledTrigger('win', `${sharedState.originalTeamId === 1 ? sharedState.t1Name : sharedState.t2Name} WINS!`); }
             window.cloudUpdate(up);
         };
 
-        window.handleManualWin = (tid) => { window.cloudUpdate({winTime: Date.now(), winningTeamId: tid, strikes: 0, lastWinWasFaceOff: (sharedState.activeTeam === 0)}); if (document.body.classList.contains('mode-admin')) scheduleAutoAdvance(); };
+        window.handleManualWin = (tid) => { wledTrigger('win', `${tid === 1 ? sharedState.t1Name : sharedState.t2Name} WINS!`); window.cloudUpdate({winTime: Date.now(), winningTeamId: tid, strikes: 0, lastWinWasFaceOff: (sharedState.activeTeam === 0)}); if (document.body.classList.contains('mode-admin')) scheduleAutoAdvance(); };
+        window.endGame = () => {
+            const t1 = sharedState.t1Score || 0, t2 = sharedState.t2Score || 0;
+            const txt = t1 > t2 ? `${sharedState.t1Name} WINS!` : t2 > t1 ? `${sharedState.t2Name} WINS!` : 'TIE GAME!';
+            wledTrigger('gameOver', txt);
+            window.cloudUpdate({ gameOverTime: Date.now() });
+        };
         window.clearAllBanners = () => { if (autoAdvanceTimeout) clearTimeout(autoAdvanceTimeout); window.cloudUpdate({ winTime: 0, strikeTime: 0, gameOverTime: 0, strikes: 0, switchPlayTime: 0 }); };
         function scheduleAutoAdvance() { if (autoAdvanceTimeout) clearTimeout(autoAdvanceTimeout); autoAdvanceTimeout = setTimeout(() => { window.changeRound(1); autoAdvanceTimeout = null; }, 6000); }
         window.undoLastAction = () => { if (sharedState.prevState) window.cloudUpdate({ ...sharedState.prevState, isUndo: true }); };
@@ -630,12 +681,52 @@
         function doSwitchAnim() { const b = document.getElementById('alert-switch'); b.style.display = 'block'; playHappyReveal(); setTimeout(() => b.style.display = 'none', 3000); }
         function doGameOver() { const b = document.getElementById('game-over-pop'); let r = (sharedState.t1Score > sharedState.t2Score) ? `${sharedState.t1Name}<br>CHAMPION!` : (sharedState.t2Score > sharedState.t1Score ? `${sharedState.t2Name}<br>CHAMPION!` : "TIE GAME!"); b.innerHTML = `GAME OVER<br><br><span style="color:var(--warning-gold)">${r}</span>`; b.style.display = 'block'; playWinSfx(); }
 
+        // WLED lighting integration — proxied via /api/wled (works in dev and Vercel https)
+        const WLED_PRESETS = { strike: 2, reveal: 3, win: 4, switchPlay: 5 };
+        const WLED_TEXT_COLORS = { steal: [255,0,128], win: [255,215,0], switchPlay: [255,128,0], gameOver: [255,0,255] };
+        function wledBri() { return parseInt(localStorage.getItem('kindred_wled_bri') || '128'); }
+        function wledTrigger(event, text) {
+            const ip = localStorage.getItem('kindred_wled_ip'); if (!ip) return;
+            const bri = wledBri();
+            const payload = text
+                ? { on: true, bri, seg: [{ fx: 122, n: text, col: [WLED_TEXT_COLORS[event] || [255,255,255], [0,0,0], [0,0,0]], sx: 160, ix: 200 }] }
+                : { ps: WLED_PRESETS[event], bri };
+            fetch('/api/wled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip, payload }) }).catch(() => {});
+        }
+        window.wledTrigger = wledTrigger;
+        window.wledSaveIp = () => {
+            const ip = document.getElementById('wled-ip-input').value.trim();
+            localStorage.setItem('kindred_wled_ip', ip);
+            document.getElementById('wled-status').textContent = ip ? '✓ Saved.' : 'Cleared.';
+        };
+        window.wledSetBri = (val) => {
+            localStorage.setItem('kindred_wled_bri', val);
+            document.getElementById('wled-bri-label').textContent = val;
+            const ip = localStorage.getItem('kindred_wled_ip'); if (!ip) return;
+            fetch('/api/wled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip, payload: { bri: parseInt(val) } }) }).catch(() => {});
+        };
+        window.wledTest = () => {
+            const ip = document.getElementById('wled-ip-input').value.trim();
+            if (!ip) { document.getElementById('wled-status').textContent = 'Enter IP first.'; return; }
+            localStorage.setItem('kindred_wled_ip', ip);
+            const s = document.getElementById('wled-status'); s.textContent = 'Testing…';
+            fetch('/api/wled', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip, payload: { on: true, bri: wledBri() } }) })
+                .then(r => { s.textContent = r.ok ? '✓ Connected' : '✗ WLED unreachable'; })
+                .catch(() => { s.textContent = '✗ Proxy error'; });
+        };
+        // Load saved WLED settings on page load
+        const savedWledIp = localStorage.getItem('kindred_wled_ip');
+        if (savedWledIp) { const el = document.getElementById('wled-ip-input'); if (el) el.value = savedWledIp; }
+        const savedWledBri = localStorage.getItem('kindred_wled_bri');
+        if (savedWledBri) { const sl = document.getElementById('wled-bri-slider'); if (sl) { sl.value = savedWledBri; document.getElementById('wled-bri-label').textContent = savedWledBri; } }
+
         window.changeRound = (dir) => {
             if (autoAdvanceTimeout) clearTimeout(autoAdvanceTimeout);
             const next = Math.max(0, Math.min(getGameRounds().length - 1, (sharedState.currentRound || 0) + dir));
             const winner = sharedState.winningTeamId; let nextActive = winner || 0; let streak = sharedState.consecutiveWins || 0; let lastId = sharedState.lastWinnerId || 0; let sw = false;
             if (winner !== 0 && !sharedState.lastWinWasFaceOff) { if (winner === lastId) streak++; else { streak = 1; lastId = winner; } if (streak >= 2) { sw = true; nextActive = (winner === 1) ? 2 : 1; streak = 0; lastId = 0; } }
             else if (winner !== 0) nextActive = winner;
+            if (sw) wledTrigger('switchPlay', 'SWITCH!');
             window.cloudUpdate({ currentRound: next, revealed: [], strikes: 0, activeTeam: nextActive, originalTeamId: nextActive, gameOverTime: 0, winningTeamId: 0, winTime: 0, strikeTime: 0, lastWinnerId: lastId, consecutiveWins: streak, switchPlayTime: sw ? Date.now() : 0, lastWinWasFaceOff: false });
         };
 
@@ -667,7 +758,7 @@
             if (sel) { sel.value = savedScale; }
         }
         window.handleResetClick = () => { const b = document.getElementById('reset-button'); if (!resetConfirming) { resetConfirming = true; b.innerText = "TAP TO CONFIRM"; b.classList.add('reset-confirming'); setTimeout(() => { resetConfirming = false; b.innerText = "⚠️ Full Game Reset"; b.classList.remove('reset-confirming'); }, 4000); } else { window.resetGame(); resetConfirming = false; b.innerText = "⚠️ Full Game Reset"; b.classList.remove('reset-confirming'); toggleSwitcher(); } };
-        window.resetGame = () => { if (autoAdvanceTimeout) clearTimeout(autoAdvanceTimeout); setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'feudSession', 'state'), { currentRound: 0, t1Score: 0, t2Score: 0, strikes: 0, revealed: [], strikeTime: 0, winTime: 0, winningTeamId: 0, activeTeam: 0, originalTeamId: 0, t1Name: "LIGHT SQUAD", t2Name: "STAR SQUAD", gameOverTime: 0, prevState: null, consecutiveWins: 0, lastWinnerId: 0, switchPlayTime: 0, lastWinWasFaceOff: false, monitorScale: 1.0 }); lastStrike = lastWin = lastGameOver = lastRevCount = lastSwitch = 0; };
+        window.resetGame = () => { if (autoAdvanceTimeout) clearTimeout(autoAdvanceTimeout); setDoc(doc(db, `${basePath}/feudSession/state`), { currentRound: 0, t1Score: 0, t2Score: 0, strikes: 0, revealed: [], strikeTime: 0, winTime: 0, winningTeamId: 0, activeTeam: 0, originalTeamId: 0, t1Name: "LIGHT SQUAD", t2Name: "STAR SQUAD", gameOverTime: 0, prevState: null, consecutiveWins: 0, lastWinnerId: 0, switchPlayTime: 0, lastWinWasFaceOff: false, monitorScale: 1.0 }); lastStrike = lastWin = lastGameOver = lastRevCount = lastSwitch = 0; };
 
         let audioCtx = null;
         function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
@@ -957,7 +1048,7 @@
         window.initTeacherPortal = function() {
             if (teacherGamesUnsub) { renderGameLibrary(); return; }
             teacherGamesUnsub = onSnapshot(
-                query(collection(db, 'artifacts', appId, 'public', 'data', 'games'), orderBy('updatedAt', 'desc')),
+                query(collection(db, `${basePath}/games`), orderBy('updatedAt', 'desc')),
                 (snap) => { teacherGames = snap.docs.map(d => ({ _docId: d.id, ...d.data() })); renderGameLibrary(); }
             );
         };
@@ -1028,8 +1119,20 @@
             renderGameLibrary();
         };
 
+        window.showLibraryView = function() {
+            document.getElementById('tp-library-view').style.display = 'none';
+            document.getElementById('tp-lessonlibrary-view').style.display = 'block';
+            loadLessonLibrary();
+        };
+
+        window.closeLibraryView = function() {
+            document.getElementById('tp-lessonlibrary-view').style.display = 'none';
+            document.getElementById('tp-library-view').style.display = 'block';
+        };
+
         function showEditorView() {
             document.getElementById('tp-library-view').style.display = 'none';
+            document.getElementById('tp-lessonlibrary-view').style.display = 'none';
             document.getElementById('tp-editor-view').style.display = 'block';
         }
 
@@ -1261,10 +1364,10 @@
             };
             try {
                 if (window.editorGame._docId) {
-                    await setDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', window.editorGame._docId), payload);
+                    await setDoc(doc(db, `${basePath}/games/${window.editorGame._docId}`), payload);
                 } else {
                     payload.createdAt = Date.now();
-                    const ref = await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'games'), payload);
+                    const ref = await addDoc(collection(db, `${basePath}/games`), payload);
                     window.editorGame._docId = ref.id;
                 }
                 showTpStatus('✓ Game saved!', 'info');
@@ -1290,8 +1393,8 @@
 
         async function activateGame(g) {
             const rounds = g.rounds || [];
-            const activeRef = doc(db, 'artifacts', appId, 'public', 'data', 'activeGame', 'current');
-            const stateRef = doc(db, 'artifacts', appId, 'public', 'data', 'feudSession', 'state');
+            const activeRef = doc(db, `${basePath}/activeGame/current`);
+            const stateRef = doc(db, `${basePath}/feudSession/state`);
             await setDoc(activeRef, { gameId: g._docId, name: g.name, rounds });
             await updateDoc(stateRef, {
                 currentRound: 0, revealed: [], strikes: 0, activeTeam: 0, originalTeamId: 0,
@@ -1306,9 +1409,9 @@
 
         window.deactivateGame = async function() {
             if (!confirm('Stop using this custom game? The default Exodus game will be used.')) return;
-            const activeRef = doc(db, 'artifacts', appId, 'public', 'data', 'activeGame', 'current');
+            const activeRef = doc(db, `${basePath}/activeGame/current`);
             await deleteDoc(activeRef);
-            await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'feudSession', 'state'), {
+            await updateDoc(doc(db, `${basePath}/feudSession/state`), {
                 currentRound: 0, revealed: [], strikes: 0, activeGameId: null, winTime: 0, strikeTime: 0, gameOverTime: 0
             });
             currentActiveGameId = null;
@@ -1318,13 +1421,85 @@
         window.deleteTeacherGame = async function(docId, name) {
             if (!confirm(`Delete "${name}"?`)) return;
             if (currentActiveGameId === docId) {
-                await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'activeGame', 'current'));
+                await deleteDoc(doc(db, `${basePath}/activeGame/current`));
                 currentActiveGameId = null;
             }
-            await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'games', docId));
+            await deleteDoc(doc(db, `${basePath}/games/${docId}`));
         };
 
         function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+        // ==================== LESSON LIBRARY ====================
+        // Admin pre-generates content; teachers load it for free (no API call)
+        async function loadLessonLibrary() {
+            const container = document.getElementById('tp-library-entries');
+            const emptyEl = document.getElementById('tp-library-empty');
+            const loadingEl = document.getElementById('tp-library-loading');
+            if (!container) return;
+
+            if (loadingEl) loadingEl.style.display = 'block';
+            if (emptyEl) emptyEl.style.display = 'none';
+            container.innerHTML = '';
+
+            try {
+                const snap = await getDocs(collection(db, `${globalBasePath}/lessonLibrary`));
+                const entries = snap.docs
+                    .map(d => ({ id: d.id, ...d.data() }))
+                    .filter(e => e.commonGround);
+
+                if (loadingEl) loadingEl.style.display = 'none';
+
+                if (entries.length === 0) {
+                    if (emptyEl) emptyEl.style.display = 'block';
+                    return;
+                }
+
+                container.innerHTML = entries.map(e => `
+                    <div class="tp-game-card" style="border-left-color:rgba(251,191,36,0.4); cursor:pointer;" onclick="window.loadFromLibrary('${e.id}')">
+                        <div style="flex:1; min-width:0;">
+                            <div class="tp-game-name-display" style="color:#fbbf24;">${escHtml(e.commonGround.topic || e.name || 'Lesson')}</div>
+                            <div class="tp-game-meta">
+                                🎯 ${(e.commonGround.rounds||[]).length} rounds · ${e.commonGround.generatedAt ? new Date(e.commonGround.generatedAt).toLocaleDateString() : 'Library'}
+                            </div>
+                            ${e.url ? `<div class="tp-game-meta" style="color:#3a3a5a; word-break:break-all; margin-top:2px;">${e.url.slice(0,60)}${e.url.length>60?'…':''}</div>` : ''}
+                        </div>
+                        <button class="admin-btn" style="min-width:auto; padding:8px 14px; font-size:0.75rem; white-space:nowrap; border-color:rgba(251,191,36,0.5); color:#fbbf24;">Load →</button>
+                    </div>
+                `).join('');
+            } catch (e) {
+                if (loadingEl) loadingEl.style.display = 'none';
+                if (emptyEl) { emptyEl.textContent = 'Failed to load library.'; emptyEl.style.display = 'block'; }
+                console.warn('Library load failed:', e);
+            }
+        }
+
+        window.loadFromLibrary = async function(lessonId) {
+            try {
+                const snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/${lessonId}`));
+                if (!snap.exists()) { showTpStatus('Library entry not found.', 'error'); return; }
+                const data = snap.data();
+                if (!data.commonGround?.rounds?.length) { showTpStatus('No Common Ground content in this library entry.', 'error'); return; }
+
+                window.editorGame = {
+                    name: data.commonGround.topic || data.name || 'Library Lesson',
+                    rounds: data.commonGround.rounds,
+                    sourceUrl: data.commonGround.sourceUrl || data.url || null,
+                    generatedBy: 'library',
+                    _docId: null
+                };
+                editorMode = 'lesson';
+                showEditorView();
+                document.getElementById('tp-game-name').value = window.editorGame.name;
+                document.getElementById('tp-lesson-section').style.display = 'none';
+                document.getElementById('tp-url-section').style.display = 'none';
+                showTpStatus(`✓ Loaded "${window.editorGame.name}" from library — ${window.editorGame.rounds.length} rounds. Review below, then Save & Activate.`, 'info');
+                renderEditorRounds();
+            } catch (e) {
+                showTpStatus(`Library load failed: ${e.message}`, 'error');
+            }
+        };
+        // ==================== END LESSON LIBRARY ====================
+
         // ==================== END TEACHER PORTAL ====================
 
         window.onload = init;
