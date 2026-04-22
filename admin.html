@@ -896,26 +896,24 @@
 
                 <!-- Quick path: one-click for this week's CFM lesson -->
                 <button class="bl-add-btn" onclick="window.fillCurrentCfmLesson()"
-                    style="width:100%; padding:14px; font-size:0.95rem; background:linear-gradient(180deg,#4a2f00,#2d1d00); border-color:#f8b500; margin-bottom:6px;">
+                    style="width:100%; padding:14px; font-size:0.95rem; background:linear-gradient(180deg,#4a2f00,#2d1d00); border-color:#f8b500; margin-bottom:14px;">
                     ⭐ Fill This Week's Come Follow Me Lesson
                 </button>
-                <div style="color:var(--text-muted); font-size:0.72rem; margin-bottom:14px; text-align:center;">
-                    Auto-fills the name + URL for the current 2026 Old Testament Sunday, then press <b>+ Add Entry</b>.
-                </div>
 
-                <!-- Divider -->
-                <div style="display:flex; align-items:center; gap:10px; color:var(--text-muted); font-family:'Orbitron',sans-serif; font-size:0.65rem; letter-spacing:1.5px; margin:4px 0 12px;">
-                    <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
-                    <span>OR ENTER MANUALLY</span>
-                    <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
-                </div>
-
-                <!-- Manual path -->
+                <!-- Single URL input → auto-filled title preview → Add -->
                 <div class="bl-form">
-                    <div class="bl-form-row">
-                        <input type="text" id="lib-name" placeholder="Lesson name (e.g. Come Follow Me — Lesson 20)" style="flex:2;">
-                        <input type="url" id="lib-url" placeholder="churchofjesuschrist.org lesson URL" style="flex:3;" onblur="window.autoFillTitleFromUrl()">
+                    <input type="url" id="lib-url" placeholder="Paste a churchofjesuschrist.org lesson URL" onblur="window.autoFillTitleFromUrl()">
+
+                    <!-- Title preview (read-only span + pencil). Shown on successful fetch. -->
+                    <div id="lib-title-row" style="display:none; align-items:center; gap:10px; padding:8px 12px; background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.18); border-radius:6px;">
+                        <span id="lib-title-preview" style="flex:1; color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.82rem;"></span>
+                        <button onclick="window.editLibTitle()" title="Edit title"
+                            style="background:transparent; border:none; color:var(--text-muted); cursor:pointer; font-size:1rem; padding:2px 6px;">✎</button>
                     </div>
+
+                    <!-- Editable title input. Shown on fetch failure or when ✎ clicked. -->
+                    <input type="text" id="lib-name" placeholder="Lesson name" style="display:none;">
+
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                         <button class="bl-add-btn" onclick="window.addLibraryEntry()">+ Add Entry</button>
                         <span id="lib-add-status" style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem; display:none;"></span>
@@ -2074,11 +2072,48 @@
             }).join('');
         }
 
+        // ── Add-entry form: URL → auto-fill title preview → commit ──
+        // State: either #lib-title-row (read-only preview) OR #lib-name (input)
+        // is visible, never both. getLibTitle() reads whichever is active.
+
+        function getLibTitle() {
+            const nameEl = document.getElementById('lib-name');
+            const previewEl = document.getElementById('lib-title-preview');
+            const rowEl = document.getElementById('lib-title-row');
+            if (rowEl.style.display !== 'none') return (previewEl.textContent || '').trim();
+            return nameEl.value.trim();
+        }
+
+        function setLibTitlePreview(title) {
+            document.getElementById('lib-title-preview').textContent = title;
+            document.getElementById('lib-title-row').style.display = 'flex';
+            document.getElementById('lib-name').style.display = 'none';
+        }
+
+        function showLibTitleInput(prefill) {
+            const nameEl = document.getElementById('lib-name');
+            nameEl.value = prefill || '';
+            nameEl.style.display = 'block';
+            document.getElementById('lib-title-row').style.display = 'none';
+            nameEl.focus();
+        }
+
+        function resetLibForm() {
+            document.getElementById('lib-url').value = '';
+            document.getElementById('lib-name').value = '';
+            document.getElementById('lib-name').style.display = 'none';
+            document.getElementById('lib-title-preview').textContent = '';
+            document.getElementById('lib-title-row').style.display = 'none';
+            autoTitleLastUrl = '';
+        }
+
+        window.editLibTitle = () => showLibTitleInput(document.getElementById('lib-title-preview').textContent);
+
         window.addLibraryEntry = async () => {
-            const name = document.getElementById('lib-name').value.trim();
+            const name = getLibTitle();
             const url = document.getElementById('lib-url').value.trim();
             const statusEl = document.getElementById('lib-add-status');
-            if (!name || !url) { showLibStatus(statusEl, 'Name and URL required.', true); return; }
+            if (!name || !url) { showLibStatus(statusEl, 'Title and URL required.', true); return; }
             const lessonId = resolveLessonIdFromUrl(url);
             if (!lessonId) { showLibStatus(statusEl, 'Could not derive lesson id from URL.', true); return; }
             const entryId = `cfm-${lessonId}`;
@@ -2091,8 +2126,7 @@
                 await setDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`), {
                     name, url, lessonId, createdAt: Date.now(),
                 });
-                document.getElementById('lib-name').value = '';
-                document.getElementById('lib-url').value = '';
+                resetLibForm();
                 showLibStatus(statusEl, '✓ Entry added.', false);
                 showToast('Library entry added.');
             } catch(e) {
@@ -2102,23 +2136,25 @@
 
         window.fillCurrentCfmLesson = () => {
             const lesson = getCurrentCfmLesson();
-            document.getElementById('lib-name').value = `${lesson.dateRange} — ${lesson.title}`;
             document.getElementById('lib-url').value = lesson.url;
-            const statusEl = document.getElementById('lib-add-status');
-            showLibStatus(statusEl, `Filled with ${lesson.teachingDate} (${lesson.title}).`, false);
+            setLibTitlePreview(`${lesson.dateRange} — ${lesson.title}`);
+            autoTitleLastUrl = lesson.url; // skip refetch on subsequent blur
+            showLibStatus(document.getElementById('lib-add-status'), `Filled with ${lesson.teachingDate} (${lesson.title}).`, false);
         };
 
         let autoTitleLastUrl = '';
         window.autoFillTitleFromUrl = async () => {
             const urlEl = document.getElementById('lib-url');
-            const nameEl = document.getElementById('lib-name');
             const statusEl = document.getElementById('lib-add-status');
             const url = urlEl.value.trim();
             if (!url || url === autoTitleLastUrl) return;
-            if (nameEl.value.trim()) return;
             let parsed;
-            try { parsed = new URL(url); } catch { return; }
-            if (!/(^|\.)churchofjesuschrist\.org$/i.test(parsed.hostname)) return;
+            try { parsed = new URL(url); } catch { showLibTitleInput(''); return; }
+            if (!/(^|\.)churchofjesuschrist\.org$/i.test(parsed.hostname)) {
+                showLibTitleInput('');
+                showLibStatus(statusEl, 'Only churchofjesuschrist.org URLs are allowed.', true);
+                return;
+            }
             autoTitleLastUrl = url;
             showLibStatus(statusEl, 'Fetching title…', false);
             try {
@@ -2128,13 +2164,15 @@
                     body: JSON.stringify({ url }),
                 });
                 const data = await resp.json();
-                if (resp.ok && data.title && !nameEl.value.trim()) {
-                    nameEl.value = data.title;
+                if (resp.ok && data.title) {
+                    setLibTitlePreview(data.title);
                     showLibStatus(statusEl, '✓ Title filled.', false);
-                } else if (!data.title) {
+                } else {
+                    showLibTitleInput('');
                     showLibStatus(statusEl, 'No title found — enter manually.', true);
                 }
             } catch (e) {
+                showLibTitleInput('');
                 showLibStatus(statusEl, 'Could not fetch title — enter manually.', true);
             }
         };
