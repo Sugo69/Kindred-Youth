@@ -520,6 +520,86 @@ Whichever is chosen, OPUS-039 (Policy Rechecker) provides the audit trail.
 
 ---
 
+## Sprint D — Scripture Scout polish (2026-04-22 teacher walkthrough)
+
+10 items raised during a live walkthrough. Owner decision locked: library uses a **copy-on-write scoping model** (global content pool, per-classroom visibility list, per-classroom edit overlays). OPUS-051 implements that model; the rest are discrete UI / UX fixes.
+
+### OPUS-051 · Scripture Scout library scoping + copy-on-write edits
+**Problem:** `lessonLibrary` is global — every teacher sees every entry regardless of who generated it. Custom URL generations bleed across wards (a conference talk Teacher A built shows up for Teacher Z). Today edits hit the shared entry, so one teacher's tweak mutates content for everyone. We also pay Claude twice if two teachers independently request the same source URL.
+**Solution:**
+- Global content pool unchanged: `lessonLibrary/{lessonId}` keyed by deterministic id (`cfm-{manual}-{slug}` for CFM, hash for custom URLs).
+- Per-classroom visibility: new `classrooms/{classroomId}/libraryRefs/{entryId}` = `{ sourceUrl, lessonId, createdBy, createdAt, edits?: { commonGround?, memory? }, pipelineCacheHit: bool }`.
+- CFM entries auto-appear in every classroom's list (no per-classroom write needed).
+- Custom URL entries appear only in the requesting classroom's list.
+- On generate: check classroom's refs → if present, load. Else check pool → if present, add ref with `pipelineCacheHit: true` (no Claude call). Else run pipeline → write pool + add ref.
+- On edit: write mutation to `libraryRefs/{entryId}.edits.{gameType}`; pool entry untouched. Read path merges overlay over pool data. Same behaviour for CFM and custom.
+- "↺ Revert to shared version" button drops the overlay.
+**Acceptance:**
+- Teacher A generating Conference Talk X does not surface it in Teacher Z's list.
+- Teacher Z requesting the same URL reuses Teacher A's pool entry with `pipelineCacheHit: true` in the log — no new Claude call.
+- Teacher A editing a pair on a CFM lesson does not change Teacher Z's view of that CFM lesson.
+- Revert restores shared view; OPUS-039 policyViolationLog flows from overlay writes.
+**Overlaps:** narrower shippable shape of OPUS-002 (tenancy) + OPUS-013 (per-classroom override); answers OPUS-050 Q10.
+**Effort:** L.
+
+### OPUS-052 · CFM dropdown — show "✓ in library" status per week
+**Problem:** Teachers pick a CFM week from the dropdown, get dropped into the URL view pre-filled, and don't know the content is already cached — they click Generate when a zero-cost library load was available. Only "This week" is short-circuited today.
+**Solution:** When the CFM dropdown renders, cross-check each option against `lessonLibrary` (or `libraryRefs` once OPUS-051 lands) and append `✓` + "in library" to cached options. On select of a cached option, skip the Generate UI and land on the "Loaded 'X' — 12 pairs. Ready to play!" state that already works for the current week.
+**Acceptance:** dropdown visibly marks every cached lesson; selecting a cached lesson never hits `/api/lesson-pipeline`.
+**Effort:** S.
+
+### OPUS-053 · Active Lesson card — show lesson date range
+**Problem:** Active Lesson card shows title + pairs count but no date anchor. Teacher has no way to tell which CFM week the loaded content belongs to without checking `cfm-schedule.js`.
+**Solution:** Date chip under the title — `"CFM Week 18 · May 4–10, 2026"` resolved via `resolveLessonIdFromUrl(sourceUrl)`. Non-CFM entries show `"Generated: {date}"` instead.
+**Acceptance:** every Active Lesson card shows a date chip; unresolvable dates fall back silently to `generatedAt`.
+**Effort:** S.
+
+### OPUS-054 · Lock Play button while pair generation is in-flight
+**Problem:** Hit Generate on a new URL and the Play button stays enabled pointing at the previous pairs. Clicking mid-generation plays stale content that is about to be overwritten.
+**Solution:** While `generating === true`, disable Play, swap label for spinner + "Generating new pairs…", reject `startGame()` calls. Re-enable only after new pairs commit. On error, stay disabled until valid pairs exist.
+**Acceptance:** Generate click disables Play immediately; Play re-enables only when committed pairs are ready.
+**Effort:** S.
+
+### OPUS-055 · URL-load view — add "📚 Library" exit shortcut
+**Problem:** From the Teacher Portal home, 🔗 From Lesson URL lands the teacher on the dropdown+URL+Generate view. Only "← Back" returns them — and it goes to Portal home, not to the Library they came from.
+**Solution:** Add a "📚 Library" button next to "← Back" on the URL-load view that jumps directly into `portalView='library'`.
+**Acceptance:** button visible, one click lands in Library.
+**Effort:** S.
+
+### OPUS-056 · QR code URL upgrades — verse highlight + new-tab open
+**Problem:** Scanned QR codes deep-link to the Church scripture page but don't draw the blue verse-highlight bar (Gemini's version does via `&id=N-M#pN`). On-screen click of the QR image also steals the classroom tab — monitor goes to the Church site and loses the game state.
+**Solution:**
+- URL builder appends `&id={startVerse}-{endVerse}#p{startVerse}` when verse numbers are parseable from the scripture ref; single-verse case becomes `&id=13#p13`.
+- QR image + any in-modal "Open scripture" link gets `target="_blank" rel="noopener noreferrer"`.
+**Acceptance:** scanned QR renders Church page with blue highlight on referenced verses; on-screen click opens new tab and leaves the game tab untouched.
+**Effort:** S.
+
+### OPUS-057 · Library tab — auto-archive lessons older than 1 week
+**Problem:** Library tab piles up past CFM weeks. A teacher mid-semester scrolls through a dozen lessons they've already taught to find the current one.
+**Solution:** Lessons where `weekEnd + 7d < today` (CFM) or `generatedAt + 7d < today` (custom) collapse into an "📦 Archive ({N})" accordion at the bottom of the Library list. Re-loading an archived lesson works identically to an active one.
+**Acceptance:** default view only shows lessons with `weekEnd ≥ today − 7d`; archive count accurate; expand reveals cards with full functionality.
+**Effort:** S.
+
+### OPUS-058 · Mission Briefing panel — 16:9 widescreen with mobile fallback
+**Problem:** Mission Briefing reads narrow vs. the rest of the app; Gemini's reference uses a widescreen card that reads better on a classroom TV.
+**Solution:** Container to `max-width: clamp(640px, 90vw, 1280px)`; 4 rule cards reflow to 2×2 at desktop, stack to 1×4 under ~640px. Keep cyberpunk border/neon.
+**Acceptance:** desktop widescreen, no dead side-space; mobile single column with no horizontal scroll; DEPLOY/BACK stay centered.
+**Effort:** S-M.
+
+### OPUS-059 · Match modal — 16:9 reframe, stop orange border clipping
+**Problem:** Match-found modal is tall-and-narrow; orange border clips ~1-2 px off the top of the scripture block on mobile and desktop; narrow column is hard for students to read from the back of the room. Gemini's wider card reads better.
+**Solution:** 16:9 aspect container (`aspect-ratio: 16/9; max-width: min(1200px, 94vw); max-height: 90vh`). Icon + scene pill in left third, scripture + Christ connection + discussion question in right two-thirds, QR in bottom-right. Move orange border to the modal frame (not inner element) to kill the clip. Honor `transform: scale()` for the display-scale gear.
+**Acceptance:** no clipping at any scale; verse text readable from ~25 ft on a 65" TV at HD scale; mobile collapses to single column; Sabotage/Continue unaffected.
+**Effort:** M.
+
+### OPUS-060 · Show verse numbers inline in the match-modal verse block
+**Problem:** Verse block is a wall of prose with no numeric anchors — a teacher can't cue students to "verse 14" without them scanning the whole block.
+**Solution:** Render verse numbers as `<sup>14</sup>` before each verse's text, Gospel Library style. Parse leading `^(\d+)\s+` from the LLM-supplied `verseText`; ask the pipeline prompt to include numbers going forward. Legacy entries without numbers fall back to the current block render.
+**Acceptance:** new pipeline runs emit numbered `verseText` and modal renders superscripts; legacy entries unchanged; OPUS-056's `#p{N}` anchor uses the first number when present.
+**Effort:** S-M.
+
+---
+
 ## Cross-cutting observations
 
 1. **The three skills are the product.** The game boards are one surface for them; the printable cards, lesson plans, and facilitation scripts are the other — and today they are invisible to teachers. OPUS-009 + OPUS-010 + OPUS-022 + OPUS-024 together make the policy embedded in the skills visible and actionable for every teacher.
@@ -543,6 +623,7 @@ Whichever is chosen, OPUS-039 (Policy Rechecker) provides the audit trail.
 | Cleanup | OPUS-014, 015, 016, 025 | UI clunk + dead code removed |
 | Long-term | OPUS-026–032 | Analytics, telemetry, i18n, CI |
 | **Sprint C — Legal & Owner Actions** | **OPUS-040–050** | **Entity, insurance, attorneys, Church IP letter, privacy policy, intake mailbox — gate for self-serve launch** |
+| **Sprint D — Scripture Scout polish** | **OPUS-051–060** | **Library scoping (copy-on-write) + 9 UI/UX fixes from teacher walkthrough** |
 
 ## Comparison hooks for the existing BL-001 – BL-006 backlog
 When comparing against the existing 6-item backlog in `admin.html` / Firestore, note:

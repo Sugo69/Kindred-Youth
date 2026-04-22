@@ -17,11 +17,17 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, getDoc, getDocs, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getAllCfmLessons, getCurrentCfmLesson } from '../src/lib/cfm-schedule.js';
+        import { getAllCfmLessons, getCurrentCfmLesson, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
 
         // Expose the 2026 CFM Old Testament schedule to the Babel-compiled React tree.
         window.__kindredCfmLessons = getAllCfmLessons();
         window.__kindredCurrentCfmLesson = getCurrentCfmLesson();
+        window.__kindredCfmLessonByUrl = function(url) {
+            if (!url) return null;
+            const lessonId = resolveLessonIdFromUrl(url);
+            if (!lessonId) return null;
+            return (window.__kindredCfmLessons || []).find(l => l.lessonId === lessonId) || null;
+        };
 
         const APP_ID = 'exodus-feud-final-v10';
 
@@ -184,6 +190,7 @@
             const progressTimerRef = useRef(null);
             const [libraryEntries, setLibraryEntries] = useState([]);
             const [libraryLoading, setLibraryLoading] = useState(false);
+            const [showArchive, setShowArchive] = useState(false);
 
             // Apply saved scale
             useEffect(() => {
@@ -191,12 +198,32 @@
                 if (saved && !isNaN(parseFloat(saved))) setScale(parseFloat(saved) * 100);
             }, []);
 
-            // QR code
+            // Build a Gospel-Library URL with the blue verse-highlight bar.
+            // Matches "Book Chapter:start" or "Book Chapter:start–end" anywhere in the scripture reference.
+            // Whole-chapter refs (no colon) fall back to the raw URL (no highlight, no anchor).
+            const buildHighlightUrl = (rawUrl, scriptureRef) => {
+                if (!rawUrl) return rawUrl;
+                const ref = (scriptureRef || '').trim();
+                const m = ref.match(/:(\d+)(?:\s*[\u2013\u2014\u2010\u2011\u2212\-]\s*(\d+))?(?!\d)/);
+                if (!m) return rawUrl;
+                const start = parseInt(m[1], 10);
+                const end = m[2] ? parseInt(m[2], 10) : start;
+                const idParam = end > start ? `${start}-${end}` : `${start}`;
+                try {
+                    const u = new URL(rawUrl);
+                    u.searchParams.set('id', idParam);
+                    u.hash = `p${start}`;
+                    return u.toString();
+                } catch { return rawUrl; }
+            };
+
+            // QR code — uses the highlight URL so the scanned page lights up the verse.
             useEffect(() => {
                 if (activeCard?.url) {
                     setTimeout(() => {
                         const el = document.getElementById('qr-canvas');
-                        if (el && window.QRious) new window.QRious({ element: el, value: activeCard.url, size: 140, background: 'white', foreground: '#0a0a20' });
+                        const href = buildHighlightUrl(activeCard.url, activeCard.cardA);
+                        if (el && window.QRious) new window.QRious({ element: el, value: href, size: 140, background: 'white', foreground: '#0a0a20' });
                     }, 60);
                 }
             }, [activeCard]);
@@ -219,7 +246,10 @@
                 setCards(deck); setFlipped([]); setMatched([]); setActiveCard(null);
             };
 
-            const startGame = () => { initGame(); setGameState('rules'); };
+            const startGame = () => {
+                if (portalLoading) return;
+                initGame(); setGameState('rules');
+            };
 
             const handleCardClick = (idx) => {
                 if (isChecking || flipped.includes(idx)) return;
@@ -398,18 +428,34 @@
                         </div>
 
                         {/* Current lesson */}
-                        <div className="bg-slate-900 border border-cyan-500/30 rounded-xl p-4 mb-6 flex items-center justify-between">
-                            <div>
-                                <div className="text-xs font-bold tracking-widest text-cyan-500 uppercase mb-1" style={{fontFamily:'Orbitron,sans-serif'}}>Active Lesson</div>
-                                <div className="text-white font-bold">{lessonTopic}</div>
-                                <div className="text-slate-500 text-xs mt-1">{pairsData.length} matching pairs loaded</div>
-                            </div>
-                            <button onClick={startGame}
-                                className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 text-black font-black text-sm tracking-widest uppercase rounded-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,255,0.5)]"
-                                style={{fontFamily:'Orbitron,sans-serif'}}>
-                                Play →
-                            </button>
-                        </div>
+                        {(() => {
+                            const cfmLesson = generatedFromUrl && window.__kindredCfmLessonByUrl
+                                ? window.__kindredCfmLessonByUrl(generatedFromUrl) : null;
+                            const dateChip = cfmLesson
+                                ? `CFM Wk ${cfmLesson.slug} · ${cfmLesson.dateRange}`
+                                : (generatedAt ? `Generated ${generatedAt.toLocaleDateString(undefined,{month:'short',day:'numeric',year:'numeric'})}` : null);
+                            return (
+                                <div className="bg-slate-900 border border-cyan-500/30 rounded-xl p-4 mb-6 flex items-center justify-between">
+                                    <div>
+                                        <div className="text-xs font-bold tracking-widest text-cyan-500 uppercase mb-1" style={{fontFamily:'Orbitron,sans-serif'}}>Active Lesson</div>
+                                        <div className="text-white font-bold">{lessonTopic}</div>
+                                        <div className="text-slate-500 text-xs mt-1 flex items-center gap-2 flex-wrap">
+                                            <span>{pairsData.length} matching pairs loaded</span>
+                                            {dateChip && (
+                                                <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300" style={{fontFamily:'Orbitron,sans-serif',fontSize:'0.62rem',letterSpacing:'0.08em'}}>
+                                                    {dateChip}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <button onClick={startGame} disabled={portalLoading}
+                                        className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:hover:bg-slate-700 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none text-black font-black text-sm tracking-widest uppercase rounded-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,255,0.5)]"
+                                        style={{fontFamily:'Orbitron,sans-serif'}}>
+                                        {portalLoading ? '⏳ Generating…' : 'Play →'}
+                                    </button>
+                                </div>
+                            );
+                        })()}
 
                         {/* Teacher Portal */}
                         <div className="bg-slate-900 border border-purple-500/30 rounded-xl p-5 mb-4">
@@ -462,35 +508,74 @@
                                             <div className="text-slate-600 text-xs mt-1">Ask your admin to generate lessons in the Library tab</div>
                                         </div>
                                     )}
-                                    {libraryEntries.map(entry => (
-                                        <button key={entry.id} onClick={() => loadFromLibrary(entry)}
-                                            disabled={portalLoading}
-                                            className="w-full text-left mb-3 px-4 py-3 bg-slate-950 border border-amber-500/20 hover:border-amber-400/60 hover:bg-amber-500/5 rounded-xl transition-all disabled:opacity-50 group">
-                                            <div className="flex items-center justify-between gap-3">
-                                                <div className="flex-1 min-w-0">
-                                                    <div className="text-amber-300 font-bold text-sm mb-0.5" style={{fontFamily:'Orbitron,sans-serif'}}>
-                                                        {entry.name || entry.memory?.topic || 'Library Lesson'}
-                                                    </div>
-                                                    {entry.name && entry.memory?.topic && entry.memory.topic !== entry.name && (
-                                                        <div className="text-slate-400 text-xs mb-0.5" style={{fontFamily:'Rajdhani,sans-serif'}}>{entry.memory.topic}</div>
-                                                    )}
-                                                    <div className="text-slate-500 text-xs" style={{fontFamily:'Orbitron,sans-serif'}}>
-                                                        🧩 {(entry.memory?.pairs||[]).length} pairs &nbsp;·&nbsp; {entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleString() : ''}
-                                                    </div>
-                                                    {entry.url && (
-                                                        <div className="text-slate-700 text-xs mt-0.5 truncate" style={{fontFamily:'Rajdhani,sans-serif'}}>
-                                                            {entry.url.replace('https://www.','').slice(0,60)}{entry.url.length>70?'…':''}
+                                    {(() => {
+                                        // Auto-archive: hide CFM lessons whose teaching Sunday (weekEnd) is more than 7 days past,
+                                        // and custom entries whose generatedAt is more than 7 days past. Anything older drops into the
+                                        // collapsible "📦 Archive" section so the active list stays focused on the current week.
+                                        const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+                                        const isArchived = (entry) => {
+                                            const cfm = window.__kindredCfmLessonByUrl ? window.__kindredCfmLessonByUrl(entry.url) : null;
+                                            if (cfm) return new Date(cfm.weekEnd + 'T00:00:00Z').getTime() < cutoff;
+                                            const gen = entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).getTime() : null;
+                                            return gen ? gen < cutoff : false;
+                                        };
+                                        const active = libraryEntries.filter(e => !isArchived(e));
+                                        const archived = libraryEntries.filter(isArchived);
+                                        const renderEntry = (entry) => (
+                                            <button key={entry.id} onClick={() => loadFromLibrary(entry)}
+                                                disabled={portalLoading}
+                                                className="w-full text-left mb-3 px-4 py-3 bg-slate-950 border border-amber-500/20 hover:border-amber-400/60 hover:bg-amber-500/5 rounded-xl transition-all disabled:opacity-50 group">
+                                                <div className="flex items-center justify-between gap-3">
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-amber-300 font-bold text-sm mb-0.5" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                            {entry.name || entry.memory?.topic || 'Library Lesson'}
                                                         </div>
-                                                    )}
+                                                        {entry.name && entry.memory?.topic && entry.memory.topic !== entry.name && (
+                                                            <div className="text-slate-400 text-xs mb-0.5" style={{fontFamily:'Rajdhani,sans-serif'}}>{entry.memory.topic}</div>
+                                                        )}
+                                                        <div className="text-slate-500 text-xs" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                            🧩 {(entry.memory?.pairs||[]).length} pairs &nbsp;·&nbsp; {entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleString() : ''}
+                                                        </div>
+                                                        {entry.url && (
+                                                            <div className="text-slate-700 text-xs mt-0.5 truncate" style={{fontFamily:'Rajdhani,sans-serif'}}>
+                                                                {entry.url.replace('https://www.','').slice(0,60)}{entry.url.length>70?'…':''}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-amber-400 text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                        Load →
+                                                    </span>
                                                 </div>
-                                                <span className="text-amber-400 text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{fontFamily:'Orbitron,sans-serif'}}>
-                                                    Load →
-                                                </span>
-                                            </div>
-                                        </button>
-                                    ))}
+                                            </button>
+                                        );
+                                        return (
+                                            <>
+                                                {active.map(renderEntry)}
+                                                {!libraryLoading && active.length === 0 && archived.length > 0 && (
+                                                    <div className="text-center py-4 text-slate-600 text-xs" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                        No active lessons — open the archive below.
+                                                    </div>
+                                                )}
+                                                {archived.length > 0 && (
+                                                    <div className="mt-2">
+                                                        <button onClick={()=>setShowArchive(s=>!s)}
+                                                            className="w-full px-4 py-2.5 border border-slate-700 text-slate-400 text-xs font-bold uppercase rounded-lg hover:bg-slate-800 transition-all flex items-center justify-between"
+                                                            style={{fontFamily:'Orbitron,sans-serif'}}>
+                                                            <span>📦 Archive ({archived.length})</span>
+                                                            <span className="text-slate-500">{showArchive ? '▴' : '▾'}</span>
+                                                        </button>
+                                                        {showArchive && (
+                                                            <div className="mt-3 opacity-80">
+                                                                {archived.map(renderEntry)}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </>
+                                        );
+                                    })()}
                                     <button onClick={()=>{setPortalView('home');setPortalStatus('');}}
-                                        className="w-full mt-1 px-4 py-2.5 border border-slate-700 text-slate-500 text-xs font-bold uppercase rounded-lg hover:bg-slate-800 transition-all"
+                                        className="w-full mt-3 px-4 py-2.5 border border-slate-700 text-slate-500 text-xs font-bold uppercase rounded-lg hover:bg-slate-800 transition-all"
                                         style={{fontFamily:'Orbitron,sans-serif'}}>← Back</button>
                                 </div>
                             )}
@@ -525,6 +610,9 @@
                                             style={{fontFamily:'Orbitron,sans-serif'}}>
                                             {portalLoading ? '⏳ Generating…' : (generatedFromUrl && generatedFromUrl === lessonUrl) ? '✓ Generated' : '⚡ Generate Pairs'}
                                         </button>
+                                        <button onClick={()=>{setPortalView('library');setPortalStatus('');}}
+                                            className="px-4 py-3 border border-amber-500/50 text-amber-400 text-xs font-bold uppercase rounded-lg hover:bg-amber-500/10"
+                                            style={{fontFamily:'Orbitron,sans-serif'}}>📚 Library</button>
                                         <button onClick={()=>{setPortalView('home');setPortalStatus('');}}
                                             className="px-4 py-3 border border-slate-600 text-slate-400 text-xs font-bold uppercase rounded-lg hover:bg-slate-800"
                                             style={{fontFamily:'Orbitron,sans-serif'}}>← Back</button>
@@ -857,11 +945,13 @@
                                             <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#f1f5f9',lineHeight:1.5,fontSize:'clamp(1.1rem,2vw,1.65rem)',margin:0}}>{activeCard.question}</p>
                                         </div>
 
-                                        {/* QR code — below discussion, slightly rotated */}
+                                        {/* QR code — below discussion, slightly rotated. On-screen click opens scripture in a new tab so the classroom monitor stays on the game. */}
                                         {activeCard.url && (
                                             <div style={{display:'flex',flexDirection:'column',alignItems:'flex-start',gap:'0.3rem',flexShrink:0,transform:'rotate(3deg)',transformOrigin:'left center',marginLeft:'0.25rem'}}>
-                                                <canvas id="qr-canvas" style={{borderRadius:'0.4rem',border:'1px solid #374151'}} />
-                                                <span style={{fontFamily:'Orbitron,sans-serif',fontSize:'0.5rem',color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.1em'}}>Scan to read along</span>
+                                                <a href={buildHighlightUrl(activeCard.url, activeCard.cardA)} target="_blank" rel="noopener noreferrer" title="Open scripture in a new tab" style={{display:'block',lineHeight:0}}>
+                                                    <canvas id="qr-canvas" style={{borderRadius:'0.4rem',border:'1px solid #374151',cursor:'pointer'}} />
+                                                </a>
+                                                <span style={{fontFamily:'Orbitron,sans-serif',fontSize:'0.5rem',color:'#6b7280',textTransform:'uppercase',letterSpacing:'0.1em'}}>Scan or click to read along</span>
                                             </div>
                                         )}
 
