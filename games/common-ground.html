@@ -329,6 +329,9 @@
                     <div class="strike-x" id="sx-2">X</div>
                     <div class="strike-x" id="sx-3">X</div>
                 </div>
+                <div id="tv-scripture" style="display:none; max-width:92%; margin:0 auto 12px; padding:14px 22px; font-family:'Rajdhani',sans-serif; font-size:1.3rem; line-height:1.45; text-align:center; color:#f5f5f5; background:linear-gradient(180deg, rgba(0,242,255,0.08), rgba(0,242,255,0.02)); border:1px solid rgba(0,242,255,0.35); border-radius:12px; box-shadow:0 0 18px rgba(0,242,255,0.15);">
+                    <span id="tv-scripture-text" style="font-style:italic;"></span>
+                </div>
                 <div class="question-box tv-q" id="q-txt">Connecting to Temple...</div>
                 <div class="board tv-board" id="game-board"></div>
             </div>
@@ -466,6 +469,13 @@
                 <div class="admin-box">
                     <h3 style="color:var(--neon-cyan); margin:0;">4. Reveal Answers</h3>
                     <div id="admin-q-display"></div>
+                    <div id="admin-scripture-row" style="display:none; margin-top:10px; padding:10px; background:rgba(0,242,255,0.05); border:1px solid rgba(0,242,255,0.25); border-radius:8px;">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <span style="color:#888; font-size:0.7rem; text-transform:uppercase; letter-spacing:1px;">Source Scripture</span>
+                            <button id="admin-scripture-toggle" class="admin-btn" onclick="window.toggleScripture()" style="margin-left:auto; padding:4px 10px; font-size:0.7rem;">Hide on Monitor</button>
+                        </div>
+                        <div id="admin-scripture-text" style="margin-top:8px; color:#f5f5f5; font-family:'Rajdhani',sans-serif; font-size:0.95rem; font-style:italic; line-height:1.35;"></div>
+                    </div>
                     <div id="admin-ans-list"></div>
                 </div>
 
@@ -574,7 +584,7 @@
             { level: "Round 10", question: "What is the meaning behind Passover foods?", answers: [{ text: "Bitter herbs=Sin", points: 40 }, { text: "Unleavened=Leaving", points: 30 }, { text: "Haste=Urgency", points: 20 }] }
         ];
 
-        let sharedState = { currentRound: 0, t1Score: 0, t2Score: 0, strikes: 0, revealed: [], strikeTime: 0, winTime: 0, winningTeamId: 0, activeTeam: 0, originalTeamId: 0, t1Name: "LIGHT SQUAD", t2Name: "STAR SQUAD", gameOverTime: 0, consecutiveWins: 0, lastWinnerId: 0, switchPlayTime: 0, lastWinWasFaceOff: false, monitorScale: 1.0, prevState: null };
+        let sharedState = { currentRound: 0, t1Score: 0, t2Score: 0, strikes: 0, revealed: [], strikeTime: 0, winTime: 0, winningTeamId: 0, activeTeam: 0, originalTeamId: 0, t1Name: "LIGHT SQUAD", t2Name: "STAR SQUAD", gameOverTime: 0, consecutiveWins: 0, lastWinnerId: 0, switchPlayTime: 0, lastWinWasFaceOff: false, monitorScale: 1.0, showScripture: true, prevState: null };
         let lastStrike = 0, lastWin = 0, lastRevCount = 0, lastGameOver = 0, lastSwitch = 0, autoAdvanceTimeout = null, user = null, resetConfirming = false;
         let currentGameRounds = null, currentActiveGameId = null;
         function getGameRounds() { return currentGameRounds || gameData; }
@@ -651,6 +661,28 @@
             document.getElementById('h-fo').className = isFO ? 'admin-btn selected' : 'admin-btn';
             document.getElementById('steal-status').style.display = (sharedState.strikes || 0) >= 3 ? 'block' : 'none';
             document.getElementById('admin-q-display').innerText = data.question;
+
+            // Source-scripture surface (OPUS-021) — show on Monitor for scripture_based
+            // and scripture_application rounds. Teacher can toggle visibility from Admin;
+            // state syncs through Firestore sharedState.showScripture.
+            const hasVerse = !!(data.verseText && data.verseText.trim());
+            const showScripture = sharedState.showScripture !== false; // default true
+            const tvScripture = document.getElementById('tv-scripture');
+            const tvScriptureText = document.getElementById('tv-scripture-text');
+            if (hasVerse && showScripture) {
+                tvScriptureText.textContent = `"${data.verseText.trim()}"`;
+                tvScripture.style.display = 'block';
+            } else {
+                tvScripture.style.display = 'none';
+            }
+            const adminRow = document.getElementById('admin-scripture-row');
+            if (hasVerse) {
+                adminRow.style.display = 'block';
+                document.getElementById('admin-scripture-text').textContent = data.verseText.trim();
+                document.getElementById('admin-scripture-toggle').textContent = showScripture ? 'Hide on Monitor' : 'Show on Monitor';
+            } else {
+                adminRow.style.display = 'none';
+            }
             document.getElementById('res-slider').value = sharedState.monitorScale || 1.0;
 
             const adminList = document.getElementById('admin-ans-list'); adminList.innerHTML = '';
@@ -667,6 +699,11 @@
             if (revList.length > lastRevCount) { lastRevCount = revList.length; if(isMon && sharedState.winTime <= lastWin) playHappyReveal(); }
             if (sharedState.gameOverTime > lastGameOver && sharedState.gameOverTime !== 0) { lastGameOver = sharedState.gameOverTime; if(isMon) doGameOver(); }
         }
+
+        window.toggleScripture = () => {
+            const next = sharedState.showScripture === false ? true : false;
+            window.cloudUpdate({ showScripture: next });
+        };
 
         window.startApp = () => { initAudio(); document.getElementById('audio-unlock').style.display = 'none'; };
 
