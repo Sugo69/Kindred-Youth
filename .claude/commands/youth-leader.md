@@ -407,3 +407,34 @@ Then ask: "Would you like me to generate the QR code cards as printable HTML, or
 **No PowerPoint.** Physical cards, writing on board, phones, objects, student-held papers — anything but slides.
 
 **Phone scripture access:** Always give the Gospel Library URL so students can open scriptures on phones. Normalise phone use as a gospel learning tool.
+
+---
+
+## Compliance metadata contract (REQUIRED output field)
+
+The game questions JSON you emit for the Teacher Portal MUST include a top-level `complianceReport` object so the UI can surface the result without re-auditing. Shape:
+
+```json
+{
+  "complianceReport": {
+    "version": "youth-leader-v2",
+    "policyRefs": ["Handbook §13", "Handbook §37.8", "Teaching in the Savior's Way", "For the Strength of Youth"],
+    "structural": {
+      "itemCount": 8,
+      "passCount": 8,
+      "reviewCount": 0,
+      "findings": []
+    },
+    "christConnectionCoverage": 1.0,
+    "scriptureCoverage": 1.0,
+    "overall": "PASS"
+  }
+}
+```
+
+- Every `round` must independently carry `complianceCheck: "PASS" | "REVIEW: <reason>"`.
+- Every `round` must carry `christConnection` (one sentence) and `type` (`scripture_based` | `scripture_application` | `family_feud`).
+- Every scripture-typed round must carry `verseText` (verbatim KJV) and `url` (Gospel Library).
+- URLs must be on `churchofjesuschrist.org`, `media.churchofjesuschrist.org`, or `speeches.byu.edu`.
+- After emitting the JSON, invoke the `lesson-reviewer` agent against it and include its verdict in the mindmap output. Do NOT declare the lesson plan "ready for the Teacher Portal" without that sign-off.
+- If ANY item hits an instant-block trigger (substances, sexual content, personal-exposure traps), regenerate — do not rewrite in place.

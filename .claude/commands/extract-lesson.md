@@ -408,3 +408,32 @@ Ask: "Would you like me to generate game questions from this lesson data now, or
 - If the page is thin (JavaScript-rendered), extract what static HTML is available and note the limitation.
 - For FSY relevance: the connection between FSY Ch. 6 (Matthew 22:37–40) and any lesson covering Deuteronomy 6 (the Shema) is always HIGH — Jesus was directly quoting the Shema when He named the greatest commandment.
 - Always check the AP Quorum Theme for "heart, might, mind, and strength" when the lesson covers Deuteronomy 6 or Matthew 22.
+
+---
+
+## Compliance metadata contract (REQUIRED output field)
+
+The extraction JSON you save to `lesson-database/{lessonId}.json` MUST include a top-level `extractionReport` so downstream skills (`youth-leader`, `gamemaster`) and the runtime pipeline know what the extraction produced and what it could not produce. Shape:
+
+```json
+{
+  "extractionReport": {
+    "version": "extract-lesson-v2",
+    "sourceUrl": "https://www.churchofjesuschrist.org/study/manual/...",
+    "scriptureRefCount": 14,
+    "verseTextFetched": 14,
+    "verseTextFailed": 0,
+    "videoLinkCount": 3,
+    "talkLinkCount": 5,
+    "fsyChaptersMatched": ["ch-6", "ch-9"],
+    "youthThemeHits": [{"theme":"YW", "phrase":"With God all things are possible", "score":"HIGH"}],
+    "urlAllowlistViolations": [],
+    "warnings": []
+  }
+}
+```
+
+- Every `allScriptureRefs[]` entry must carry `ref`, `url`, `section`, and `verseText` (verbatim KJV / standard works — max 400 chars for ranges).
+- Every `allVideoLinks[]` and `allConferenceMessages[]` URL must be on `churchofjesuschrist.org`, `media.churchofjesuschrist.org`, `abn.churchofjesuschrist.org`, or `speeches.byu.edu`. Off-allowlist URLs go into `urlAllowlistViolations` and are dropped from the main arrays.
+- Never merge children's-section refs with main-section refs; `isDuplicate: true` preserves provenance.
+- If `verseTextFailed > 0`, write a `warnings[]` entry so `youth-leader` / `gamemaster` know to regenerate or prompt the teacher — do not silently emit pairs/rounds without verse text.

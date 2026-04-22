@@ -40,23 +40,14 @@ FamilyFeud/
 │   ├── generate.js             # Vercel serverless — AI backlog story generator
 │   ├── fetch-content.js        # Vercel serverless — URL proxy/scraper for Teacher Portal
 │   ├── generate-questions.js   # Vercel serverless — question generator (3 types)
-│   ├── lesson-pipeline.js      # Thin Vercel wrapper around _lib/pipeline.js
-│   └── _lib/
-│       └── pipeline.js         # Shared pipeline v3 — dev + prod use the same module
-├── src/
-│   └── lib/
-│       └── cfm-schedule.js     # Come Follow Me 2026 OT week → Gospel Library URL map
+│   └── lesson-pipeline.js      # Vercel serverless — two-step pipeline: extract → generate
 ├── .claude/
 │   ├── settings.json           # Project-level Claude Code permissions (committed)
 │   ├── settings.local.json     # Machine-local permissions (gitignored)
-│   ├── commands/
-│   │   ├── extract-lesson.md   # /project:extract-lesson — fetch + parse CFM lesson
-│   │   ├── youth-leader.md     # /project:youth-leader — generate lesson plan + game questions
-│   │   └── gamemaster.md       # /project:gamemaster — privacy-safe classroom game session
-│   └── agents/
-│       ├── lesson-reviewer.md  # Subagent — per-item PASS/REWRITE/BLOCK verdict vs. Church policy
-│       └── content-safety.md   # Subagent — fast child-safety gate (substances, exposure, URLs, TMs)
-├── Opus47_Backlog.md           # Opus 4.7 backlog (P0–P3) for scaling Kindred to hundreds of teachers
+│   └── commands/
+│       ├── extract-lesson.md   # /project:extract-lesson — fetch + parse CFM lesson
+│       ├── youth-leader.md     # /project:youth-leader — generate lesson plan + game questions
+│       └── gamemaster.md       # /project:gamemaster — privacy-safe classroom game session
 ├── lesson-database/            # Extracted lesson data (local, not Firestore)
 │   ├── *.json                  # Structured lesson data with scriptures, themes, FSY connections
 │   └── *-mindmap.md            # Mermaid mindmaps per lesson
@@ -138,36 +129,17 @@ build: {
 }
 ```
 
-## Lesson Pipeline (`/api/lesson-pipeline`) — v3 (shared core + compliance)
+## Lesson Pipeline (`/api/lesson-pipeline`)
 Two-step Claude pipeline used by both games' Teacher Portal "From Lesson" mode. Mirrors the CLI skills chain (`extract-lesson` → `youth-leader`/`gamemaster`) but runs entirely server-side.
 
-**Shared-module architecture (v3):** Both `api/lesson-pipeline.js` (Vercel handler) and the Vite dev middleware in `vite.config.js` are thin HTTP wrappers around `runLessonPipeline()` exported from [api/_lib/pipeline.js](api/_lib/pipeline.js). Dev and prod execute identical code — no more silent drift.
-
 - **Input**: `{ url, gameType: 'common-ground' | 'memory', questionType: 'mixed' | 'scripture_based' | 'scripture_application' | 'family_feud' }`
-- **Source URL allowlist**: hosts `churchofjesuschrist.org` (+ subdomains); path prefixes `/study/manual/`, `/study/general-conference/`, `/study/scriptures/`, `/study/ensign/`, `/study/liahona/`, `/study/new-era/`. Anything else → 400.
-- **Output URL allowlist**: every `url` field emitted must be on `churchofjesuschrist.org`, `media.churchofjesuschrist.org`, `abn.churchofjesuschrist.org`, or `speeches.byu.edu`. Non-matching URLs are stripped and flagged.
-- **Step 1 — Extraction**: Claude fetches and parses the lesson page, extracting `{ title, weekLabel, scriptureRefs[{ref, verseText, url, section}], videoLinks[], talkLinks[], discussionQuestions[], keyThemes[] }`. Claude supplies `verseText` from its training knowledge of the KJV/standard works.
-- **Step 2 — Generation**: Claude consumes the extraction JSON and produces game-ready content using the Kindred Gamemaster rubric (Handbook §13, §37.8, Teaching in the Savior's Way, FSY).
-- **Step 3 — Structural compliance (server-side, cannot be prompted away)**: validates required fields (verse/scene/question for pairs; question/answers/christConnection for rounds), scans all string fields against a hard-block keyword regex list (substances, sexual content, self-harm, etc.), stamps every item with `complianceCheck: "PASS" | "REVIEW: <reason>"`.
-- **Step 4 — AI safety review** (gated by `ENABLE_SAFETY_REVIEW`, default on): a second Claude pass tags each item `pass | rewrite | block`, rewrites fields in place, and removes blocked items.
-- **Common Ground output**: `{ topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
-- **Scripture Scout output**: `{ topic, pairs[{cardA, cardB, icon, iconLabel, scene, verse, question, christConnection, url, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
-- **`complianceReport` shape**: `{ version: 'v3', policyRefs: ['Handbook §13', 'Handbook §37.8', "Teaching in the Savior's Way"], structural: {...}, safety: {...}, passCount, reviewCount, rewrittenCount, blockedCount, overall: 'PASS' | 'PASS_WITH_REWRITES' | 'REVIEW_REQUIRED' }`
+- **Step 1 — Extraction**: Claude fetches and parses the lesson page, extracting `{ title, weekLabel, scriptureRefs[{ref, verseText, url, section}], videoLinks[], talkLinks[], discussionQuestions[], keyThemes[] }`. Claude supplies `verseText` from its training knowledge of the KJV/standard works — no additional scripture HTTP fetches needed.
+- **Step 2 — Generation**: Claude consumes the structured extraction JSON and produces game-ready content using full Kindred Gamemaster rules (Teaching in the Savior's Way, L1–L4 levels, Christ-centered).
+- **Common Ground output**: `{ topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v2' }`
+- **Scripture Scout output**: `{ topic, pairs[{cardA, cardB, icon, iconLabel, scene, verse, question, christConnection, url}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v2' }`
+- HTML pre-scraping: extracts `talkSet`, `scriptureSet`, `videoSet` via regex before text strip
 - **Server-side retry**: if Claude API returns 500/503/529 or timeout/overload error, waits 5s and retries once
 - **Client-side retry**: on any error, shows 30-second countdown in status bar and auto-retries; clicking Generate again cancels the countdown and retries immediately
-
-## Come Follow Me Schedule (`src/lib/cfm-schedule.js`)
-Maps every 2026 Old Testament Sunday to its Gospel Library URL and lesson id. Exports `getCurrentCfmLesson()`, `getCfmLessonForDate(date)`, `getNextCfmLesson(date)`, `resolveLessonIdFromUrl(url)`.
-- Used by the admin Library tab's **⭐ Fill This Week's Lesson** button to prefill the lesson name + URL.
-- Used by `addLibraryEntry()` to derive a deterministic doc ID (`cfm-{manual}-{slug}`) via `setDoc`, so repeat clicks on the same lesson no longer produce duplicate entries.
-- Lesson blocks are 2-week teaching cycles (1st + 3rd Sunday); `weekStart` is the Sunday the lesson first opens.
-
-## Compliance surfaces
-- **Admin Library cards** ([admin.html](admin.html)) show a pill next to each generated game: `✓ Compliant` (green), `⚠ Rewritten` (amber), `⚠ Review required` (pink). Tooltip expands to pass/review/rewritten/blocked counts and cited policy refs.
-- **Claude Code subagents** enforce the same policy outside the runtime pipeline:
-  - `.claude/agents/lesson-reviewer.md` — per-item PASS/REWRITE/BLOCK verdict across Handbook §13, §37.8, Teaching in the Savior's Way, FSY. Invoked by the CLI skills before declaring a lesson "classroom-ready."
-  - `.claude/agents/content-safety.md` — fast narrow filter for substances, sexual content, personal-exposure traps, URL allowlist, and trademark literals. Pre-commit / pre-deploy gate for user-facing strings.
-- **Skills now emit compliance metadata** — `extract-lesson` adds `extractionReport`; `youth-leader` + `gamemaster` add `complianceReport` with `structural`, `christConnectionCoverage`, and an `overall` verdict. The UI trusts the report rather than re-auditing.
 
 ## Common Ground Game (`games/common-ground.html`)
 - Renamed from "Family Feud" — same survey mechanic, no Fremantle trademark risk
@@ -232,7 +204,6 @@ Addressable 9×7 WS2812B matrix (63 LEDs) on ESP8266 NodeMCU, controlled from th
   - `window.__kindredBasePath` and `window.__kindredGlobalBasePath` set from `?room=` param
 - **Classroom scoping**: `?room={classroomId}` → `__kindredBasePath` used for game state; `__kindredGlobalBasePath` for library reads
 - Teacher Portal (`portalView` state: `'home' | 'library' | 'lesson' | 'manual'`):
-  - **Home view**: 2-column primary row (📚 Library amber · 🔗 From Lesson URL cyan) with subtitle hints; "✏️ Edit current pairs" shown below only when pairs already exist (contextual, not primary). The old "↺ Default" button was removed — default pairs now auto-load on mount.
   - **📚 Library** (amber button) — `portalView='library'`; loads admin pre-generated lessons instantly
     - `useEffect([portalView])` calls `loadMemoryLibrary()` with `cancelled` flag to prevent stale setState
     - On "Load →": calls `loadMemoryFromLibrary`, sets all state, navigates to `portalView='home'`
@@ -245,7 +216,7 @@ Addressable 9×7 WS2812B matrix (63 LEDs) on ESP8266 NodeMCU, controlled from th
 - Card faces: both faces show the pair icon — Face A = cyan (scripture ref + title + icon), Face B = purple (key phrase + icon)
 - **Match modal** — full-screen classroom-readable layout:
   - Giant icon left panel (orange border)
-  - Right panel: scene pill (orange) → scripture ref → verse text (KJV, readable from back of room) → ✝ Christ Connection card (amber) → discussion question → QR code
+  - Right panel: scene pill (orange) → scripture ref → verse text (KJV, readable from back of room) → discussion question
   - Bottom action bar: Sabotage + Continue buttons
 - Sabotage mechanic: shuffles unmatched cards every N matches
 - **Scale compensation**: playing view uses inverse-size formula — `width: ${100/scale}vw, height: calc((100vh - 34px) * ${100/scale})` so `transform: scale(sf)` fills exactly the viewport; `top: 34px` offsets the fixed back-nav bar
@@ -268,11 +239,9 @@ Addressable 9×7 WS2812B matrix (63 LEDs) on ESP8266 NodeMCU, controlled from th
 ## Admin Portal (`admin.html`)
 - **Google Sign-In gate** — only `lewiswf@gmail.com` can access; others see an access-denied screen
 - **5 tabs**: Overview, Teachers, Classrooms, Library, Backlog
-- **Library tab**:
-  - Add library entries: lesson name + churchofjesuschrist.org URL → stored in `lessonLibrary/{lessonId}` via `setDoc` with deterministic id `cfm-{manual}-{slug}` (blocks duplicate entries for the same URL)
-  - **⭐ Fill This Week's Lesson** button — reads `getCurrentCfmLesson()` from `src/lib/cfm-schedule.js`, prefills name + URL for the current 2026 OT Sunday
+- **Library tab** (new):
+  - Add library entries: lesson name + churchofjesuschrist.org URL → stored in `lessonLibrary/{lessonId}`
   - Per-entry generate buttons: 🔗 Common Ground / 🧩 Memory → calls `/api/lesson-pipeline` and saves to entry
-  - **Compliance pill** next to each generated game (✓ Compliant / ⚠ Rewritten / ⚠ Review required) — reads `complianceReport.overall`; tooltip shows pass/review/rewritten/blocked counts + cited policy refs
   - Expandable "▼ Content" per entry — shows videos, talks, CG rounds (with answer pills + points), Memory pairs (full verse text, icon, question)
   - **Batch generate all** button — generates any missing game type across all entries
   - Delete with confirmation

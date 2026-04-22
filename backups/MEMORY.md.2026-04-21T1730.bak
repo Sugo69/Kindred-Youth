@@ -1,0 +1,9 @@
+# Memory Index — Kindred Youth Platform
+
+- [Project Overview](project_overview.md) — Kindred: portal + admin + Common Ground + Scripture Scout; Firebase sync; backlog in admin.html; display scale gear menu
+- [User Profile](user_profile.md) — LDS teacher/developer building a reusable church youth game platform
+- [Tech Decisions](tech_decisions.md) — Vite MPA (4 pages), port 5174, Firebase Firestore, two-step lesson pipeline v2, retry logic, Vercel deployment
+- [Backlog & Features](backlog_features.md) — 6 seeded backlog items, AI guide generation, Firestore guide persistence; lives in admin.html
+- [Claude Code Skills](skills_overview.md) — extract-lesson (with verseText fetch), youth-leader, gamemaster; UI lesson pipeline v2 (two-step Claude); CLI skills are NOT HTTP endpoints
+- [LED Integration](wled_integration.md) — ESP8266 9×7 matrix; USB serial primary (Chrome Web Serial, kindred-leds.ino); WiFi proxy fallback (/api/wled); Chrome-only
+- [Classroom & Library](classroom_library.md) — ?room= classroom scoping; lessonLibrary always global; 📚 Library button in both game portals; Scripture Scout Firebase module pattern

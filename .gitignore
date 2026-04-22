@@ -6,3 +6,4 @@ dist/
 *.log
 *.mp4
 .claude/settings.local.json
+GeminiMCP/

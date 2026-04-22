@@ -802,6 +802,7 @@
                     </div>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                         <button class="bl-add-btn" onclick="window.addLibraryEntry()">+ Add Entry</button>
+                        <button class="bl-add-btn" onclick="window.fillCurrentCfmLesson()" style="background:linear-gradient(180deg,#4a2f00,#2d1d00); border-color:#f8b500;">⭐ Fill This Week's Lesson</button>
                         <span id="lib-add-status" style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem; display:none;"></span>
                     </div>
                 </div>
@@ -917,6 +918,7 @@
             getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
             query, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { resolveLessonIdFromUrl, getCurrentCfmLesson } from "/src/lib/cfm-schedule.js";
 
         const ADMIN_EMAIL = 'lewiswf@gmail.com';
         const APP_ID = 'exodus-feud-final-v10';
@@ -1523,6 +1525,18 @@
             return html;
         }
 
+        function renderComplianceBadge(report) {
+            if (!report || !report.overall) return '';
+            const map = {
+                'PASS':              { label: '✓ Compliant',       bg: '#063b1e', fg: '#48e091' },
+                'PASS_WITH_REWRITES':{ label: '⚠ Rewritten',        bg: '#3a2f00', fg: '#f8b500' },
+                'REVIEW_REQUIRED':   { label: '⚠ Review required',  bg: '#3a0018', fg: '#ff6b9d' },
+            };
+            const m = map[report.overall] || map.REVIEW_REQUIRED;
+            const tip = `Pass ${report.passCount||0} · Review ${report.reviewCount||0} · Rewritten ${report.rewrittenCount||0} · Blocked ${report.blockedCount||0} · ${(report.policyRefs||[]).join(', ')}`;
+            return `<span title="${esc(tip)}" style="display:inline-block; padding:1px 8px; margin-left:6px; border-radius:10px; font-size:0.62rem; font-family:'Orbitron',sans-serif; background:${m.bg}; color:${m.fg}; border:1px solid ${m.fg}33;">${m.label}</span>`;
+        }
+
         function renderLibrary() {
             const list = document.getElementById('library-list');
             if (!list) return;
@@ -1537,14 +1551,16 @@
                 const memDate = entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleDateString() : null;
                 const hasContent = hasCG || hasMem;
                 const detailsHtml = buildLibraryDetails(entry);
+                const cgBadge = renderComplianceBadge(entry.commonGround?.complianceReport);
+                const memBadge = renderComplianceBadge(entry.memory?.complianceReport);
                 return `<div class="record-card" style="flex-direction:column; align-items:stretch; gap:0;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div class="record-avatar" style="background:linear-gradient(135deg,#0d1a2e,#1a2a4a); color:var(--neon-cyan); font-size:1.2rem;">📚</div>
                         <div class="record-info">
                             <div class="record-name">${esc(entry.name || entry.id)}</div>
                             <div class="record-meta">
-                                ${hasCG ? `<span style="color:var(--neon-cyan)">🎯 CG (${(entry.commonGround.rounds||[]).length} rounds${cgDate ? ', '+cgDate : ''})</span>` : '<span style="color:#444">🎯 CG —</span>'} &nbsp;
-                                ${hasMem ? `<span style="color:#a78bfa">🧩 Mem (${(entry.memory.pairs||[]).length} pairs${memDate ? ', '+memDate : ''})</span>` : '<span style="color:#444">🧩 Mem —</span>'}
+                                ${hasCG ? `<span style="color:var(--neon-cyan)">🎯 CG (${(entry.commonGround.rounds||[]).length} rounds${cgDate ? ', '+cgDate : ''})</span> ${cgBadge}` : '<span style="color:#444">🎯 CG —</span>'} &nbsp;
+                                ${hasMem ? `<span style="color:#a78bfa">🧩 Mem (${(entry.memory.pairs||[]).length} pairs${memDate ? ', '+memDate : ''})</span> ${memBadge}` : '<span style="color:#444">🧩 Mem —</span>'}
                             </div>
                             ${entry.url ? `<div class="record-meta" style="word-break:break-all; margin-top:2px; color:#333;"><a href="${esc(entry.url)}" target="_blank" style="color:#333; text-decoration:none;" onmouseover="this.style.color='var(--neon-cyan)'" onmouseout="this.style.color='#333'">${esc(entry.url.slice(0,70))}${entry.url.length>70?'…':''}</a></div>` : ''}
                         </div>
@@ -1566,8 +1582,18 @@
             const url = document.getElementById('lib-url').value.trim();
             const statusEl = document.getElementById('lib-add-status');
             if (!name || !url) { showLibStatus(statusEl, 'Name and URL required.', true); return; }
+            const lessonId = resolveLessonIdFromUrl(url);
+            if (!lessonId) { showLibStatus(statusEl, 'Could not derive lesson id from URL.', true); return; }
+            const entryId = `cfm-${lessonId}`;
             try {
-                await addDoc(libraryCol, { name, url, createdAt: Date.now() });
+                const existing = await getDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`));
+                if (existing.exists()) {
+                    showLibStatus(statusEl, 'Already in library — use existing entry.', true);
+                    return;
+                }
+                await setDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`), {
+                    name, url, lessonId, createdAt: Date.now(),
+                });
                 document.getElementById('lib-name').value = '';
                 document.getElementById('lib-url').value = '';
                 showLibStatus(statusEl, '✓ Entry added.', false);
@@ -1575,6 +1601,14 @@
             } catch(e) {
                 showLibStatus(statusEl, `Error: ${e.message}`, true);
             }
+        };
+
+        window.fillCurrentCfmLesson = () => {
+            const lesson = getCurrentCfmLesson();
+            document.getElementById('lib-name').value = `Come Follow Me — ${lesson.title}`;
+            document.getElementById('lib-url').value = lesson.url;
+            const statusEl = document.getElementById('lib-add-status');
+            showLibStatus(statusEl, `Filled with lesson ${lesson.slug} (week of ${lesson.weekStart}).`, false);
         };
 
         function showLibStatus(el, msg, isError) {

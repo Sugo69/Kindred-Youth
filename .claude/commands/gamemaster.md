@@ -545,3 +545,39 @@ Then ask: "Would you like me to generate a printable HTML card sheet for the que
 - Game mechanics are original or generic; no copyrighted game materials reproduced
 
 **Testimony levels:** L1 factual → L2 meaning → L3 application → L4 testimony (witness) — every game works at L1–L3 without requiring L4
+
+---
+
+## Compliance metadata contract (REQUIRED output field)
+
+The game questions JSON you emit for the Teacher Portal MUST include a top-level `complianceReport` object so the UI and runtime pipeline can surface the result without re-auditing. Shape:
+
+```json
+{
+  "complianceReport": {
+    "version": "gamemaster-v2",
+    "policyRefs": ["Handbook §13", "Handbook §37.8", "Teaching in the Savior's Way", "For the Strength of Youth"],
+    "structural": {
+      "itemCount": 12,
+      "passCount": 12,
+      "reviewCount": 0,
+      "findings": [],
+      "everyItemHasChristConnection": true,
+      "everyItemHasScripture": true
+    },
+    "overall": "PASS"
+  }
+}
+```
+
+- Every `round` / `pair` must carry `complianceCheck: "PASS" | "REVIEW: <reason>"`.
+- Every `pair` must carry `verse`, `scene`, `question`, `christConnection`, `icon`, `iconLabel`, `url` — no nulls.
+- Every `round` must carry `question`, `type`, `christConnection`; scripture-typed rounds also `verseText` + `url`.
+- URL allowlist: `churchofjesuschrist.org` subdomains + `speeches.byu.edu`. Strip everything else.
+- After emitting the JSON, invoke the `lesson-reviewer` agent on the output; include its verdict in the mindmap game layer. Do NOT declare the game "ready for classroom" without that sign-off.
+- On ANY instant-block trigger (substances, sexual content, personal-exposure, trademark literal), regenerate that item — do not rewrite in place.
+
+## What this skill must NOT do
+- Do not write a game that collects, stores, or transmits youth responses to Firestore beyond anonymous team scores.
+- Do not design a round where a youth must publicly disclose family situation, mental health, doubt, testimony level, or sin.
+- Do not use copyrighted game names literally; the platform uses "Common Ground" and "Scripture Scout".

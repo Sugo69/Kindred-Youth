@@ -418,7 +418,7 @@
 <body>
 
     <!-- ── Sign-in screen ── -->
-    <div id="signin-screen" class="auth-screen">
+    <div id="signin-screen" class="auth-screen" style="display:none;">
         <div class="auth-card">
             <div class="auth-logo">Kindred</div>
             <div class="auth-subtitle">Youth Learning Together</div>
@@ -543,6 +543,9 @@
         const provider = new GoogleAuthProvider();
 
         // ── Auth state driver ──
+        // authStateReady() waits for Firebase to restore any existing session from localStorage
+        // before registering the listener, preventing a false sign-in screen flash on return from games.
+        auth.authStateReady().then(() => {
         onAuthStateChanged(auth, async user => {
             if (!user) {
                 showScreen('signin');
@@ -589,6 +592,7 @@
                 showScreen('noaccess');
             }
         });
+        }); // end authStateReady
 
         function showScreen(name) {
             document.getElementById('signin-screen').style.display = name === 'signin' ? 'flex' : 'none';

@@ -555,6 +555,7 @@
         function getGameRounds() { return currentGameRounds || gameData; }
 
         async function init() {
+            await auth.authStateReady();
             if (!auth.currentUser) await signInAnonymously(auth);
 
             onAuthStateChanged(auth, (u) => {
