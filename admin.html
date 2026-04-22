@@ -2187,16 +2187,6 @@
             };
         })();
 
-        // Warn before navigating away mid-generation — otherwise the in-flight
-        // fetch gets aborted and the Firestore save never happens.
-        window.addEventListener('beforeunload', (e) => {
-            if (wakeLock.active) {
-                e.preventDefault();
-                e.returnValue = 'Generation in progress — leaving will cancel it.';
-                return e.returnValue;
-            }
-        });
-
         window.generateLibraryGame = async (entryId, gameType, batchInfo) => {
             const entry = libraryItems.find(e => e.id === entryId);
             if (!entry?.url) { showToast('Entry has no URL.', true); return; }
