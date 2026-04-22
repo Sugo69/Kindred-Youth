@@ -408,6 +408,118 @@ Include a test trigger string: any edit containing the literal token **`SnugHarb
 
 ---
 
+## Sprint C — Legal & Owner Actions (non-engineering)
+
+These items come from `legal-review-2026-04-22.md` §"Recommended next steps" and §"Open questions for the owner." They are **owner / business actions**, not code work — they cannot be delegated to an overnight Claude batch. They are tracked here so they don't fall off the radar before self-serve launch. **Gate:** items OPUS-040 through OPUS-050 should all have a status before any teacher outside the current Gmail allowlist gets access.
+
+### OPUS-040 · Form business entity + secure liability insurance
+**Problem:** Today Kindred is a personal hobby project hosted on `lewiswf@gmail.com`. Once a non-pilot teacher signs up, every DMCA notice, data-subject request, IP letter, and parent complaint lands on the owner personally with no liability cap and no E&O coverage. Source: legal-review §"Open questions" Q1 + Q3.
+**Action:**
+- Decide entity form (sole prop / single-member LLC / 501(c)(3) religious-non-profit). LLC is the default low-cost answer; 501(c)(3) materially shifts the Church-IP conversation but adds 6–12 months of paperwork.
+- File entity in home state. Get EIN.
+- Get quotes from Hiscox or Vouch for tech E&O + cyber/privacy liability. Budget USD 500–2,000/yr.
+- Move ownership of `kindred-youth.org`, GitHub repo, Vercel project, and Firebase project to the entity once formed.
+**Done when:** entity exists with EIN, insurance policy is bound, domain + accounts are owned by the entity.
+**Owner:** human only.
+
+### OPUS-041 · Decide monetization, scale, and geographic rollout posture (write it down)
+**Problem:** The landing page is silent on what comes after the pilot. "Free while we validate costs" implies a paid tier is coming; that changes the Church-content fair-use analysis (commercial use narrows fair use), the privacy posture (paid users have stronger contractual rights), and the attorney scope. Source: legal-review §"Open questions" Q2 + Q4 + Q5.
+**Action:** Write a one-page posture doc covering:
+- **Monetization:** free forever / donations / freemium / paid classrooms — pick one, name a 12-month review date.
+- **Scale target at 12 months:** N classrooms / N teachers / N stakes. Drives attorney scope and Firestore cost modeling.
+- **Geographic rollout:** US-only for 12 months (cheapest), or named country-by-country opt-in cadence. Lock signup-country dropdown to whatever this says.
+**Done when:** `posture.md` exists in repo, signup dropdown matches the geographic decision, landing page line about pilot is updated.
+**Owner:** human only.
+
+### OPUS-042 · Email Church IP Office for written permission / license guidance
+**Problem:** We fetch and re-serve `churchofjesuschrist.org` lesson pages server-side. The Church IP policy reserves the right to require written permission for derivative use. Better to ask now (slow response time) than to be told to take down after launch. Source: legal-review §1.4 + §"Recommended next steps" item 8 + Q6.
+**Action:** Send a short factual email to **ip@ChurchofJesusChrist.org** from a real domain mailbox (not personal Gmail — set up `legal@kindred-youth.org` first, see OPUS-047). Template:
+> I'm a volunteer LDS Sunday School teacher building a free tool that turns Come Follow Me URLs into classroom games. We fetch lesson pages server-side and want to confirm this is permissible. If a written permission or limited license is required for us to move past invite-only distribution, please advise on the process.
+
+Also note any informal awareness/support at stake/area level (Q6) — improves the chances of a substantive reply.
+**Done when:** email sent, response logged in `legal-review-2026-04-22.md` (or follow-up file).
+**Owner:** human only.
+
+### OPUS-043 · USPTO + EUIPO clearance starter search on the three names
+**Problem:** We're using "Kindred," "Common Ground," and "Scripture Scout" without trademark clearance. An attorney will run a thorough search; doing the starter search ourselves shortens their meter. Source: legal-review §1.1 / §1.2 / §1.3 + item 9.
+**Action:** Run free searches at https://tmsearch.uspto.gov and https://www.tmdn.org/tmview/ for each mark. Record top 10 live conflicts per mark per jurisdiction (US + EU at minimum) in a `tm-search-2026-04.md` file. Specifically check:
+- "Kindred" — Class 9 (software) and Class 41 (education services). Common name — likely many conflicts.
+- "Common Ground" — Class 9 / Class 41 + game-product context. Note any LDS-themed or game-show-adjacent live marks.
+- "Scripture Scout" — Class 9 / Class 41 + check Boy Scouts of America "Scout" assertions.
+**Done when:** `tm-search-2026-04.md` exists with 30 entries (10 × 3 marks × ≥1 jurisdiction); ready to hand to attorney in OPUS-044.
+**Owner:** human (or Claude if you copy-paste TESS results back into the chat).
+
+### OPUS-044 · Retain trademark + IP attorney for formal clearance
+**Problem:** Self-clearance only catches obvious conflicts. Before paid users sign up — or before significant marketing spend — the three names need formal clearance from someone who'll defend the opinion. Source: legal-review item 10.
+**Action:** Retain a trademark/IP attorney (LDS-friendly preferred but not required). Hand them: this backlog, `legal-review-2026-04-22.md`, the OPUS-043 starter search, and the OPUS-041 monetization/geography posture. Budget **USD 1.5k–5k per mark per key jurisdiction** — likely USD 5k–15k all-in for US-only on three marks.
+**Done when:** written clearance opinion (or required-rebrand recommendation) on file for all three marks.
+**Owner:** human + attorney. **Gate for self-serve launch.**
+
+### OPUS-045 · Retain privacy attorney + commission DPIA
+**Problem:** No privacy policy, no terms of use, no AI-content disclosure. Sprint B drafts these from a template; an attorney needs to validate them against CCPA/CPRA, UK GDPR, EU GDPR, LGPD, and the California AADC before they're enforceable. UK AADC also requires a DPIA. Source: legal-review §3.1, §3.2, items 11 + 14.
+**Action:**
+- Retain privacy attorney (can be same firm as OPUS-044 or specialist). Budget **USD 2k–6k for first draft** of policy + ToS + AI-disclosure.
+- Commission DPIA using ICO template: https://ico.org.uk/for-organisations/advice-for-small-organisations/resources/. Required if UK teachers will ever sign up.
+- Confirm Firestore rules audit (legal-review item 12) is on attorney's scope, OR carve out as a separate engineering ticket.
+**Done when:** privacy policy + ToS + AI-disclosure live on site (linked from footer + OAuth consent screen + admin), DPIA archived in repo.
+**Owner:** human + attorney. **Gate for self-serve launch.**
+
+### OPUS-046 · Audio asset provenance audit (gate for OPUS-017)
+**Problem:** The `.mp3` files in `archive/Exodus Matching Game/` have undocumented provenance. The "klaxon" in particular is a signature Family Feud sound — if it's lifted from the show, it's direct Fremantle infringement. Cannot ship any of them in `public/audio/` until each has a receipt, license, or replacement. Source: legal-review §2.5 + item 7.
+**Action:** For each `.mp3` in `archive/Exodus Matching Game/`, produce one of:
+- (a) Purchase receipt or license text (Epidemic Sound / Pond5 / etc.) — file under `licenses/audio/`.
+- (b) Replace with a CC0 / explicitly-licensed equivalent from Freesound, Pixabay, or generate from scratch. Document the new source in the same `licenses/audio/` folder.
+- (c) Flag as cannot-document → drop from OPUS-017 scope, generate a replacement instead.
+
+Klaxon especially: do not migrate without provenance. Replace with a generic buzzer.
+**Done when:** every `.mp3` referenced by OPUS-017 has an entry in `licenses/audio/{file}.md` with vendor + transaction id + license terms, OR is replaced with a documented alternative.
+**Owner:** human (sourcing diligence) + Claude (file shuffling once decided).
+
+### OPUS-047 · Set up `legal@kindred-youth.org` intake mailbox + abuse/DMCA flow
+**Problem:** Today the only contact in any footer is `lewiswf@gmail.com`. Once self-serve, that mailbox will receive DMCA notices, GDPR data-subject access requests, Church IP correspondence, and parent complaints — mixed with personal email. Need a real intake. Source: legal-review §"Open questions" Q7.
+**Action:**
+- Create `legal@kindred-youth.org` and `privacy@kindred-youth.org` via Cloudflare Email Routing (free); forward both to a separate Gmail filter/label or a Help Scout / Front mailbox.
+- Replace footer Gmail link in `index.html` and `admin.html` with `legal@kindred-youth.org`.
+- Document a one-page intake SOP: DMCA → log + 24h ack + 10-day takedown decision; data-subject request → log + 30-day response; Church IP letter → escalate to attorney within 48h.
+- Add the addresses to OAuth consent screen and (eventually) the privacy policy from OPUS-045.
+**Done when:** addresses live, footers updated, SOP doc in repo, test message round-trips successfully.
+**Owner:** human (DNS + SOP); Claude can do the footer edits.
+
+### OPUS-048 · Set data retention SLA + write the numbers down
+**Problem:** Privacy policy needs concrete numbers, not TBDs. Today there is no documented retention for teacher accounts, library entries, generated content, or `policyViolationLog` (OPUS-039). Source: legal-review §"Open questions" Q8.
+**Action:** Decide and document:
+- Teacher account inactivity → soft-delete after N days (default 365), purge after M days.
+- Library entries → kept indefinitely / retired after CFM year ends / per-teacher.
+- `policyViolationLog` → kept N days (default 365 for trend analysis).
+- Game session state (`feudSession/state`, `activeGame/current`) → purge after K days (default 30).
+- Deletion-on-request SLA — commit to a number (default 30 days) so the privacy policy from OPUS-045 has a real value.
+- Write the OPUS-034 cron job (already in P1) to actually enforce these.
+**Done when:** retention numbers live in `posture.md` (from OPUS-041) + privacy policy + the OPUS-034 cron implementation.
+**Owner:** human (decisions); Claude (implements OPUS-034 once numbers are set).
+
+### OPUS-049 · Add team-name input warning to prevent student-PII leakage
+**Problem:** Architecture says no student data is collected, but teachers type team names — there is nothing stopping a teacher from typing real student names ("Sarah's Team," "Bishop Smith's Class"). That instantly converts the system into a youth-PII-bearing service and pulls COPPA / AADC into scope. Source: legal-review §"Open questions" Q9.
+**Action:**
+- Add a regex / pattern hint to the team-name input on Common Ground admin (`games/common-ground.html`) that warns on inputs matching common first-name / last-name patterns or anything containing `'s`.
+- Inline help text below the input: *"Use generic team names (Lions, Cyan, Team A). Do not enter student names — Kindred is designed not to store student PII."*
+- Strip team names from any logged event going to telemetry (when OPUS-028 lands).
+**Done when:** soft warning fires on suspect inputs in both games, help text present, code grep confirms team names never leave the classroom-scoped Firestore doc.
+**Owner:** Claude (engineering work, but small enough to bundle here as a Sprint C compliance item).
+**Effort:** S.
+
+### OPUS-050 · Library cross-classroom liability — pick the contractual answer
+**Problem:** `lessonLibrary` is global. If Teacher A generates something mildly off-rubric and Teacher B reuses it, who is responsible? The Teacher Terms (drafted in OPUS-045) need a concrete answer. Source: legal-review §"Open questions" Q10.
+**Action:** Decide and write into the Teacher Terms one of:
+- (a) Each teacher is solely responsible for content they use in their classroom, regardless of which teacher generated it. (Lowest liability for Kindred. Recommended.)
+- (b) Library entries are reviewed by Kindred before re-publish. (Highest liability. Not recommended unless paid tier funds human review.)
+- (c) Library entries from other teachers are flagged "community-contributed" and the consuming teacher must click-through accept. (Middle ground; aligns with OPUS-013's review attestation idea.)
+
+Whichever is chosen, OPUS-039 (Policy Rechecker) provides the audit trail.
+**Done when:** decision documented in `posture.md` and reflected in privacy policy / Teacher Terms.
+**Owner:** human + attorney.
+
+---
+
 ## Cross-cutting observations
 
 1. **The three skills are the product.** The game boards are one surface for them; the printable cards, lesson plans, and facilitation scripts are the other — and today they are invisible to teachers. OPUS-009 + OPUS-010 + OPUS-022 + OPUS-024 together make the policy embedded in the skills visible and actionable for every teacher.
@@ -430,6 +542,7 @@ Include a test trigger string: any edit containing the literal token **`SnugHarb
 | Gemini parity | OPUS-017, 018, 019, 020 | Recover engagement loss |
 | Cleanup | OPUS-014, 015, 016, 025 | UI clunk + dead code removed |
 | Long-term | OPUS-026–032 | Analytics, telemetry, i18n, CI |
+| **Sprint C — Legal & Owner Actions** | **OPUS-040–050** | **Entity, insurance, attorneys, Church IP letter, privacy policy, intake mailbox — gate for self-serve launch** |
 
 ## Comparison hooks for the existing BL-001 – BL-006 backlog
 When comparing against the existing 6-item backlog in `admin.html` / Firestore, note:
