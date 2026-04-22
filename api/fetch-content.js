@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
     if (!response.ok) return res.status(502).json({ error: `Remote server returned ${response.status}` });
 
     const html = await response.text();
+    const title = extractPageTitle(html);
     const text = html
         .replace(/<script[\s\S]*?<\/script>/gi, '')
         .replace(/<style[\s\S]*?<\/style>/gi, '')
@@ -42,5 +43,32 @@ module.exports = async function handler(req, res) {
         .trim()
         .slice(0, 8000);
 
-    return res.status(200).json({ text, sourceUrl: url });
+    return res.status(200).json({ text, title, sourceUrl: url });
 };
+
+function extractPageTitle(html) {
+    const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
+            || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+    const tw = html.match(/<meta[^>]+name=["']twitter:title["'][^>]+content=["']([^"']+)["']/i);
+    const tt = html.match(/<title[^>]*>([^<]+)<\/title>/i);
+    const raw = (og?.[1] || tw?.[1] || tt?.[1] || '').trim();
+    return cleanTitle(decodeEntities(raw));
+}
+
+function decodeEntities(s) {
+    const map = { amp:'&', quot:'"', apos:"'", lsquo:'\u2018', rsquo:'\u2019', ldquo:'\u201C', rdquo:'\u201D', mdash:'\u2014', ndash:'\u2013', hellip:'\u2026', nbsp:' ', lt:'<', gt:'>' };
+    return s.replace(/&(#?\w+);/g, (_, e) => {
+        if (map[e]) return map[e];
+        if (e.startsWith('#x')) return String.fromCharCode(parseInt(e.slice(2), 16));
+        if (e.startsWith('#')) return String.fromCharCode(parseInt(e.slice(1), 10));
+        return '';
+    });
+}
+
+function cleanTitle(s) {
+    return s
+        .replace(/\s*\|\s*The Church of Jesus Christ of Latter-day Saints\s*$/i, '')
+        .replace(/\s*\|\s*ChurchofJesusChrist\.org\s*$/i, '')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
+}

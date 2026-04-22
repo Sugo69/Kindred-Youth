@@ -114,6 +114,68 @@
             margin-bottom: 16px;
         }
 
+        .pending-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-cyan);
+            font-size: 1.4rem;
+            margin-bottom: 16px;
+        }
+
+        .request-title {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-cyan);
+            font-size: 1.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .request-sub {
+            color: var(--text-muted);
+            font-size: 0.88rem;
+            margin-bottom: 24px;
+            line-height: 1.5;
+        }
+
+        .request-field {
+            width: 100%;
+            padding: 12px 14px;
+            background: #0d0d1f;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-silver);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+        }
+
+        .request-field:focus {
+            outline: none;
+            border-color: var(--neon-cyan);
+        }
+
+        .request-field::placeholder { color: #4a4a60; }
+
+        .btn-submit {
+            width: 100%;
+            padding: 14px 24px;
+            background: var(--neon-cyan);
+            color: #0a0a12;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 1rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            margin-top: 6px;
+        }
+
+        .btn-submit:hover { opacity: 0.9; }
+        .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
         .btn-danger {
             padding: 10px 24px;
             background: var(--neon-pink);
@@ -236,6 +298,12 @@
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.2s, border-color 0.2s;
+        }
+        #classroom-badge:hover {
+            background: rgba(0,242,255,0.16);
+            border-color: var(--neon-cyan);
         }
 
         #admin-link {
@@ -275,6 +343,25 @@
         }
 
         #signout-btn:hover { border-color: var(--neon-pink); color: var(--neon-pink); }
+
+        #profile-btn {
+            display: none;
+            padding: 7px 14px;
+            background: rgba(17,17,24,0.85);
+            border: 1px solid #1e1e2e;
+            border-radius: 8px;
+            color: #666680;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-transform: uppercase;
+            backdrop-filter: blur(6px);
+            transition: border-color 0.2s, color 0.2s;
+        }
+
+        #profile-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
 
         /* ── Hero ── */
         .hero {
@@ -383,26 +470,6 @@
         .game-card.cyan:hover .game-card-play { color: var(--neon-cyan); }
         .game-card.pink:hover .game-card-play { color: var(--neon-pink); }
 
-        /* ── Display Scale ── */
-        .admin-box { background: #0d0d1f; padding: 20px; border-radius: 14px; margin-bottom: 14px; border: 1px solid #1a1a35; }
-        .scale-grid { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-        .scale-btn {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 10px 18px;
-            border-radius: 8px;
-            border: 2px solid #1a1a35;
-            background: transparent;
-            color: #666;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        .scale-btn:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
-        .scale-btn.active { border-color: var(--neon-cyan); background: rgba(0,242,255,0.1); color: var(--neon-cyan); box-shadow: 0 0 15px rgba(0,242,255,0.2); }
-        .scale-note { color: #333; font-size: 0.8rem; margin-left: auto; font-family: 'Rajdhani', sans-serif; }
-
         /* ── Footer ── */
         .portal-footer {
             text-align: center;
@@ -436,13 +503,85 @@
         </div>
     </div>
 
-    <!-- ── No access screen ── -->
-    <div id="noaccess-screen" class="auth-screen" style="display:none;">
+    <!-- ── Request access screen (2-path wizard) ── -->
+    <div id="request-screen" class="auth-screen" style="display:none;">
+        <div class="auth-card" style="text-align:left;">
+            <!-- Path chooser -->
+            <div id="req-chooser">
+                <div class="request-title" style="text-align:center;">Welcome to Kindred</div>
+                <p class="request-sub" style="text-align:center;">How would you like to get started?</p>
+                <p style="color:var(--text-muted); font-size:0.78rem; margin:-10px 0 14px; text-align:center;" id="request-email-line"></p>
+                <button class="picker-btn" style="margin-bottom:10px;" onclick="window.pickIntent('create_classroom')">
+                    <span>🌱 Start a new classroom</span>
+                    <span class="picker-btn-meta">I'm the first teacher for my class</span>
+                </button>
+                <button class="picker-btn" onclick="window.pickIntent('join_classroom')">
+                    <span>🤝 Join with an invite link</span>
+                    <span class="picker-btn-meta">A co-teacher sent me a link to join their classroom</span>
+                </button>
+                <button class="picker-signout" style="display:block; margin:18px auto 0;" onclick="window.doSignOut()">Sign out</button>
+            </div>
+
+            <!-- Create path -->
+            <div id="req-create" style="display:none;">
+                <div class="request-title" style="text-align:center;">Start a Classroom</div>
+                <p class="request-sub" style="text-align:center;">Name your class and tell us your calling — an admin will review your request.</p>
+                <input class="request-field" id="req-c-name" type="text" placeholder="Your full name" autocomplete="name">
+                <input class="request-field" id="req-c-class" type="text" placeholder="Classroom name (e.g. Sunday School 14–15)" autocomplete="off">
+                <input class="request-field" id="req-c-ward" type="text" placeholder="Ward / Branch (e.g. Inglewood Hill 2nd Ward)" autocomplete="off">
+                <input class="request-field" id="req-c-role" type="text" placeholder="Your calling (e.g. SS Teacher, YW President)" autocomplete="off">
+                <select class="request-field" id="req-c-country">
+                    <option value="US">United States</option>
+                    <option value="CA">Canada</option>
+                    <option value="MX">Mexico</option>
+                    <option value="GB">United Kingdom</option>
+                    <option value="AU">Australia</option>
+                    <option value="NZ">New Zealand</option>
+                    <option value="BR">Brazil</option>
+                    <option value="PH">Philippines</option>
+                    <option value="OTHER">Other</option>
+                </select>
+                <button class="btn-submit" id="req-c-submit" onclick="window.submitCreateRequest()">Submit Request</button>
+                <button class="picker-signout" style="display:block; margin:14px auto 0;" onclick="window.backToChooser()">← Back</button>
+            </div>
+
+            <!-- Join path -->
+            <div id="req-join" style="display:none;">
+                <div class="request-title" style="text-align:center;">Join a Classroom</div>
+                <p class="request-sub" style="text-align:center;">Paste the invite link a co-teacher sent you (or enter the token).</p>
+                <input class="request-field" id="req-j-token" type="text" placeholder="Invite token or full link" autocomplete="off">
+                <div id="req-j-preview" style="display:none; padding:12px 14px; margin-bottom:12px; border:1px solid var(--neon-cyan); border-radius:8px; background:rgba(0,242,255,0.05); font-size:0.88rem; color:var(--text-silver);"></div>
+                <input class="request-field" id="req-j-name" type="text" placeholder="Your full name" autocomplete="name">
+                <input class="request-field" id="req-j-role" type="text" placeholder="Your calling (e.g. SS Teacher, YW President)" autocomplete="off">
+                <button class="btn-submit" id="req-j-submit" onclick="window.submitJoinRequest()">Submit Request</button>
+                <button class="picker-signout" style="display:block; margin:14px auto 0;" onclick="window.backToChooser()">← Back</button>
+            </div>
+
+            <div id="request-error" class="auth-error"></div>
+        </div>
+    </div>
+
+    <!-- ── Awaiting approval screen ── -->
+    <div id="pending-screen" class="auth-screen" style="display:none;">
         <div class="auth-card">
-            <div class="noaccess-title">No Classroom Assigned</div>
+            <div class="pending-title">Awaiting Approval</div>
             <p style="color:#888; margin-bottom:24px; line-height:1.5; font-size:0.95rem;">
-                Your account isn't linked to a classroom yet.<br>
-                Contact your administrator to get access.
+                Thanks — your request has been sent.<br>
+                A Kindred admin will review it shortly.<br>
+                You'll get portal access as soon as you're approved.
+            </p>
+            <p style="color:var(--text-muted); font-size:0.78rem; margin:0 0 20px;" id="pending-email-line"></p>
+            <button class="btn-danger" onclick="window.doSignOut()">Sign Out</button>
+        </div>
+    </div>
+
+    <!-- ── Denied screen ── -->
+    <div id="denied-screen" class="auth-screen" style="display:none;">
+        <div class="auth-card">
+            <div class="noaccess-title">Access Not Approved</div>
+            <p style="color:#888; margin-bottom:24px; line-height:1.5; font-size:0.95rem;">
+                Your request wasn't approved.<br>
+                If you believe this is an error, contact your Kindred admin.
             </p>
             <button class="btn-danger" onclick="window.doSignOut()">Sign Out</button>
         </div>
@@ -460,7 +599,8 @@
 
     <!-- ── Top bar (shown after auth) ── -->
     <div id="topbar">
-        <span id="classroom-badge"></span>
+        <span id="classroom-badge" style="display:none !important;"></span>
+        <button id="profile-btn" style="display:none;" onclick="window.openProfileModal()">⚙ Profile</button>
         <a href="admin.html" id="admin-link">⚙ Admin</a>
         <button id="signout-btn" onclick="window.doSignOut()">Sign Out</button>
     </div>
@@ -496,22 +636,86 @@
             </div>
         </div>
 
-        <!-- ── Display Scale ── -->
-        <div class="section">
-            <h2 class="section-title">Classroom Display Scale</h2>
-            <div class="admin-box">
-                <p style="color:#555; font-family:'Rajdhani',sans-serif; font-size:0.9rem; margin:0 0 16px;">Set once here — both games will use this scale. Adjust if the TV or projector clips the edges.</p>
-                <div class="scale-grid">
-                    <button class="scale-btn" data-scale="0.55" onclick="setScale(0.55)">📱 Mobile</button>
-                    <button class="scale-btn" data-scale="0.75" onclick="setScale(0.75)">📟 Tablet</button>
-                    <button class="scale-btn" data-scale="1.0" onclick="setScale(1.0)">🖥 HD 1080p</button>
-                    <button class="scale-btn" data-scale="1.3" onclick="setScale(1.3)">📺 4K TV</button>
-                    <span class="scale-note" id="scale-note">Scale: 100%</span>
-                </div>
-            </div>
-        </div>
+        <!-- Classroom details live in the ⚙ Profile modal (top-right). -->
+        <div id="classroom-section" style="display:none;"><div id="classroom-card-host"></div></div>
 
         <div class="portal-footer">Kindred · LDS Youth Platform · Powered by Firebase + Claude</div>
+    </div>
+
+    <!-- ── Profile modal ── -->
+    <div id="profile-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:9998; padding:16px;">
+        <div style="background:var(--surface); border:1px solid var(--neon-cyan); border-radius:16px; padding:26px 28px; width:100%; max-width:560px; max-height:92vh; overflow-y:auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px;">
+                <div style="font-family:'Orbitron',sans-serif; color:var(--neon-cyan); letter-spacing:2px; text-transform:uppercase; font-size:0.95rem;">⚙ Teacher Profile</div>
+                <button class="picker-signout" style="margin:0;" onclick="window.closeProfileModal()">Close</button>
+            </div>
+
+            <!-- Teacher section -->
+            <div style="font-family:'Orbitron',sans-serif; color:var(--text-muted); font-size:0.7rem; letter-spacing:1.5px; margin-bottom:8px;">You</div>
+            <input id="pm-teacher-name" class="request-field" type="text" placeholder="Your full name">
+            <input id="pm-teacher-calling" class="request-field" type="text" placeholder="Calling (e.g. YW 14 Leader)">
+            <select id="pm-teacher-country" class="request-field">
+                <option value="US">United States</option>
+                <option value="CA">Canada</option>
+                <option value="MX">Mexico</option>
+                <option value="GB">United Kingdom</option>
+                <option value="AU">Australia</option>
+                <option value="NZ">New Zealand</option>
+                <option value="BR">Brazil</option>
+                <option value="PH">Philippines</option>
+                <option value="OTHER">Other</option>
+            </select>
+
+            <!-- Classroom picker (shown only if 2+) -->
+            <div id="pm-classroom-picker-wrap" style="display:none; margin-top:8px;">
+                <div style="font-family:'Orbitron',sans-serif; color:var(--text-muted); font-size:0.7rem; letter-spacing:1.5px; margin-bottom:6px;">Classroom to Edit</div>
+                <select id="pm-classroom-picker" class="request-field"></select>
+            </div>
+
+            <!-- Classroom section -->
+            <div style="font-family:'Orbitron',sans-serif; color:var(--text-muted); font-size:0.7rem; letter-spacing:1.5px; margin:14px 0 8px;">Classroom</div>
+            <input id="pm-classroom-name" class="request-field" type="text" placeholder="Classroom name">
+            <input id="pm-classroom-ward" class="request-field" type="text" placeholder="Ward / Branch">
+
+            <!-- Co-teachers -->
+            <div style="font-family:'Orbitron',sans-serif; color:var(--text-muted); font-size:0.7rem; letter-spacing:1.5px; margin:14px 0 8px;">Co-Teachers on This Classroom</div>
+            <div id="pm-coteachers-host" style="padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,0.02); min-height:44px;">
+                <span style="color:var(--text-muted); font-size:0.82rem;">Loading…</span>
+            </div>
+
+            <!-- Actions -->
+            <div style="display:flex; gap:10px; margin-top:18px; flex-wrap:wrap;">
+                <button class="btn-submit" style="flex:1; min-width:160px; margin:0; padding:12px;" onclick="window.saveProfile()">💾 Save Profile</button>
+                <button class="btn-submit" style="flex:1; min-width:160px; margin:0; padding:12px; background:rgba(255,20,147,0.1); border-color:var(--neon-pink); color:var(--neon-pink);" onclick="window.regenerateInviteFromProfile()">🔁 Regenerate Invite Link</button>
+            </div>
+
+            <!-- Invite link row (shown after regenerate) -->
+            <div id="pm-invite-row" style="display:none; margin-top:14px;">
+                <div style="font-family:'Orbitron',sans-serif; color:var(--text-muted); font-size:0.7rem; letter-spacing:1.5px; margin-bottom:6px;">New Invite Link</div>
+                <div style="display:flex; gap:8px;">
+                    <input id="pm-invite-link" class="request-field" style="margin:0; flex:1;" readonly>
+                    <button class="btn-submit" style="width:auto; padding:12px 18px; margin:0;" onclick="window.copyPmInviteLink()">Copy</button>
+                </div>
+            </div>
+
+            <div id="pm-status" style="color:var(--text-muted); font-size:0.8rem; margin-top:14px; min-height:1.2em;">—</div>
+        </div>
+    </div>
+
+    <!-- ── Invite modal ── -->
+    <div id="invite-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.85); display:none; align-items:center; justify-content:center; z-index:9997;">
+        <div style="background:var(--surface); border:1px solid var(--neon-cyan); border-radius:16px; padding:28px 28px; width:100%; max-width:480px;">
+            <div style="font-family:'Orbitron',sans-serif; color:var(--neon-cyan); font-size:0.95rem; letter-spacing:2px; text-transform:uppercase; margin-bottom:10px;">Invite a Co-Teacher</div>
+            <p style="color:var(--text-muted); font-size:0.88rem; line-height:1.5; margin-bottom:16px;">Share this link — when they sign in with Google, they'll be prefilled to join your classroom. You'll still need to wait for the admin to approve their request.</p>
+            <div style="display:flex; gap:8px; margin-bottom:14px;">
+                <input id="invite-link" class="request-field" style="margin:0; flex:1;" readonly>
+                <button class="btn-submit" style="width:auto; padding:12px 18px; margin:0;" onclick="window.copyInviteLink()">Copy</button>
+            </div>
+            <div id="invite-status" style="color:var(--text-muted); font-size:0.78rem; margin-bottom:14px;">—</div>
+            <div style="display:flex; gap:10px; justify-content:flex-end;">
+                <button class="picker-signout" onclick="window.closeInviteModal()">Close</button>
+            </div>
+        </div>
     </div>
 
     <script type="module">
@@ -520,10 +724,10 @@
             getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import {
-            getFirestore, collection, query, where, getDocs
+            getFirestore, collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs, serverTimestamp, arrayUnion, arrayRemove, onSnapshot
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const ADMIN_EMAIL = 'lewiswf@gmail.com';
+        const ADMIN_EMAIL = '__admin_disabled_for_testing__'; // ⚠ TEST MODE — restore to 'lewiswf@gmail.com' when done
         const APP_ID = 'exodus-feud-final-v10';
         const SESSION_KEY = 'kindred_classroom_id';
         const SESSION_NAME_KEY = 'kindred_classroom_name';
@@ -542,11 +746,14 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
+        let currentUser = null;
+
         // ── Auth state driver ──
         // authStateReady() waits for Firebase to restore any existing session from localStorage
         // before registering the listener, preventing a false sign-in screen flash on return from games.
         auth.authStateReady().then(() => {
         onAuthStateChanged(auth, async user => {
+            currentUser = user;
             if (!user) {
                 showScreen('signin');
                 return;
@@ -565,38 +772,244 @@
                 return;
             }
 
-            // Query classrooms assigned to this teacher
+            // Query classrooms assigned to this teacher (new schema: teacherEmails[])
             try {
                 const basePath = `artifacts/${APP_ID}/public/data`;
                 const classroomsCol = collection(db, `${basePath}/classrooms`);
-                const q = query(classroomsCol, where('teacherEmail', '==', user.email));
-                const snap = await getDocs(q);
+                const qNew = query(classroomsCol, where('teacherEmails', 'array-contains', user.email));
+                let snap = await getDocs(qNew);
+                let rooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-                if (snap.empty) {
-                    showScreen('noaccess');
-                    return;
+                // Fallback: legacy scalar teacherEmail field (pre-migration data)
+                if (rooms.length === 0) {
+                    const qLegacy = query(classroomsCol, where('teacherEmail', '==', user.email));
+                    const legacySnap = await getDocs(qLegacy);
+                    rooms = legacySnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 }
-
-                const rooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
                 if (rooms.length === 1) {
                     const room = rooms[0];
+                    const label = room.name || room.wardName || room.description || 'My Classroom';
                     sessionStorage.setItem(SESSION_KEY, room.id);
-                    sessionStorage.setItem(SESSION_NAME_KEY, room.wardName || room.description || 'My Classroom');
-                    enterPortal(room.id, room.wardName || room.description);
-                } else {
-                    showPicker(rooms);
+                    sessionStorage.setItem(SESSION_NAME_KEY, label);
+                    enterPortal(room.id, label);
+                    return;
                 }
+                if (rooms.length > 1) {
+                    showPicker(rooms);
+                    return;
+                }
+
+                // No classroom assigned — check pending / denied / show request form
+                const pendingRef = doc(db, `${basePath}/pendingTeachers/${user.email}`);
+                const pendingSnap = await getDoc(pendingRef);
+                if (pendingSnap.exists()) {
+                    const data = pendingSnap.data();
+                    if (data.status === 'denied') {
+                        showScreen('denied');
+                    } else {
+                        document.getElementById('pending-email-line').textContent = user.email;
+                        showScreen('pending');
+                    }
+                    return;
+                }
+
+                // First time — show request chooser prefilled with Google display name
+                document.getElementById('request-email-line').textContent = 'Signed in as ' + user.email;
+                document.getElementById('req-c-name').value = user.displayName || '';
+                document.getElementById('req-j-name').value = user.displayName || '';
+
+                // Deep-link from /join?token=... or ?invite=... pre-selects join path
+                const tokenFromUrl = getInviteTokenFromUrl();
+                if (tokenFromUrl) {
+                    document.getElementById('req-j-token').value = tokenFromUrl;
+                    await pickIntent('join_classroom');
+                    validateInviteToken();
+                } else {
+                    showChooser();
+                }
+                showScreen('request');
             } catch (e) {
-                console.error('Classroom lookup failed:', e);
-                showScreen('noaccess');
+                console.error('Access lookup failed:', e);
+                document.getElementById('request-email-line').textContent = 'Signed in as ' + (user.email || '');
+                showChooser();
+                showScreen('request');
             }
         });
         }); // end authStateReady
 
+        // ── Request wizard ──
+        function getInviteTokenFromUrl() {
+            const url = new URL(window.location.href);
+            const p = url.searchParams.get('token') || url.searchParams.get('invite');
+            if (p) return p.trim();
+            // Also accept /join?token=... path style
+            if (url.pathname.includes('/join') && url.searchParams.get('token')) {
+                return url.searchParams.get('token').trim();
+            }
+            return '';
+        }
+
+        function parseToken(raw) {
+            if (!raw) return '';
+            const s = raw.trim();
+            // If a full URL was pasted, extract token query param
+            try {
+                const u = new URL(s);
+                const t = u.searchParams.get('token') || u.searchParams.get('invite');
+                if (t) return t.trim();
+            } catch {}
+            return s;
+        }
+
+        function showChooser() {
+            document.getElementById('req-chooser').style.display = 'block';
+            document.getElementById('req-create').style.display = 'none';
+            document.getElementById('req-join').style.display = 'none';
+            document.getElementById('request-error').style.display = 'none';
+        }
+
+        window.backToChooser = () => showChooser();
+
+        window.pickIntent = async (intent) => {
+            document.getElementById('req-chooser').style.display = 'none';
+            document.getElementById('request-error').style.display = 'none';
+            if (intent === 'create_classroom') {
+                document.getElementById('req-create').style.display = 'block';
+                document.getElementById('req-join').style.display = 'none';
+            } else {
+                document.getElementById('req-join').style.display = 'block';
+                document.getElementById('req-create').style.display = 'none';
+                const tokenInput = document.getElementById('req-j-token');
+                tokenInput.oninput = validateInviteToken;
+            }
+        };
+
+        async function validateInviteToken() {
+            const preview = document.getElementById('req-j-preview');
+            const raw = document.getElementById('req-j-token').value;
+            const token = parseToken(raw);
+            if (!token || token.length < 6) {
+                preview.style.display = 'none';
+                preview.dataset.classroomId = '';
+                preview.dataset.classroomName = '';
+                return;
+            }
+            try {
+                const basePath = `artifacts/${APP_ID}/public/data`;
+                // Scan classrooms for the token — inviteCodes is an array of objects
+                // so we cannot use array-contains-any with the object shape directly.
+                const allSnap = await getDocs(collection(db, `${basePath}/classrooms`));
+                let match = null;
+                allSnap.forEach(d => {
+                    const data = d.data();
+                    const codes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
+                    if (codes.some(c => (c?.code || c) === token && !c?.revoked)) {
+                        match = { id: d.id, ...data };
+                    }
+                });
+                if (match) {
+                    const label = match.name || match.wardName || 'Classroom';
+                    preview.innerHTML = `<strong style="color:var(--neon-cyan);">${escHtml(label)}</strong>${match.wardName ? `<br><span style="color:var(--text-muted); font-size:0.8rem;">${escHtml(match.wardName)}</span>` : ''}`;
+                    preview.style.display = 'block';
+                    preview.dataset.classroomId = match.id;
+                    preview.dataset.classroomName = label;
+                } else {
+                    preview.innerHTML = `<span style="color:var(--neon-pink);">Invite not found or revoked.</span>`;
+                    preview.style.display = 'block';
+                    preview.dataset.classroomId = '';
+                    preview.dataset.classroomName = '';
+                }
+            } catch (e) {
+                console.error('Token lookup failed:', e);
+            }
+        }
+        window.validateInviteToken = validateInviteToken;
+
+        async function submitRequest(payload, btnId) {
+            const errEl = document.getElementById('request-error');
+            const btn = document.getElementById(btnId);
+            errEl.style.display = 'none';
+            if (!currentUser) { errEl.textContent = 'Not signed in.'; errEl.style.display = 'block'; return; }
+            btn.disabled = true;
+            const prev = btn.textContent;
+            btn.textContent = 'Submitting…';
+            try {
+                const basePath = `artifacts/${APP_ID}/public/data`;
+                await setDoc(doc(db, `${basePath}/pendingTeachers/${currentUser.email}`), {
+                    ...payload,
+                    email: currentUser.email,
+                    photoURL: currentUser.photoURL || '',
+                    status: 'pending',
+                    requestedAt: serverTimestamp()
+                });
+                document.getElementById('pending-email-line').textContent = currentUser.email;
+                showScreen('pending');
+            } catch (e) {
+                console.error('Request failed:', e);
+                errEl.textContent = e.message || 'Request failed. Please try again.';
+                errEl.style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = prev;
+            }
+        }
+
+        window.submitCreateRequest = async () => {
+            const errEl = document.getElementById('request-error');
+            const name = document.getElementById('req-c-name').value.trim();
+            const classroomName = document.getElementById('req-c-class').value.trim();
+            const ward = document.getElementById('req-c-ward').value.trim();
+            const role = document.getElementById('req-c-role').value.trim();
+            const country = document.getElementById('req-c-country').value;
+            if (!name || !classroomName || !ward) {
+                errEl.textContent = 'Name, classroom name, and ward are required.';
+                errEl.style.display = 'block';
+                return;
+            }
+            await submitRequest({
+                intent: 'create_classroom',
+                name, ward, role, country,
+                classroomName
+            }, 'req-c-submit');
+        };
+
+        window.submitJoinRequest = async () => {
+            const errEl = document.getElementById('request-error');
+            const name = document.getElementById('req-j-name').value.trim();
+            const role = document.getElementById('req-j-role').value.trim();
+            const token = parseToken(document.getElementById('req-j-token').value);
+            const preview = document.getElementById('req-j-preview');
+            const classroomId = preview.dataset.classroomId;
+            if (!name) {
+                errEl.textContent = 'Your name is required.';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (!token) {
+                errEl.textContent = 'Enter the invite token you received.';
+                errEl.style.display = 'block';
+                return;
+            }
+            if (!classroomId) {
+                errEl.textContent = 'That invite could not be verified. Check the link or ask the teacher to resend it.';
+                errEl.style.display = 'block';
+                return;
+            }
+            await submitRequest({
+                intent: 'join_classroom',
+                name, role,
+                inviteToken: token,
+                classroomId
+            }, 'req-j-submit');
+        };
+
+        const AUTH_SCREENS = ['signin', 'request', 'pending', 'denied'];
+
         function showScreen(name) {
-            document.getElementById('signin-screen').style.display = name === 'signin' ? 'flex' : 'none';
-            document.getElementById('noaccess-screen').style.display = name === 'noaccess' ? 'flex' : 'none';
+            AUTH_SCREENS.forEach(s => {
+                const el = document.getElementById(`${s}-screen`);
+                if (el) el.style.display = (s === name) ? 'flex' : 'none';
+            });
             document.getElementById('portal-content').style.display = 'none';
             document.getElementById('picker-modal').classList.remove('open');
             document.getElementById('topbar').style.opacity = '0';
@@ -604,8 +1017,10 @@
 
         function enterPortal(classroomId, label) {
             // Hide auth screens
-            document.getElementById('signin-screen').style.display = 'none';
-            document.getElementById('noaccess-screen').style.display = 'none';
+            AUTH_SCREENS.forEach(s => {
+                const el = document.getElementById(`${s}-screen`);
+                if (el) el.style.display = 'none';
+            });
             document.getElementById('picker-modal').classList.remove('open');
             document.getElementById('portal-content').style.display = 'block';
             document.getElementById('topbar').style.opacity = '1';
@@ -621,18 +1036,262 @@
             const badge = document.getElementById('classroom-badge');
             const adminLink = document.getElementById('admin-link');
             const signoutBtn = document.getElementById('signout-btn');
+            const profileBtn = document.getElementById('profile-btn');
 
             signoutBtn.style.display = 'block';
 
             if (isAdmin) {
                 badge.style.display = 'none';
                 adminLink.style.display = 'block';
+                profileBtn.style.display = 'none';
+                document.getElementById('classroom-section').style.display = 'none';
             } else if (label) {
-                badge.textContent = '🏫 ' + label;
-                badge.style.display = 'block';
+                // Classroom badge removed — Profile button conveys classroom context
                 adminLink.style.display = 'none';
+                profileBtn.style.display = 'block';
+                if (currentUser) mountClassroomCards(currentUser.email);
             }
         }
+
+        // ── Classroom card(s) on portal ──
+        let classroomUnsub = null;
+        function mountClassroomCards(email) {
+            const host = document.getElementById('classroom-card-host');
+            // Classroom section is hidden — details live in the Profile modal. We keep the
+            // live snapshot warm so other portal code can read classroom data if needed.
+            if (classroomUnsub) classroomUnsub();
+            const basePath = `artifacts/${APP_ID}/public/data`;
+            const qRooms = query(collection(db, `${basePath}/classrooms`), where('teacherEmails', 'array-contains', email));
+            classroomUnsub = onSnapshot(qRooms, snap => {
+                const rooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                if (!rooms.length) { host.innerHTML = `<p style="color:var(--text-muted);">No classroom yet.</p>`; return; }
+                host.innerHTML = rooms.map(r => renderClassroomCard(r, email)).join('');
+            });
+        }
+
+        function renderClassroomCard(r, myEmail) {
+            const coTeachers = (r.teachers || []).filter(t => t.email !== myEmail);
+            const coList = coTeachers.length
+                ? coTeachers.map(t => `<span style="display:inline-block; padding:3px 10px; border-radius:10px; background:rgba(255,255,255,0.05); margin:2px 4px 2px 0; font-size:0.78rem;">👤 ${escHtml(t.name || t.email)}</span>`).join('')
+                : `<span style="color:var(--text-muted); font-size:0.82rem;">No co-teachers yet.</span>`;
+            return `
+                <div style="padding:22px 24px; background:var(--surface); border:1px solid var(--border); border-radius:14px; margin-bottom:14px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap;">
+                        <div style="flex:1; min-width:220px;">
+                            <div style="font-family:'Orbitron',sans-serif; color:var(--neon-cyan); font-size:1rem; letter-spacing:1.5px; margin-bottom:6px;">${escHtml(r.name || 'Classroom')}</div>
+                            <div style="color:var(--text-muted); font-size:0.85rem; line-height:1.5;">
+                                ${escHtml(r.wardName || '')}
+                                ${r.country ? ` · ${escHtml(r.country)}` : ''}
+                            </div>
+                            <div style="color:var(--text-muted); font-size:0.74rem; font-style:italic; margin-top:6px;">Edit ward, classroom name, your calling & country in ⚙ Profile.</div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:6px;">
+                            <button class="btn-submit" style="width:auto; padding:10px 14px; margin:0;" onclick="window.openInviteModal('${r.id}', '${escAttr(r.name || 'Classroom')}')">🤝 Invite Co-Teacher</button>
+                            <button class="picker-signout" style="color:var(--neon-pink);" onclick="window.leaveClassroom('${r.id}', '${escAttr(r.name || 'Classroom')}')">Leave classroom</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <div style="color:var(--text-muted); font-size:0.75rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; margin-bottom:6px;">Co-Teachers</div>
+                        ${coList}
+                    </div>
+                </div>
+            `;
+        }
+
+        // ── Profile modal ──
+        let profileClassroomsCache = [];
+
+        window.openProfileModal = async () => {
+            if (!currentUser) return;
+            const basePath = `artifacts/${APP_ID}/public/data`;
+            document.getElementById('pm-status').textContent = 'Loading profile…';
+            document.getElementById('pm-invite-row').style.display = 'none';
+            document.getElementById('profile-modal').style.display = 'flex';
+
+            // Teacher doc
+            const teacherSnap = await getDoc(doc(db, `${basePath}/teachers/${currentUser.email}`));
+            const teacher = teacherSnap.exists() ? teacherSnap.data() : {};
+            document.getElementById('pm-teacher-name').value = teacher.name || currentUser.displayName || '';
+            document.getElementById('pm-teacher-calling').value = teacher.role || '';
+            document.getElementById('pm-teacher-country').value = teacher.country || 'US';
+
+            // Classrooms where this teacher is assigned
+            const qRooms = query(collection(db, `${basePath}/classrooms`), where('teacherEmails', 'array-contains', currentUser.email));
+            const snap = await getDocs(qRooms);
+            profileClassroomsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+            const pickerWrap = document.getElementById('pm-classroom-picker-wrap');
+            const picker = document.getElementById('pm-classroom-picker');
+            if (profileClassroomsCache.length > 1) {
+                pickerWrap.style.display = 'block';
+                picker.innerHTML = profileClassroomsCache.map(c => `<option value="${c.id}">${escHtml(c.name || 'Classroom')}</option>`).join('');
+                picker.value = profileClassroomsCache[0].id;
+                picker.onchange = () => fillProfileClassroom(picker.value);
+            } else {
+                pickerWrap.style.display = 'none';
+            }
+            if (profileClassroomsCache[0]) fillProfileClassroom(profileClassroomsCache[0].id);
+            document.getElementById('pm-status').textContent = '—';
+        };
+
+        function fillProfileClassroom(classroomId) {
+            const c = profileClassroomsCache.find(x => x.id === classroomId);
+            if (!c) return;
+            document.getElementById('pm-classroom-name').value = c.name || '';
+            document.getElementById('pm-classroom-ward').value = c.wardName || '';
+            const host = document.getElementById('pm-coteachers-host');
+            const coTeachers = (c.teachers || []).filter(t => t.email !== currentUser.email);
+            if (!coTeachers.length) {
+                host.innerHTML = `<span style="color:var(--text-muted); font-size:0.82rem;">No co-teachers yet. Use "Regenerate Invite Link" to invite one.</span>`;
+            } else {
+                host.innerHTML = coTeachers.map(t =>
+                    `<div style="display:flex; justify-content:space-between; align-items:center; padding:6px 0;">
+                        <span style="color:var(--text-silver);">👤 ${escHtml(t.name || t.email)}</span>
+                        <span style="color:var(--text-muted); font-size:0.74rem;">${escHtml(t.email)}</span>
+                    </div>`
+                ).join('');
+            }
+            document.getElementById('pm-invite-row').style.display = 'none';
+        }
+
+        window.closeProfileModal = () => {
+            document.getElementById('profile-modal').style.display = 'none';
+        };
+
+        function selectedProfileClassroomId() {
+            const picker = document.getElementById('pm-classroom-picker');
+            if (profileClassroomsCache.length > 1 && picker.value) return picker.value;
+            return profileClassroomsCache[0]?.id || null;
+        }
+
+        window.saveProfile = async () => {
+            const basePath = `artifacts/${APP_ID}/public/data`;
+            const status = document.getElementById('pm-status');
+            const name = document.getElementById('pm-teacher-name').value.trim();
+            const calling = document.getElementById('pm-teacher-calling').value.trim();
+            const country = document.getElementById('pm-teacher-country').value;
+            const classroomId = selectedProfileClassroomId();
+            const classroomName = document.getElementById('pm-classroom-name').value.trim();
+            const wardName = document.getElementById('pm-classroom-ward').value.trim();
+            if (!name) { status.textContent = 'Please enter your name.'; return; }
+            if (!classroomId) { status.textContent = 'No classroom to save.'; return; }
+            if (!classroomName || !wardName) { status.textContent = 'Classroom name and ward are required.'; return; }
+            status.textContent = 'Saving…';
+            try {
+                // Teacher doc
+                await updateDoc(doc(db, `${basePath}/teachers/${currentUser.email}`), {
+                    name, role: calling, country
+                });
+                // Classroom doc — also sync the teacher's own entry in the denormalized teachers[] array
+                const classroomRef = doc(db, `${basePath}/classrooms/${classroomId}`);
+                const c = profileClassroomsCache.find(x => x.id === classroomId);
+                const updatedTeachers = (c?.teachers || []).map(t =>
+                    t.email === currentUser.email ? { ...t, name } : t
+                );
+                await updateDoc(classroomRef, {
+                    name: classroomName,
+                    wardName,
+                    teachers: updatedTeachers,
+                    lastActivityAt: serverTimestamp()
+                });
+                // Update local cache so subsequent reads in the modal are fresh
+                if (c) { c.name = classroomName; c.wardName = wardName; c.teachers = updatedTeachers; }
+                // Keep session cache fresh if this is the active classroom
+                const activeId = sessionStorage.getItem(SESSION_KEY);
+                if (activeId === classroomId) {
+                    sessionStorage.setItem(SESSION_NAME_KEY, classroomName);
+                }
+                status.textContent = '✓ Saved.';
+            } catch (e) {
+                console.error(e);
+                status.textContent = 'Save failed. Check your connection and try again.';
+            }
+        };
+
+        window.regenerateInviteFromProfile = async () => {
+            const basePath = `artifacts/${APP_ID}/public/data`;
+            const status = document.getElementById('pm-status');
+            const classroomId = selectedProfileClassroomId();
+            if (!classroomId) { status.textContent = 'No classroom selected.'; return; }
+            status.textContent = 'Generating…';
+            const classroomRef = doc(db, `${basePath}/classrooms/${classroomId}`);
+            const snap = await getDoc(classroomRef);
+            if (!snap.exists()) { status.textContent = 'Classroom not found.'; return; }
+            const data = snap.data();
+            const token = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+            const codes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
+            codes.push({ code: token, createdAt: new Date().toISOString(), createdBy: currentUser.email, revoked: false });
+            await updateDoc(classroomRef, { inviteCodes: codes });
+            const link = `${window.location.origin}/index.html?token=${encodeURIComponent(token)}`;
+            document.getElementById('pm-invite-link').value = link;
+            document.getElementById('pm-invite-row').style.display = 'block';
+            status.textContent = '✓ New invite link ready. Copy it and send to your co-teacher.';
+        };
+
+        window.copyPmInviteLink = () => {
+            const el = document.getElementById('pm-invite-link');
+            el.select(); el.setSelectionRange(0, 9999);
+            navigator.clipboard.writeText(el.value).then(() => {
+                document.getElementById('pm-status').textContent = '✓ Link copied to clipboard.';
+            });
+        };
+
+        window.openInviteModal = async (classroomId, classroomName) => {
+            const basePath = `artifacts/${APP_ID}/public/data`;
+            const classroomRef = doc(db, `${basePath}/classrooms/${classroomId}`);
+            const snap = await getDoc(classroomRef);
+            if (!snap.exists()) return;
+            const data = snap.data();
+            // Generate a fresh token (simple but unguessable)
+            const token = Math.random().toString(36).slice(2, 10) + Math.random().toString(36).slice(2, 10);
+            const codes = Array.isArray(data.inviteCodes) ? data.inviteCodes : [];
+            codes.push({ code: token, createdAt: new Date().toISOString(), createdBy: currentUser.email, revoked: false });
+            await updateDoc(classroomRef, { inviteCodes: codes });
+            const origin = window.location.origin;
+            const link = `${origin}/index.html?token=${encodeURIComponent(token)}`;
+            document.getElementById('invite-link').value = link;
+            document.getElementById('invite-status').textContent = `Classroom: ${classroomName} · Single-use link valid until an admin approves the join.`;
+            document.getElementById('invite-modal').style.display = 'flex';
+        };
+
+        window.copyInviteLink = () => {
+            const el = document.getElementById('invite-link');
+            el.select(); el.setSelectionRange(0, 9999);
+            navigator.clipboard.writeText(el.value).then(() => {
+                document.getElementById('invite-status').textContent = '✓ Copied to clipboard.';
+            });
+        };
+
+        window.closeInviteModal = () => {
+            document.getElementById('invite-modal').style.display = 'none';
+        };
+
+        window.leaveClassroom = async (classroomId, classroomName) => {
+            if (!confirm(`Leave "${classroomName}"?\n\nYou'll lose access to its games and lesson library. Your co-teacher(s) will keep teaching. If you're the last teacher, the classroom will be orphaned until a new teacher joins or an admin removes it.`)) return;
+            const typed = prompt(`This is permanent. To confirm, type the classroom name exactly:\n\n${classroomName}`);
+            if (typed === null) return;
+            if (typed.trim() !== classroomName.trim()) {
+                alert(`That didn't match "${classroomName}". Leave cancelled.`);
+                return;
+            }
+            const basePath = `artifacts/${APP_ID}/public/data`;
+            const classroomRef = doc(db, `${basePath}/classrooms/${classroomId}`);
+            const snap = await getDoc(classroomRef);
+            if (!snap.exists()) return;
+            const data = snap.data();
+            const newTeachers = (data.teachers || []).filter(t => t.email !== currentUser.email);
+            await updateDoc(classroomRef, {
+                teacherEmails: arrayRemove(currentUser.email),
+                teachers: newTeachers,
+                lastActivityAt: serverTimestamp()
+            });
+            await updateDoc(doc(db, `${basePath}/teachers/${currentUser.email}`), {
+                classroomIds: arrayRemove(classroomId)
+            }).catch(() => {});
+            sessionStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(SESSION_NAME_KEY);
+            window.location.reload();
+        };
 
         function showPicker(rooms) {
             const list = document.getElementById('picker-list');
@@ -642,7 +1301,10 @@
                     <span class="picker-btn-meta">${escHtml(room.description || '')}</span>
                 </button>
             `).join('');
-            document.getElementById('signin-screen').style.display = 'none';
+            AUTH_SCREENS.forEach(s => {
+                const el = document.getElementById(`${s}-screen`);
+                if (el) el.style.display = 'none';
+            });
             document.getElementById('picker-modal').classList.add('open');
         }
 
@@ -681,22 +1343,5 @@
         function escAttr(s) { return String(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
     </script>
 
-    <script>
-        const SCALE_LABELS = { 0.55: 'Mobile', 0.75: 'Tablet', 1.0: 'HD 1080p', 1.3: '4K TV' };
-
-        function setScale(val) {
-            localStorage.setItem('kindred_display_scale', String(val));
-            document.querySelectorAll('.scale-btn').forEach(b => {
-                b.classList.toggle('active', parseFloat(b.dataset.scale) === val);
-            });
-            const pct = Math.round(val * 100);
-            document.getElementById('scale-note').textContent = `Scale: ${pct}% — ${SCALE_LABELS[val] || 'Custom'}`;
-        }
-
-        (function initScale() {
-            const saved = parseFloat(localStorage.getItem('kindred_display_scale') || '1.0');
-            setScale(saved);
-        })();
-    </script>
 </body>
 </html>

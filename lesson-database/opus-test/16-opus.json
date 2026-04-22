@@ -1,0 +1,310 @@
+{
+  "status": 200,
+  "body": {
+    "topic": "Stand Still, and See the Salvation of the Lord: Exodus 14–18",
+    "rounds": [
+      {
+        "question": "In Exodus 14:13–14, what did Moses tell the frightened Israelites to do when the Egyptian army was closing in on them?",
+        "type": "scripture_based",
+        "verseText": "And Moses said unto the people, Fear ye not, stand still, and see the salvation of the Lord, which he will shew to you to day: for the Egyptians whom ye have seen to day, ye shall see them again no more for ever. The Lord shall fight for you, and ye shall hold your peace.",
+        "christConnection": "Moses's command to 'stand still and see the salvation of the Lord' points forward to Jesus Christ, who is the ultimate salvation God provides for all who trust in Him.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/14?lang=eng#p13",
+        "answers": [
+          {
+            "text": "Fear not / Do not be afraid",
+            "points": 40
+          },
+          {
+            "text": "Stand still",
+            "points": 30
+          },
+          {
+            "text": "See the salvation of the Lord",
+            "points": 20
+          },
+          {
+            "text": "The Lord shall fight for you / hold your peace",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "According to 1 Corinthians 10:1–4, what did the Israelites drinking from the rock in the wilderness symbolize, and who did Paul say that rock actually was?",
+        "type": "scripture_based",
+        "verseText": "Moreover, brethren, I would not that ye should be ignorant, how that all our fathers were under the cloud, and all passed through the sea... And did all drink the same spiritual drink: for they drank of that spiritual Rock that followed them: and that Rock was Christ.",
+        "christConnection": "Paul explicitly teaches that the rock that gave life-saving water to Israel in the wilderness was a symbol and type of Jesus Christ Himself.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/nt/1-cor/10?lang=eng#p1",
+        "answers": [
+          {
+            "text": "The rock represented / was Christ",
+            "points": 40
+          },
+          {
+            "text": "They drank spiritual drink from the rock",
+            "points": 30
+          },
+          {
+            "text": "All their fathers passed through the sea under the cloud",
+            "points": 20
+          },
+          {
+            "text": "The drink from the rock followed them through the wilderness",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "In Exodus 17:12, Aaron and Hur held up Moses's heavy hands during the battle against Amalek until Israel won. How can you apply this story this week to support someone around you who is struggling or carrying a heavy load?",
+        "type": "scripture_application",
+        "verseText": "But Moses' hands were heavy; and they took a stone, and put it under him, and he sat thereon; and Aaron and Hur stayed up his hands, the one on the one side, and the other on the other side; and his hands were steady until the going down of the sun.",
+        "christConnection": "When we lift and support one another just as Aaron and Hur lifted Moses, we become the hands of Jesus Christ to those around us.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/17?lang=eng#p12",
+        "answers": [
+          {
+            "text": "Encourage or check in on a friend or family member who is going through something hard",
+            "points": 40
+          },
+          {
+            "text": "Step up and help a Church leader, teacher, or youth leader with their responsibilities",
+            "points": 30
+          },
+          {
+            "text": "Complete an act of service without being asked when you see someone struggling",
+            "points": 20
+          },
+          {
+            "text": "Pray specifically for someone who is carrying a heavy burden right now",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "John 6:35 records Jesus saying, 'I am the bread of life: he that cometh to me shall never hunger; and he that believeth on me shall never thirst.' Just as the Israelites gathered manna every day, what daily habit helps you spiritually 'eat' and stay close to Jesus Christ?",
+        "type": "scripture_application",
+        "verseText": "And Jesus said unto them, I am the bread of life: he that cometh to me shall never hunger; and he that believeth on me shall never thirst... I am the living bread which came down from heaven: if any man eat of this bread, he shall live for ever.",
+        "christConnection": "Jesus Christ is the true Bread of Life, the fulfillment of the manna God provided, and daily spiritual nourishment through Him sustains our souls just as manna sustained Israel.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/nt/john/6?lang=eng#p29",
+        "answers": [
+          {
+            "text": "Daily personal scripture study or Come Follow Me reading",
+            "points": 40
+          },
+          {
+            "text": "Daily personal prayer, morning and/or night",
+            "points": 30
+          },
+          {
+            "text": "Partaking of the sacrament each Sunday and renewing covenants",
+            "points": 20
+          },
+          {
+            "text": "Listening to uplifting music, General Conference talks, or gospel podcasts throughout the day",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16. Name a situation where you felt totally overwhelmed or afraid, and then felt God's help or peace come through — like the Israelites felt at the Red Sea.",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "Every moment we experience God's peace and deliverance in our hardest times points us to Jesus Christ, who is our ultimate Deliverer and the source of all lasting peace.",
+        "url": "https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-old-testament-2026/16?lang=eng",
+        "answers": [
+          {
+            "text": "Taking a hard test or big exam at school and feeling unexpectedly calm",
+            "points": 38
+          },
+          {
+            "text": "Moving to a new school or neighborhood and feeling accepted or guided to new friends",
+            "points": 22
+          },
+          {
+            "text": "Giving a talk or testimony at church when I was really nervous",
+            "points": 14
+          },
+          {
+            "text": "Going through a conflict with a close friend and feeling peace after praying about it",
+            "points": 10
+          },
+          {
+            "text": "Trying out for a team or performing in an event and feeling calm despite the pressure",
+            "points": 9
+          },
+          {
+            "text": "Facing a really difficult family situation and sensing that things would be okay",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16. When life feels bitter or really hard, what is something that has helped make that experience feel a little sweeter or more meaningful over time — like the tree that made the bitter waters at Marah sweet?",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "Just as God used a tree to make the bitter waters of Marah sweet, Jesus Christ — often symbolized by the tree of life — transforms our painful and bitter experiences into growth and deeper faith.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/15?lang=eng#p23",
+        "answers": [
+          {
+            "text": "Talking to someone I trust — a parent, friend, leader, or sibling",
+            "points": 38
+          },
+          {
+            "text": "Praying and feeling comfort or direction from the Spirit",
+            "points": 22
+          },
+          {
+            "text": "Looking back and seeing how I grew stronger because of the hard thing",
+            "points": 14
+          },
+          {
+            "text": "Reading scriptures or General Conference talks that applied directly to what I was going through",
+            "points": 10
+          },
+          {
+            "text": "Serving others and getting my mind off my own struggles",
+            "points": 9
+          },
+          {
+            "text": "Having a friend just show up or check on me without me having to ask",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16. The Israelites sometimes complained and murmured instead of trusting God. What is something you catch yourself complaining or grumbling about more than you probably should?",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "Recognizing our own tendency to murmur, as Israel did, opens our hearts to trust Jesus Christ more deeply and follow Him with greater patience and gratitude.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/bofm/1-ne/2?lang=eng#p11",
+        "answers": [
+          {
+            "text": "Schoolwork, homework, or a specific class that feels too hard or pointless",
+            "points": 38
+          },
+          {
+            "text": "Having to go to church, seminary, or family activities when I'd rather do something else",
+            "points": 22
+          },
+          {
+            "text": "Rules or expectations at home set by parents or guardians",
+            "points": 14
+          },
+          {
+            "text": "Social situations — feeling left out, misunderstood, or like things are unfair",
+            "points": 10
+          },
+          {
+            "text": "Having to do chores or responsibilities that feel boring or repetitive",
+            "points": 9
+          },
+          {
+            "text": "Technology limits — screen time rules or losing access to devices",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16. Aaron and Hur physically held up Moses's arms so he wouldn't give up during the battle. Name a specific way a friend, family member, or Church leader has 'held up your arms' and helped you keep going when you felt like giving up.",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "When others hold up our arms in our moments of weakness, they reflect the love of Jesus Christ and remind us that He never lets us fight our battles completely alone.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/17?lang=eng#p12",
+        "answers": [
+          {
+            "text": "A friend who checked on me, texted me, or just sat with me when I was struggling",
+            "points": 38
+          },
+          {
+            "text": "A parent or family member who encouraged me and believed in me when I doubted myself",
+            "points": 22
+          },
+          {
+            "text": "A Church leader, teacher, or youth leader who noticed me and said exactly what I needed to hear",
+            "points": 14
+          },
+          {
+            "text": "A sibling who defended me, stood up for me, or helped me through something",
+            "points": 10
+          },
+          {
+            "text": "A coach, mentor, or trusted adult at school who pushed me to keep going",
+            "points": 9
+          },
+          {
+            "text": "Someone who prayed with me or told me they were praying for me during a hard time",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      }
+    ],
+    "sourceUrl": "https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-old-testament-2026/16?lang=eng",
+    "generatedAt": "2026-04-22T05:19:03.056Z",
+    "pipeline": "lesson-pipeline-v3",
+    "talkLinks": [
+      {
+        "title": "Redeemer of Israel",
+        "speaker": "Hymns, no. 6",
+        "url": "https://www.churchofjesuschrist.org/study/manual/hymns/redeemer-of-israel"
+      },
+      {
+        "title": "Daily Restoration",
+        "speaker": "Dieter F. Uchtdorf",
+        "url": "https://www.churchofjesuschrist.org/study/general-conference/2021/10/41uchtdorf"
+      },
+      {
+        "title": "What was the purpose of the pillar of cloud and fire?",
+        "speaker": "",
+        "url": "https://www.churchofjesuschrist.org/study/manual/scripture-helps-old-testament/14-exodus-14-18"
+      },
+      {
+        "title": "What was symbolic about Israel's crossing of the Red Sea?",
+        "speaker": "",
+        "url": "https://www.churchofjesuschrist.org/study/manual/scripture-helps-old-testament/14-exodus-14-18"
+      },
+      {
+        "title": "Why did the Lord command Moses to destroy the Amalekites?",
+        "speaker": "",
+        "url": "https://www.churchofjesuschrist.org/study/manual/scripture-helps-old-testament/14-exodus-14-18"
+      },
+      {
+        "title": "The Passover",
+        "speaker": "Old Testament Stories",
+        "url": "https://www.churchofjesuschrist.org/study/manual/old-testament-stories-2022/the-passover"
+      }
+    ],
+    "complianceReport": {
+      "version": "v3",
+      "policyRefs": [
+        "Handbook §13",
+        "Handbook §37.8",
+        "Teaching in the Savior's Way"
+      ],
+      "structural": {
+        "itemCount": 8,
+        "passCount": 8,
+        "reviewCount": 0,
+        "findings": [],
+        "urlAllowlistViolations": [],
+        "hardBlockHits": []
+      },
+      "safety": {
+        "enabled": false,
+        "items": [],
+        "blockedCount": 0,
+        "rewrittenCount": 0
+      },
+      "passCount": 8,
+      "reviewCount": 0,
+      "rewrittenCount": 0,
+      "blockedCount": 0,
+      "overall": "PASS"
+    }
+  }
+}

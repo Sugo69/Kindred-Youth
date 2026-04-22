@@ -1,0 +1,16 @@
+# Memory Index — Kindred Youth Platform
+
+- [Project Overview](project_overview.md) — Kindred: portal + admin + Common Ground + Scripture Scout; Firebase sync; backlog in admin.html; display scale gear menu
+- [User Profile](user_profile.md) — LDS teacher/developer building a reusable church youth game platform
+- [Tech Decisions](tech_decisions.md) — Vite MPA (4 pages), port 5174, Firebase Firestore, lesson-pipeline v3 (shared module), retry logic, Vercel deployment
+- [Backlog & Features](backlog_features.md) — 6 seeded backlog items + Opus47_Backlog.md (scale/compliance/Gemini parity) in admin.html
+- [Claude Code Skills](skills_overview.md) — extract-lesson / youth-leader / gamemaster; compliance-metadata contracts; lesson-reviewer + content-safety subagents
+- [Compliance System](compliance_system.md) — lesson-pipeline v3 policy-as-code, admin badges, subagent rails, Church policy sources
+- [LED Integration](wled_integration.md) — ESP8266 9×7 matrix; USB serial primary (Chrome Web Serial, kindred-leds.ino); WiFi proxy fallback (/api/wled); Chrome-only
+- [Classroom & Library](classroom_library.md) — ?room= classroom scoping; lessonLibrary always global; deterministic doc IDs via cfm-schedule.js; Fill-This-Week button
+- [Testing Constraints](testing_constraints.md) — user has only ONE Gmail account; never propose "sign in as second teacher" — use admin-disable toggle or Firestore hand-edits
+- [Model Strategy](model_strategy.md) — Sonnet 4.6 for all 3 pipeline calls; Haiku hallucinated cross-manual refs; planned Opus 4.6 gold-standard test to derive Sonnet guardrails
+# userEmail
+The user's email address is lewiswf@gmail.com.
+# currentDate
+Today's date is 2026-04-21.

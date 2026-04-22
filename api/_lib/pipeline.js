@@ -32,25 +32,41 @@ const HARD_BLOCK_TERMS = [
 ]
 
 // ── Public entrypoint ────────────────────────────────────────────────────────
-export async function runLessonPipeline({ url, gameType = 'common-ground', questionType = 'mixed', apiKey, enableSafetyReview = true }) {
+const DEFAULT_MODELS = {
+    extraction: 'claude-sonnet-4-6',
+    generation: 'claude-sonnet-4-6',
+    safety:     'claude-sonnet-4-6',
+}
+
+export async function runLessonPipeline({ url, gameType = 'common-ground', questionType = 'mixed', apiKey, enableSafetyReview = true, models = {} }) {
     if (!url) return { status: 400, body: { error: 'Missing URL' } }
     if (!apiKey) return { status: 500, body: { error: 'ANTHROPIC_API_KEY not configured' } }
+    const activeModels = { ...DEFAULT_MODELS, ...models }
+
+    const runId = Math.random().toString(36).slice(2, 8)
+    const t0 = Date.now()
+    const tag = `[pipeline ${runId} ${gameType}]`
+    const stage = (msg) => console.log(`${tag} ${((Date.now() - t0) / 1000).toFixed(1)}s · ${msg}`)
+    stage(`START url=${url}`)
 
     const sourceCheck = validateSourceUrl(url)
     if (!sourceCheck.ok) return { status: 400, body: { error: sourceCheck.reason } }
 
+    stage('fetching lesson page…')
     const pageResp = await fetch(url, {
         headers: { 'User-Agent': 'Mozilla/5.0 (KindredYouth/1.0 lesson-pipeline)' },
         signal: AbortSignal.timeout(15000),
     })
     if (!pageResp.ok) return { status: 502, body: { error: `Lesson page returned ${pageResp.status}` } }
     const html = await pageResp.text()
+    stage(`lesson page fetched (${html.length} bytes)`)
 
     const { talkLinks, scriptureLinks, videoLinks } = prescrape(html)
     const lessonText = stripHtml(html).slice(0, 9000)
     if (lessonText.length < 100) {
         return { status: 422, body: { error: 'Could not extract readable text from this URL. Try a direct lesson page.' } }
     }
+    stage(`prescraped: ${talkLinks.length} talks, ${scriptureLinks.length} scriptures, ${videoLinks.length} videos`)
 
     const claudeHeaders = {
         'Content-Type': 'application/json',
@@ -58,45 +74,92 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
         'anthropic-version': '2023-06-01',
     }
 
-    // Step 1: extraction
+    // Step 1: extraction — Sonnet 4.6
+    // Tried Haiku 4.5 (3–5× faster) but it hallucinated cross-manual content on complex
+    // lessons — pulled Helaman 5:12 and Exodus 14 into a Leviticus/Tabernacle lesson.
+    // Sonnet stays grounded in the provided HTML. max_tokens: 8000 so lessons with many
+    // cross-refs don't truncate JSON mid-verse.
+    stage(`→ Claude extraction call (${activeModels.extraction}, max_tokens=8000)…`)
     const extractResp = await callClaude(claudeHeaders, {
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4000,
+        model: activeModels.extraction,
+        max_tokens: 8000,
         messages: [{ role: 'user', content: buildExtractionPrompt(lessonText, url, { talkLinks, scriptureLinks, videoLinks }) }],
     })
-    if (extractResp.error) return { status: 500, body: { error: `Extraction step: ${extractResp.error}` } }
+    if (extractResp.error) {
+        console.error(`${tag} Extraction API error:`, { url, gameType, error: extractResp.error })
+        return { status: 500, body: { error: `Extraction step: ${extractResp.error}`, step: 'extraction', debugExcerpt: extractResp.error } }
+    }
+    stage(`← extraction returned (${extractResp.text?.length || 0} chars)`)
     const lessonStructure = parseJsonLoose(extractResp.text)
-    if (!lessonStructure) return { status: 502, body: { error: 'Extraction step returned malformed JSON' } }
+    if (!lessonStructure) {
+        const excerpt = (extractResp.text || '').slice(0, 800)
+        console.error(`${tag} Extraction returned malformed JSON for ${url}\n--- Raw Claude response (first 800 chars) ---\n${excerpt}\n--- end ---`)
+        return { status: 502, body: { error: 'Extraction step returned malformed JSON', step: 'extraction', debugExcerpt: excerpt } }
+    }
+    stage(`extraction parsed: ${(lessonStructure.scriptureRefs || []).length} scriptureRefs, ${(lessonStructure.keyThemes || []).length} themes`)
 
     // Step 2: generation
-    const generateResp = await callClaude(claudeHeaders, {
-        model: 'claude-sonnet-4-6',
-        max_tokens: 6000,
+    // max_tokens: 8000 — matches extraction. Claude occasionally truncates mid-JSON
+    // at lower limits even when the full response would fit; 8000 gives headroom for
+    // Memory's 12 pairs and Common Ground's 8 rounds with all their Christ connections.
+    const generationBody = {
+        model: activeModels.generation,
+        max_tokens: 8000,
         messages: [{ role: 'user', content: buildGenerationPrompt(lessonStructure, url, gameType, questionType) }],
-    })
-    if (generateResp.error) return { status: 500, body: { error: `Generation step: ${generateResp.error}` } }
-    const parsed = parseJsonLoose(generateResp.text)
-    if (!parsed?.rounds?.length && !parsed?.pairs?.length) {
-        return { status: 502, body: { error: 'Generation step missing rounds/pairs' } }
     }
+    stage(`→ Claude generation call (${activeModels.generation})…`)
+    let generateResp = await callClaude(claudeHeaders, generationBody)
+    if (generateResp.error) {
+        console.error(`${tag} Generation API error:`, { url, gameType, error: generateResp.error })
+        return { status: 500, body: { error: `Generation step: ${generateResp.error}`, step: 'generation', debugExcerpt: generateResp.error } }
+    }
+    stage(`← generation returned (${generateResp.text?.length || 0} chars)`)
+    let parsed = parseJsonLoose(generateResp.text)
+
+    // Retry once on parse failure — intermittent Claude truncations happen and
+    // the same prompt often succeeds on a second call.
+    if (!parsed?.rounds?.length && !parsed?.pairs?.length) {
+        const firstExcerpt = (generateResp.text || '').slice(0, 800)
+        console.warn(`${tag} Generation missing rounds/pairs — retrying once. First-attempt excerpt:\n${firstExcerpt}`)
+        stage('↻ generation retry (parse failed, first attempt truncated or malformed)…')
+        generateResp = await callClaude(claudeHeaders, generationBody)
+        if (generateResp.error) {
+            console.error(`${tag} Generation retry API error:`, { url, gameType, error: generateResp.error })
+            return { status: 500, body: { error: `Generation step (retry): ${generateResp.error}`, step: 'generation', debugExcerpt: generateResp.error } }
+        }
+        stage(`← generation retry returned (${generateResp.text?.length || 0} chars)`)
+        parsed = parseJsonLoose(generateResp.text)
+    }
+
+    if (!parsed?.rounds?.length && !parsed?.pairs?.length) {
+        const excerpt = (generateResp.text || '').slice(0, 800)
+        console.error(`${tag} Generation missing rounds/pairs after retry for ${url}\n--- Raw Claude response (first 800 chars) ---\n${excerpt}\n--- end ---`)
+        return { status: 502, body: { error: 'Generation step missing rounds/pairs (after retry)', step: 'generation', debugExcerpt: excerpt } }
+    }
+    stage(`generation parsed: ${(parsed.rounds || parsed.pairs || []).length} items`)
 
     // Step 3: structural compliance (server-side, cannot be prompted away)
     const structural = runStructuralCompliance(parsed, lessonStructure, gameType)
+    stage(`structural compliance: pass=${structural.passCount} review=${structural.reviewCount}`)
 
     // Step 4: optional AI safety review
     let safetyReport = { enabled: false, items: [], blockedCount: 0, rewrittenCount: 0 }
     if (enableSafetyReview) {
-        const r = await runSafetyReview(claudeHeaders, parsed, gameType)
+        stage('→ Claude safety-review call…')
+        const r = await runSafetyReview(claudeHeaders, parsed, gameType, activeModels.safety)
         if (r.error) {
+            console.warn(`${tag} safety review soft-failed: ${r.error}`)
             safetyReport = { enabled: true, items: [], blockedCount: 0, rewrittenCount: 0, warning: r.error }
         } else {
             safetyReport = r
             applySafetyRewrites(parsed, safetyReport)
+            stage(`← safety review: rewrote=${r.rewrittenCount} blocked=${r.blockedCount}`)
         }
     }
 
     // Step 5: verse text backfill for memory pairs
     if (parsed.pairs?.length) backfillPairs(parsed, lessonStructure)
+    stage(`DONE in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
 
     // Step 6: assemble response
     parsed.sourceUrl = url
@@ -245,7 +308,7 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
 }
 
 // ── AI safety review ─────────────────────────────────────────────────────────
-async function runSafetyReview(headers, parsed, gameType) {
+async function runSafetyReview(headers, parsed, gameType, model = DEFAULT_MODELS.safety) {
     const items = parsed.rounds || parsed.pairs || []
     if (items.length === 0) return { enabled: true, items: [], blockedCount: 0, rewrittenCount: 0 }
 
@@ -296,7 +359,7 @@ items:
 ${JSON.stringify(contentForReview, null, 2)}`
 
     const resp = await callClaude(headers, {
-        model: 'claude-sonnet-4-6',
+        model,
         max_tokens: 4000,
         messages: [{ role: 'user', content: prompt }],
     })
@@ -331,16 +394,19 @@ function applySafetyRewrites(parsed, safetyReport) {
 }
 
 function backfillPairs(parsed, lessonStructure) {
-    const refLookup = {}
+    const verseLookup = {}
+    const urlLookup = {}
     for (const s of (lessonStructure.scriptureRefs || [])) {
-        if (s.verseText?.trim()) refLookup[s.ref.toLowerCase().replace(/\s+/g, '')] = s.verseText.trim()
+        const key = s.ref?.toLowerCase().replace(/\s+/g, '')
+        if (!key) continue
+        if (s.verseText?.trim()) verseLookup[key] = s.verseText.trim()
+        if (s.url?.trim()) urlLookup[key] = s.url.trim()
     }
     for (const p of parsed.pairs) {
-        if (!p.verse?.trim()) {
-            const key = (p.cardA || '').split('—')[0].trim().toLowerCase().replace(/\s+/g, '')
-            p.verse = refLookup[key] || null
-        }
+        const refKey = (p.cardA || '').split('—')[0].trim().toLowerCase().replace(/\s+/g, '')
+        if (!p.verse?.trim()) p.verse = verseLookup[refKey] || null
         if (!p.scene?.trim()) p.scene = (p.cardA || '').split('—')[0].trim() || null
+        if (!p.url?.trim() && urlLookup[refKey]) p.url = urlLookup[refKey]
     }
     parsed.pairs = parsed.pairs.filter(p => p.verse?.trim())
 }
@@ -359,24 +425,62 @@ function parseJsonLoose(text) {
     return null
 }
 
+const SOFTENING_PREAMBLE = `SAFETY NOTE: You are generating content for 13–16 year olds in an LDS Sunday School setting. Keep every field extra gentle and reverent. Paraphrase any scriptural violence at the level of a children's Primary manual — no graphic wording, no clinical terms for harm. Avoid any phrasing that could trip a safety filter. If a scriptural event is inherently graphic, describe only its outcome and spiritual lesson, never its mechanics.
+
+`
+
 async function callClaude(headers, bodyObj) {
-    const body = JSON.stringify(bodyObj)
-    const call = () => fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body })
-    let resp = await call()
-    if (!resp.ok) {
-        const txt = await resp.text()
-        const retry = resp.status === 529 || resp.status === 500 || resp.status === 503 ||
-            txt.includes('overloaded') || txt.includes('timeout')
-        if (retry) {
-            await new Promise(r => setTimeout(r, 5000))
-            resp = await call()
-            if (!resp.ok) return { error: (await resp.text()).slice(0, 200) }
-        } else {
-            return { error: txt.slice(0, 200) }
+    // 180s per-call timeout so a silently hung Claude connection surfaces as an
+    // error instead of keeping the whole pipeline waiting forever. Sonnet 4.6
+    // generation on 25+ scripture-ref lessons can legitimately take 90–120s.
+    const callWith = (obj) => fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST', headers, body: JSON.stringify(obj),
+        signal: AbortSignal.timeout(180000),
+    })
+
+    try {
+        let resp = await callWith(bodyObj)
+        if (!resp.ok) {
+            const txt = await resp.text()
+            const isOverload = resp.status === 529 || resp.status === 500 || resp.status === 503 ||
+                txt.includes('overloaded') || txt.includes('timeout')
+            const isContentFilter = txt.includes('content filtering policy') ||
+                txt.includes('content_filter') || txt.includes('content_policy')
+
+            if (isOverload) {
+                await new Promise(r => setTimeout(r, 5000))
+                resp = await callWith(bodyObj)
+                if (!resp.ok) return { error: (await resp.text()).slice(0, 200) }
+            } else if (isContentFilter) {
+                // Same inputs will trip the same filter — prepend a softening preamble
+                // to the last user message and retry once with a lower temperature.
+                const softened = {
+                    ...bodyObj,
+                    temperature: 0.3,
+                    messages: bodyObj.messages.map((m, i, arr) => {
+                        if (i !== arr.length - 1 || m.role !== 'user') return m
+                        if (typeof m.content !== 'string') return m
+                        return { ...m, content: SOFTENING_PREAMBLE + m.content }
+                    }),
+                }
+                await new Promise(r => setTimeout(r, 2000))
+                resp = await callWith(softened)
+                if (!resp.ok) {
+                    const txt2 = await resp.text()
+                    return { error: `Content filter blocked output even after softening retry: ${txt2.slice(0, 200)}` }
+                }
+            } else {
+                return { error: txt.slice(0, 200) }
+            }
         }
+        const data = await resp.json()
+        return { text: data.content[0].text }
+    } catch (e) {
+        if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+            return { error: 'Claude API timeout after 180s (no response from api.anthropic.com)' }
+        }
+        return { error: `Network error: ${e.message}` }
     }
-    const data = await resp.json()
-    return { text: data.content[0].text }
 }
 
 // ── Prompts ──────────────────────────────────────────────────────────────────

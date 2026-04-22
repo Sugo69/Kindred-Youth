@@ -174,6 +174,36 @@ Effort: **S** ≤ 1 day · **M** 2–4 days · **L** 1+ week.
 - Adding a new role is a one-file change
 **Effort:** S
 
+### OPUS-033 · Marketing-grade teacher signup landing page
+**Problem:** The Request Access screen (shipped alongside OPUS-001) is utilitarian — a form card on a black background. It tells a new teacher *what* to enter, not *why* Kindred is worth signing up for, and gives them nothing to share with other teachers, youth leaders, or ward councils. The funnel works but doesn't sell.
+**Solution:** Build a dedicated public landing page (`/signup` or the unauthenticated `index.html` hero) that sells Kindred before asking for a Google sign-in. Must include:
+- Hero reel: short auto-playing loop of Common Ground rounds + Scripture Scout matches on a classroom TV (muted, captions on)
+- "What is Kindred?" in one sentence + three-benefit grid (Come Follow Me ready · Classroom-safe AI · No prep for busy teachers)
+- Social proof placeholder: ward / stake adoption counter, testimonials slot, Church-policy compliance badge (links to OPUS-007 compliance surface)
+- Clear primary CTA ("Sign up with Google → Request access") and secondary CTA ("Share with another teacher" → prefilled mailto / Messenger / copy-link)
+- Open Graph + Twitter card tags so links shared into ward Slack / Messenger / Facebook preview cleanly
+- After sign-in, route straight into the existing Request Access form (prefilled from Google profile, same as today)
+- Mobile-first layout — most teachers will open this from a phone
+**Acceptance:**
+- Lighthouse Performance ≥ 90 and Accessibility ≥ 95 on mobile
+- "Share" button produces a link that previews correctly in at least Messenger, iOS Messages, and Slack
+- New teacher can go from landing page → signed-in Request Access form in ≤ 3 taps
+- Analytics event fires on each share action (for OPUS-026 dashboard)
+- No regression to the admin-approval pipeline from OPUS-001
+**Effort:** M
+
+### OPUS-034 · Automate 120-day abandon + 30-day orphan purge (Vercel cron)
+**Problem:** Inactivity review currently runs client-side in [admin.html](admin.html) — an admin must open the admin tab for any cleanup to happen. That's fine for the single-admin MVP, but at 100+ classrooms it won't scale and no cleanup happens if the admin is on vacation. The lifecycle we committed to (14-day warning email at day 106, auto-abandon at day 120, orphan purge at day 30) is not truly automated yet.
+**Solution:** Add a Vercel serverless cron job (`api/cron-inactivity.js`) that runs nightly. Uses `firebase-admin` with a service-account key stored in `FIREBASE_SERVICE_ACCOUNT` (JSON, base64-encoded). On each tick: scan `classrooms` for `lastActivityAt >= 106 days` (send email via Resend / SendGrid to every `teacherEmails[]` entry), `>= 120 days` (clear `teacherEmails[]` + `teachers[]`, stamp `abandonedAt`), and orphan classrooms `abandonedAt >= 30 days` (delete). Log every action to a `systemAuditLog` collection so the admin can audit. Remove the client-side "Inactivity review" panel in admin once this is proven in prod for 30 days.
+**Acceptance:**
+- `vercel.json` declares the cron with daily schedule (`0 3 * * *` in UTC)
+- Service-account key documented in `.env.example` and secured as Vercel env var
+- Warning email renders with a "Mark active" link that hits a signed endpoint to bump `lastActivityAt`
+- `systemAuditLog/{yyyy-mm-dd}` doc per run with counts of warned / abandoned / purged
+- Idempotent: second run on same day produces no duplicate writes
+- Admin panel in admin.html shows a read-only feed of the last 30 days of cron activity
+**Effort:** M
+
 ---
 
 ## P2 — Scripture Scout Gemini parity & game polish
@@ -320,6 +350,47 @@ Effort: **S** ≤ 1 day · **M** 2–4 days · **L** 1+ week.
 - CI runs nightly without human intervention
 - Failure opens a GitHub issue automatically
 **Effort:** M
+**Note (2026-04-21):** Manual harness already exists at `scripts/opus-test.mjs` — runs Sonnet vs Opus side-by-side against a lesson list and diffs elapsed / rounds / cross-manual ref counts. Wrap it in the GitHub Action to satisfy this ticket.
+
+### OPUS-035 · Unify module system — convert remaining CJS API files to ESM
+**Problem:** `npm run dev` logs "The CJS build of Vite's Node API is deprecated" because `vite.config.js` resolves as CJS. Three API files (`api/generate.js`, `api/generate-questions.js`, `api/fetch-content.js`) still use `module.exports` / `require()` while the rest of the codebase (incl. `api/lesson-pipeline.js` and `api/_lib/pipeline.js`) is ESM. The CJS→ESM boundary inside `/api` is a drift risk — any shared helper added in ESM can't be imported by the CJS handlers without a runtime shim. Also adds a startup warning noisy enough that real errors get lost in it.
+**Solution:** Convert the three CJS handlers to ESM (`export default async function handler(req, res)`, `import` instead of `require`). Add `"type": "module"` to `package.json`. Verify Vercel serverless functions still deploy (Vercel supports ESM natively for Node ≥18).
+**Acceptance:**
+- No "CJS build of Vite's Node API is deprecated" warning on `npm run dev`
+- All 6 files in `api/*.js` use consistent ESM syntax
+- `npm run build` passes
+- Vercel preview deploy of `/api/generate`, `/api/generate-questions`, `/api/fetch-content` still returns 200 on a smoke request
+**Effort:** S
+
+### OPUS-036 · Extend pre-generation horizon to 60 days, admin-configurable
+**Problem:** OPUS-003 assumes "next Sunday's lesson" as the pre-generation target. Real teacher prep starts earlier — users want to glance 6–8 weeks ahead and know content is already waiting. A single-week window also leaves no buffer if a weekly scheduled job misfires.
+**Solution:** Weekly scheduled job (builds on OPUS-003) pre-generates any CFM lesson whose `weekEnd` falls within the next 60 days and is missing either Common Ground or Scripture Scout. Admin has a horizon slider (`30 / 60 / 90 days`) stored in a global settings doc, so the user can tune cost vs. lead time without redeploy. Idempotent — skips entries already generated.
+**Acceptance:**
+- At any time, the library holds pre-generated content for every CFM Sunday ≤ horizon days away
+- Admin can change the horizon and see the next run respect it
+- Running the job twice in a row does not regenerate already-complete entries
+- Cost per run is visible in the run log (per OPUS-028)
+**Effort:** M
+
+### OPUS-037 · Teacher-initiated talk generation from index.html
+**Problem:** Pre-generation (OPUS-003/036) covers Come Follow Me Sundays, but teachers also want to run a game based on a specific General Conference talk or Ensign article — ad hoc, not on the CFM schedule. Today they'd have to ask the admin to add a library entry and generate.
+**Solution:** On `index.html` (Kindred Hub), each classroom-scoped teacher can paste a `churchofjesuschrist.org` URL → "Make game from this talk." Server validates the URL allowlist, runs `lesson-pipeline`, writes the result into `lessonLibrary` (still global) with an owner tag, and returns to the classroom's game launcher. Rate-limited per teacher (e.g. 3/day) to control cost.
+**Acceptance:**
+- A signed-in teacher on `index.html` can paste a conference-talk URL and get a playable game without admin intervention
+- URL allowlist enforced (same rules as `lesson-pipeline`)
+- Rate limit visible to teacher ("2 remaining today") and enforced server-side
+- Generated entry shows up in admin Library tagged with requesting teacher
+**Effort:** M
+
+### OPUS-038 · Simplify Add Library Entry UI to a single URL input
+**Problem:** The Add Library Entry form has two fields (name + URL) with an "Or enter manually" divider. Now that title auto-fill from URL works (shipped 2026-04-21), the name field is redundant for the common path and the divider is visual noise.
+**Solution:** Collapse to one URL input + single "+ Add Entry" button. On blur, show the auto-filled title as a read-only preview line below the URL with a pencil (✎) to edit if the title is wrong or blank. Keep the ⭐ Fill This Week button above it unchanged.
+**Acceptance:**
+- Add form is one input + one button for the primary path
+- Auto-filled title previews inline and can be edited
+- Failed fetch falls back to a manual title input
+- Behaviour verified for: CFM lesson URL, General Conference talk URL, non-allowlisted URL (rejected)
+**Effort:** S
 
 ---
 
@@ -338,6 +409,7 @@ Effort: **S** ≤ 1 day · **M** 2–4 days · **L** 1+ week.
 | Sprint | Items | Outcome |
 |---|---|---|
 | Scale foundation | OPUS-001, 002, 006 | Multi-tenant ready |
+| Growth funnel | OPUS-033, 012 | Teachers actually want to sign up and share |
 | Content at scale | OPUS-003, 004, 005 | Library auto-populated weekly |
 | Compliance surface | OPUS-007, 008, 012 | Policy visible in UI |
 | Teacher prep tools | OPUS-009, 010, 022, 024 | Skills' artifacts reach teachers |

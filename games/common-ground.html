@@ -381,7 +381,11 @@
                         <!-- Lesson Pipeline section (churchofjesuschrist.org) -->
                         <div id="tp-lesson-section" style="display:none;">
                             <div class="tp-status info" style="display:block; margin-bottom:12px;">🔗 Full Lesson Pipeline — extracts lesson data, applies Youth Leader principles, generates Gamemaster questions optimised for Common Ground</div>
-                            <input type="url" id="tp-lesson-url-input" class="tp-url-input" placeholder="Paste churchofjesuschrist.org lesson URL…">
+                            <label style="color:#fbbf24; font-family:'Rajdhani',sans-serif; font-size:0.8rem; letter-spacing:1px; text-transform:uppercase; display:block; margin-bottom:6px;">Pick a 2026 Come Follow Me lesson</label>
+                            <select id="tp-lesson-cfm" class="ai-select" style="margin-bottom:8px;">
+                                <option value="">— Or paste your own URL below —</option>
+                            </select>
+                            <input type="url" id="tp-lesson-url-input" class="tp-url-input" placeholder="…or paste a churchofjesuschrist.org lesson URL">
                             <select id="tp-lesson-type" class="ai-select" style="margin-bottom:12px;">
                                 <option value="mixed">🎯 Mixed — 2 scripture_based + 2 application + 4 family_feud (recommended)</option>
                                 <option value="scripture_based">📖 All Scripture-Based</option>
@@ -513,6 +517,27 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, collection, addDoc, deleteDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAllCfmLessons, getCurrentCfmLesson } from '../src/lib/cfm-schedule.js';
+
+        // Populate the CFM dropdown in the Teacher Portal, marking the current week.
+        (function populateCfmDropdown() {
+            const sel = document.getElementById('tp-lesson-cfm');
+            if (!sel) return;
+            const lessons = getAllCfmLessons();
+            const current = getCurrentCfmLesson();
+            for (const lesson of lessons) {
+                const isCurrent = lesson.weekStart === current.weekStart;
+                const opt = document.createElement('option');
+                opt.value = lesson.url;
+                opt.textContent = (isCurrent ? '⭐ This week · ' : `Wk ${lesson.slug} · `) + lesson.title;
+                if (isCurrent) opt.dataset.current = '1';
+                sel.appendChild(opt);
+            }
+            sel.addEventListener('change', () => {
+                const input = document.getElementById('tp-lesson-url-input');
+                if (input && sel.value) input.value = sel.value;
+            });
+        })();
 
         const firebaseConfig = {
             apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -1145,6 +1170,7 @@
             document.getElementById('tp-url-section').style.display = mode === 'url' ? 'block' : 'none';
             const ui = document.getElementById('tp-url-input'); if (ui) ui.value = '';
             const li = document.getElementById('tp-lesson-url-input'); if (li) li.value = '';
+            const cfm = document.getElementById('tp-lesson-cfm'); if (cfm) cfm.value = '';
             hideTpStatus();
             renderEditorRounds();
         };

@@ -1,0 +1,302 @@
+{
+  "status": 200,
+  "body": {
+    "topic": "Stand Still, and See the Salvation of the Lord (Exodus 14–18)",
+    "rounds": [
+      {
+        "question": "In Exodus 14:13–14, what did Moses tell the Israelites the Lord would do for them when they faced the Egyptian army?",
+        "type": "scripture_based",
+        "verseText": "And Moses said unto the people, Fear ye not, stand still, and see the salvation of the Lord, which he will shew to you to day: for the Egyptians whom ye have seen to day, ye shall see them again no more for ever. The Lord shall fight for you, and ye shall hold your peace.",
+        "christConnection": "Moses's promise that the Lord would fight for Israel points forward to Jesus Christ, our ultimate Deliverer who conquers every enemy—including sin and death—on our behalf.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/14?lang=eng#p13",
+        "answers": [
+          {
+            "text": "Fight for them / battle the Egyptians on their behalf",
+            "points": 40
+          },
+          {
+            "text": "Show them His salvation / deliver them",
+            "points": 30
+          },
+          {
+            "text": "Remove the Egyptians permanently / they would never see the Egyptians again",
+            "points": 20
+          },
+          {
+            "text": "Tell them not to fear and to stand still / be at peace",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "According to Exodus 15:23–27, what miracle did the Lord perform at Marah after the people murmured about bitter water?",
+        "type": "scripture_based",
+        "verseText": "And when they came to Marah, they could not drink of the waters of Marah, for they were bitter: therefore the name of it was called Marah. And the people murmured against Moses, saying, What shall we drink? And he cried unto the Lord; and the Lord shewed him a tree, which when he had cast into the waters, the waters were made sweet.",
+        "christConnection": "The tree that made the bitter waters sweet is a symbol of Jesus Christ, whose Atonement has the power to sweeten and heal our most bitter and painful experiences.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/15?lang=eng#p23",
+        "answers": [
+          {
+            "text": "A tree was cast into the waters and made them sweet / drinkable",
+            "points": 40
+          },
+          {
+            "text": "The Lord showed Moses the tree / revealed the solution through prayer",
+            "points": 30
+          },
+          {
+            "text": "Moses cried unto the Lord and God provided a way",
+            "points": 20
+          },
+          {
+            "text": "The people were then led to Elim where there were twelve wells of water",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "Helaman 5:12 teaches that we must build on the 'rock of our Redeemer.' Based on Exodus 17:1–7—where God brought water from a rock—how can you apply the idea of Christ as your Rock when you feel spiritually dry or thirsty this week?",
+        "type": "scripture_application",
+        "verseText": "And now, my sons, remember, remember that it is upon the rock of our Redeemer, who is Christ, the Son of God, that ye must build your foundation; that when the devil shall send forth his mighty winds, yea, his shafts in the whirlwind, yea, when all his hail and his mighty storm shall beat upon you, it shall have no power over you.",
+        "christConnection": "Just as water flowed from the physical rock in the wilderness to keep Israel alive, Jesus Christ—our spiritual Rock—provides living water that sustains and strengthens us through every trial.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/bofm/hel/5?lang=eng#p12",
+        "answers": [
+          {
+            "text": "Turn to prayer and scripture study to draw strength from Christ daily",
+            "points": 40
+          },
+          {
+            "text": "Rely on Jesus Christ rather than trying to solve everything alone",
+            "points": 30
+          },
+          {
+            "text": "Take the sacrament and renew covenants as a source of spiritual refreshment",
+            "points": 20
+          },
+          {
+            "text": "Reach out to Church leaders, family, or friends who can point you to Christ",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "In Exodus 17:8–16, Aaron and Hur held up Moses's tired arms so Israel could prevail in battle. Based on Mosiah 18:8–9's call to 'bear one another's burdens,' how can you apply that same supporting role to someone in your life right now?",
+        "type": "scripture_application",
+        "verseText": "And it came to pass that he said unto them: Behold, here are the waters of Mormon... and now, as ye are desirous to come into the fold of God, and to be called his people, and are willing to bear one another's burdens, that they may be light; Yea, and are willing to mourn with those that mourn; yea, and comfort those that stand in need of comfort.",
+        "christConnection": "When we hold up the arms of those around us—like Aaron and Hur did for Moses—we become instruments of Jesus Christ, whose whole mission was to lift, comfort, and redeem.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/bofm/mosiah/18?lang=eng#p8",
+        "answers": [
+          {
+            "text": "Check in on a friend or classmate who seems discouraged and offer encouragement",
+            "points": 40
+          },
+          {
+            "text": "Serve a family member who is overwhelmed without being asked",
+            "points": 30
+          },
+          {
+            "text": "Be present and listen without judgment when someone is struggling",
+            "points": 20
+          },
+          {
+            "text": "Include someone who feels left out at school, church, or in activities",
+            "points": 10
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16 and asked: 'When life feels really hard or overwhelming, what do you do first to get through it?' What were the top answers?",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "Each of these responses, at its best, points us back to Jesus Christ—the one source who can truly calm our fears, fight our battles, and deliver us as He delivered Israel.",
+        "url": null,
+        "answers": [
+          {
+            "text": "Talk to a parent, friend, or trusted adult",
+            "points": 38
+          },
+          {
+            "text": "Pray or turn to God for help",
+            "points": 22
+          },
+          {
+            "text": "Listen to music or go for a walk to clear my head",
+            "points": 14
+          },
+          {
+            "text": "Distract myself with my phone, games, or TV",
+            "points": 10
+          },
+          {
+            "text": "Read scriptures or a General Conference talk",
+            "points": 9
+          },
+          {
+            "text": "Push through it on my own and try not to think about it",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16 and asked: 'What spiritual habit is hardest for you to do every single day, even when you know it helps?' What were the top answers?",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "The Israelites needed to gather manna every morning or they went hungry; in the same way, Jesus Christ invites us daily to come to Him—the Bread of Life—so we never spiritually starve.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/nt/john/6?lang=eng#p29",
+        "answers": [
+          {
+            "text": "Reading scriptures every day",
+            "points": 38
+          },
+          {
+            "text": "Personal prayer morning and night",
+            "points": 22
+          },
+          {
+            "text": "Keeping a journal or recording spiritual impressions",
+            "points": 14
+          },
+          {
+            "text": "Staying off my phone and social media long enough to focus on spiritual things",
+            "points": 10
+          },
+          {
+            "text": "Attending seminary or family scripture study consistently",
+            "points": 9
+          },
+          {
+            "text": "Saying something kind or doing something helpful for someone each day",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16 and asked: 'When something unfair or really frustrating happens to you, what is your most honest first reaction?' What were the top answers?",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "Recognizing our natural tendency to murmur—just as Israel did in the wilderness—helps us choose, with Christ's help, to trust God's plan and find peace instead of complaint.",
+        "url": null,
+        "answers": [
+          {
+            "text": "Vent or complain to a friend or sibling",
+            "points": 38
+          },
+          {
+            "text": "Get quiet and keep it to myself but feel frustrated inside",
+            "points": 22
+          },
+          {
+            "text": "Try to figure out why it happened or what I can do about it",
+            "points": 14
+          },
+          {
+            "text": "Pray about it or ask for help from God",
+            "points": 10
+          },
+          {
+            "text": "Feel discouraged for a while but eventually move on",
+            "points": 9
+          },
+          {
+            "text": "Remind myself it could be worse and try to be grateful",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      },
+      {
+        "question": "We surveyed 100 LDS youth ages 13–16 and asked: 'When a friend or classmate is going through a really hard time, what do you actually do to help them?' What were the top answers?",
+        "type": "family_feud",
+        "verseText": null,
+        "christConnection": "When we show up for one another in meaningful ways—just as Aaron and Hur physically held up Moses—we reflect the love and ministry of Jesus Christ, who never leaves us to struggle alone.",
+        "url": "https://www.churchofjesuschrist.org/study/scriptures/ot/ex/17?lang=eng#p8",
+        "answers": [
+          {
+            "text": "Text or message them to check in and let them know I care",
+            "points": 38
+          },
+          {
+            "text": "Sit with them, listen, and let them talk it out",
+            "points": 22
+          },
+          {
+            "text": "Try to make them laugh or distract them from what is bothering them",
+            "points": 14
+          },
+          {
+            "text": "Pray for them or offer to pray together",
+            "points": 10
+          },
+          {
+            "text": "Tell a parent, leader, or trusted adult who can give more help",
+            "points": 9
+          },
+          {
+            "text": "Share a scripture, quote, or uplifting message that helped me",
+            "points": 7
+          }
+        ],
+        "complianceCheck": "PASS"
+      }
+    ],
+    "sourceUrl": "https://www.churchofjesuschrist.org/study/manual/come-follow-me-for-home-and-church-old-testament-2026/16?lang=eng",
+    "generatedAt": "2026-04-22T05:16:42.710Z",
+    "pipeline": "lesson-pipeline-v3",
+    "videoLinks": [
+      "https://www.churchofjesuschrist.org/media/video/daily-bread-pattern",
+      "https://www.churchofjesuschrist.org/media/video/daily-bread-experience",
+      "https://www.churchofjesuschrist.org/media/video/daily-bread-change",
+      "https://www.churchofjesuschrist.org/media/video/daily-restoration",
+      "https://www.churchofjesuschrist.org/study/manual/old-testament-stories-2022/the-passover"
+    ],
+    "talkLinks": [
+      {
+        "title": "Daily Restoration",
+        "speaker": "Dieter F. Uchtdorf",
+        "url": "https://www.churchofjesuschrist.org/study/general-conference/2021/10/41uchtdorf"
+      },
+      {
+        "title": "Redeemer of Israel (Hymn No. 6)",
+        "speaker": "",
+        "url": "https://www.churchofjesuschrist.org/study/manual/hymns/redeemer-of-israel"
+      },
+      {
+        "title": "Scripture Helps: Exodus 14–18",
+        "speaker": "",
+        "url": "https://www.churchofjesuschrist.org/study/manual/scripture-helps-old-testament/14-exodus-14-18"
+      }
+    ],
+    "complianceReport": {
+      "version": "v3",
+      "policyRefs": [
+        "Handbook §13",
+        "Handbook §37.8",
+        "Teaching in the Savior's Way"
+      ],
+      "structural": {
+        "itemCount": 8,
+        "passCount": 8,
+        "reviewCount": 0,
+        "findings": [],
+        "urlAllowlistViolations": [],
+        "hardBlockHits": []
+      },
+      "safety": {
+        "enabled": false,
+        "items": [],
+        "blockedCount": 0,
+        "rewrittenCount": 0
+      },
+      "passCount": 8,
+      "reviewCount": 0,
+      "rewrittenCount": 0,
+      "blockedCount": 0,
+      "overall": "PASS"
+    }
+  }
+}

@@ -217,6 +217,76 @@
         .tab-btn:hover { color: var(--text); }
         .tab-btn.active { color: var(--neon-cyan); border-bottom-color: var(--neon-cyan); }
 
+        .tab-badge {
+            display: none;
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: var(--neon-pink);
+            color: #fff;
+            border-radius: 10px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            vertical-align: middle;
+        }
+        .tab-badge.visible { display: inline-block; }
+
+        .pending-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 12px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+        }
+        .pending-card.denied { opacity: 0.6; }
+        .pending-info { flex: 1; min-width: 0; }
+        .pending-name { font-family: 'Orbitron', sans-serif; font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+        .pending-meta { color: var(--text-muted); font-size: 0.85rem; line-height: 1.5; }
+        .pending-actions { display: flex; gap: 8px; flex-shrink: 0; }
+        .btn-approve {
+            padding: 8px 16px;
+            background: #064e3b;
+            border: 1px solid #10b981;
+            color: #10b981;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: background 0.2s;
+        }
+        .btn-approve:hover { background: #10b981; color: #fff; }
+        .btn-deny {
+            padding: 8px 16px;
+            background: transparent;
+            border: 1px solid #444;
+            color: var(--text-muted);
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            letter-spacing: 0.5px;
+            transition: 0.2s;
+        }
+        .btn-deny:hover { border-color: var(--neon-pink); color: var(--neon-pink); }
+        .pending-status-denied {
+            padding: 4px 10px;
+            background: rgba(255,0,127,0.08);
+            border: 1px solid rgba(255,0,127,0.3);
+            border-radius: 6px;
+            color: var(--neon-pink);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
         /* ── Tab content ── */
         .tab-pane { display: none; padding: 32px; max-width: 1100px; margin: 0 auto; }
         .tab-pane.active { display: block; }
@@ -690,7 +760,7 @@
 
         <nav class="tab-nav">
             <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
-            <button class="tab-btn" onclick="switchTab('teachers')">Teachers</button>
+            <button class="tab-btn" onclick="switchTab('teachers')">Teachers<span class="tab-badge" id="pending-badge">0</span></button>
             <button class="tab-btn" onclick="switchTab('classrooms')">Classrooms</button>
             <button class="tab-btn" onclick="switchTab('library')">Library</button>
             <button class="tab-btn" onclick="switchTab('backlog')">Backlog</button>
@@ -702,6 +772,10 @@
                 <div class="stat-card">
                     <div class="stat-label">Teachers</div>
                     <div class="stat-value" id="stat-teachers">—</div>
+                </div>
+                <div class="stat-card" style="cursor:pointer;" onclick="switchTab('teachers')">
+                    <div class="stat-label">Pending Requests</div>
+                    <div class="stat-value" id="stat-pending" style="color:var(--neon-pink);">—</div>
                 </div>
                 <div class="stat-card">
                     <div class="stat-label">Classrooms</div>
@@ -725,10 +799,34 @@
                 <a href="games/common-ground.html" class="quick-link">🎯 Common Ground</a>
                 <a href="games/memory.html" class="quick-link">🧩 Scripture Scout</a>
             </div>
+
+            <div id="migrate-panel" style="display:none; margin-top:28px; padding:18px 22px; border:1px solid var(--neon-pink); border-radius:12px; background:rgba(255,0,128,0.05);">
+                <div style="font-family:'Orbitron',sans-serif; color:var(--neon-pink); font-size:0.95rem; margin-bottom:8px;">⚠ Legacy schema detected</div>
+                <div id="migrate-summary" style="color:var(--text-muted); font-size:0.85rem; margin-bottom:14px; line-height:1.5;"></div>
+                <button id="migrate-btn" class="btn-primary" onclick="window.runSchemaMigration()">Migrate now</button>
+                <span id="migrate-status" style="margin-left:14px; color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem;"></span>
+            </div>
+
+            <div id="inactivity-panel" style="display:none; margin-top:18px; padding:18px 22px; border:1px solid #f8b500; border-radius:12px; background:rgba(248,181,0,0.05);">
+                <div style="font-family:'Orbitron',sans-serif; color:#f8b500; font-size:0.95rem; margin-bottom:8px;">⏳ Inactivity review</div>
+                <div id="inactivity-summary" style="color:var(--text-muted); font-size:0.85rem; margin-bottom:14px; line-height:1.5;"></div>
+                <div id="inactivity-list"></div>
+            </div>
         </div>
 
         <!-- ── Teachers tab ── -->
         <div id="tab-teachers" class="tab-pane">
+            <!-- Pending Access Requests — only shown when non-empty -->
+            <div id="pending-section" style="display:none; margin-bottom:28px;">
+                <div class="section-head">
+                    <div class="section-title" style="color:var(--neon-pink);">⚠ Pending Access Requests</div>
+                </div>
+                <p style="color:var(--text-muted); font-size:0.85rem; margin:-8px 0 16px; line-height:1.5;">
+                    Teachers who have signed in with Google and requested access. Approving adds them to the Teachers list — you can then assign them to a classroom.
+                </p>
+                <div class="records-list" id="pending-list"></div>
+            </div>
+
             <div class="section-head">
                 <div class="section-title">Teachers</div>
                 <button class="btn-add" onclick="toggleForm('teacher-form')">+ Add Teacher</button>
@@ -795,14 +893,31 @@
 
             <div class="bl-box" style="margin-bottom:18px;">
                 <div style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.9rem; margin-bottom:12px;">Add Library Entry</div>
+
+                <!-- Quick path: one-click for this week's CFM lesson -->
+                <button class="bl-add-btn" onclick="window.fillCurrentCfmLesson()"
+                    style="width:100%; padding:14px; font-size:0.95rem; background:linear-gradient(180deg,#4a2f00,#2d1d00); border-color:#f8b500; margin-bottom:6px;">
+                    ⭐ Fill This Week's Come Follow Me Lesson
+                </button>
+                <div style="color:var(--text-muted); font-size:0.72rem; margin-bottom:14px; text-align:center;">
+                    Auto-fills the name + URL for the current 2026 Old Testament Sunday, then press <b>+ Add Entry</b>.
+                </div>
+
+                <!-- Divider -->
+                <div style="display:flex; align-items:center; gap:10px; color:var(--text-muted); font-family:'Orbitron',sans-serif; font-size:0.65rem; letter-spacing:1.5px; margin:4px 0 12px;">
+                    <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+                    <span>OR ENTER MANUALLY</span>
+                    <div style="flex:1; height:1px; background:rgba(255,255,255,0.08);"></div>
+                </div>
+
+                <!-- Manual path -->
                 <div class="bl-form">
                     <div class="bl-form-row">
                         <input type="text" id="lib-name" placeholder="Lesson name (e.g. Come Follow Me — Lesson 20)" style="flex:2;">
-                        <input type="url" id="lib-url" placeholder="churchofjesuschrist.org lesson URL" style="flex:3;">
+                        <input type="url" id="lib-url" placeholder="churchofjesuschrist.org lesson URL" style="flex:3;" onblur="window.autoFillTitleFromUrl()">
                     </div>
                     <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
                         <button class="bl-add-btn" onclick="window.addLibraryEntry()">+ Add Entry</button>
-                        <button class="bl-add-btn" onclick="window.fillCurrentCfmLesson()" style="background:linear-gradient(180deg,#4a2f00,#2d1d00); border-color:#f8b500;">⭐ Fill This Week's Lesson</button>
                         <span id="lib-add-status" style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.75rem; display:none;"></span>
                     </div>
                 </div>
@@ -811,10 +926,33 @@
             <div class="bl-box" style="margin-bottom:18px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
                 <span id="lib-count" class="bl-count">0 entries</span>
                 <span id="lib-cost" style="color:var(--text-muted); font-family:'Orbitron',sans-serif; font-size:0.72rem;"></span>
-                <button class="bl-gen-btn" id="lib-gen-all-btn" onclick="window.generateAllLibrary()" style="margin-left:auto; display:none;">⚡ Generate All Missing</button>
+                <button class="bl-add-btn" id="lib-errors-btn" onclick="window.openErrorLog()"
+                    style="margin-left:auto; background:linear-gradient(180deg,#3a0d0d,#200707); border-color:#ef4444; color:#fca5a5;">
+                    ⚠ Recent Errors <span id="lib-errors-count" style="opacity:0.7;">(…)</span>
+                </button>
+                <button class="bl-gen-btn" id="lib-gen-all-btn" onclick="window.generateAllLibrary()" style="display:none;">⚡ Generate All Missing</button>
             </div>
 
             <div id="library-list"></div>
+        </div>
+
+        <!-- ── Error log modal ── -->
+        <div id="errorlog-modal" style="position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:flex-start; justify-content:center; z-index:9998; padding:32px 16px; overflow-y:auto;">
+            <div style="background:var(--surface); border:1px solid #ef4444; border-radius:16px; padding:24px 26px; width:100%; max-width:860px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+                    <div style="font-family:'Orbitron',sans-serif; color:#fca5a5; letter-spacing:2px; text-transform:uppercase; font-size:0.95rem;">⚠ Pipeline Error Log</div>
+                    <button class="bl-add-btn" onclick="window.closeErrorLog()" style="padding:6px 14px;">Close</button>
+                </div>
+                <div style="color:var(--text-muted); font-size:0.72rem; margin-bottom:12px;">
+                    Last 20 failed pipeline runs (from Firestore <code>errorLog</code>). Share with support to diagnose.
+                </div>
+                <div id="errorlog-list" style="max-height:70vh; overflow-y:auto;"></div>
+                <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                    <button class="bl-add-btn" onclick="window.copyErrorLog()">📋 Copy All</button>
+                    <button class="bl-add-btn" onclick="window.clearErrorLog()" style="background:linear-gradient(180deg,#3a0d0d,#200707); border-color:#ef4444; color:#fca5a5;">🗑 Clear All</button>
+                    <button class="bl-add-btn" onclick="window.openErrorLog()">↻ Refresh</button>
+                </div>
+            </div>
         </div>
 
         <!-- ── Backlog tab ── -->
@@ -916,7 +1054,7 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import {
             getFirestore, collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
-            query, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc
+            query, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, arrayUnion, arrayRemove, limit
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { resolveLessonIdFromUrl, getCurrentCfmLesson } from "/src/lib/cfm-schedule.js";
 
@@ -940,6 +1078,7 @@
         const basePath = `artifacts/${APP_ID}/public/data`;
         const teachersCol = collection(db, `${basePath}/teachers`);
         const classroomsCol = collection(db, `${basePath}/classrooms`);
+        const pendingCol = collection(db, `${basePath}/pendingTeachers`);
 
         // ── Auth state ──
         onAuthStateChanged(auth, user => {
@@ -978,6 +1117,7 @@
         // ── Real-time listeners ──
         let teachers = [];
         let classrooms = [];
+        let pendingRequests = [];
 
         function startListeners() {
             onSnapshot(query(teachersCol, orderBy('createdAt', 'asc')), snap => {
@@ -985,25 +1125,364 @@
                 renderTeachers();
                 renderClassroomTeacherDropdown();
                 document.getElementById('stat-teachers').textContent = teachers.length;
+                refreshMigratePanel();
             });
 
             onSnapshot(query(classroomsCol, orderBy('createdAt', 'asc')), snap => {
                 classrooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderClassrooms();
                 document.getElementById('stat-classrooms').textContent = classrooms.length;
+                refreshMigratePanel();
+                refreshInactivityPanel();
+            });
+
+            onSnapshot(pendingCol, snap => {
+                pendingRequests = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                pendingRequests.sort((a, b) => {
+                    const ta = a.requestedAt?.toMillis?.() || 0;
+                    const tb = b.requestedAt?.toMillis?.() || 0;
+                    return tb - ta;
+                });
+                renderPending();
+                const openCount = pendingRequests.filter(p => p.status !== 'denied').length;
+                document.getElementById('stat-pending').textContent = openCount;
+                const badge = document.getElementById('pending-badge');
+                if (openCount > 0) {
+                    badge.textContent = openCount;
+                    badge.classList.add('visible');
+                } else {
+                    badge.classList.remove('visible');
+                }
             });
 
             initBacklog();
             initLibrary();
         }
 
+        // ── Schema migration (legacy → email-keyed teachers + multi-teacher classrooms) ──
+        function detectLegacy() {
+            const legacyTeachers = teachers.filter(t => t.email && t.id !== t.email);
+            const legacyClassrooms = classrooms.filter(c => !Array.isArray(c.teacherEmails));
+            return { legacyTeachers, legacyClassrooms };
+        }
+
+        function refreshMigratePanel() {
+            const panel = document.getElementById('migrate-panel');
+            const summary = document.getElementById('migrate-summary');
+            if (!panel || !summary) return;
+            const { legacyTeachers, legacyClassrooms } = detectLegacy();
+            const total = legacyTeachers.length + legacyClassrooms.length;
+            if (total === 0) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            summary.innerHTML = `Found <strong style="color:var(--text);">${legacyTeachers.length}</strong> teacher${legacyTeachers.length===1?'':'s'} on auto-id docs and <strong style="color:var(--text);">${legacyClassrooms.length}</strong> classroom${legacyClassrooms.length===1?'':'s'} missing <code>teacherEmails[]</code>. Migration converts teachers to email-keyed docs, adds <code>country</code>, <code>lastActivityAt</code>, <code>inviteCodes[]</code>, and consolidates co-teachers into an array.`;
+        }
+
+        window.runSchemaMigration = async () => {
+            const statusEl = document.getElementById('migrate-status');
+            const btn = document.getElementById('migrate-btn');
+            btn.disabled = true;
+            statusEl.textContent = 'Migrating…';
+            try {
+                const { legacyTeachers, legacyClassrooms } = detectLegacy();
+                const batch = writeBatch(db);
+
+                // classrooms: scalar teacherEmail → teacherEmails[] + teachers[{email,name}]
+                const classroomTeacherMap = {};
+                for (const c of classrooms) {
+                    const emails = Array.isArray(c.teacherEmails) ? c.teacherEmails.slice() : (c.teacherEmail ? [c.teacherEmail] : []);
+                    const teacherObjs = emails.map(e => {
+                        const t = teachers.find(tt => tt.email === e);
+                        return { email: e, name: t?.name || c.teacherName || '' };
+                    });
+                    for (const e of emails) {
+                        if (!classroomTeacherMap[e]) classroomTeacherMap[e] = [];
+                        classroomTeacherMap[e].push(c.id);
+                    }
+                    const needsUpdate = !Array.isArray(c.teacherEmails) || !Array.isArray(c.teachers) || !c.country || !c.lastActivityAt || !Array.isArray(c.inviteCodes) || !c.name;
+                    if (!needsUpdate) continue;
+                    const createdBy = emails[0] || '';
+                    batch.update(doc(db, `${basePath}/classrooms/${c.id}`), {
+                        name: c.name || c.description || c.wardName || 'Classroom',
+                        wardName: c.wardName || '',
+                        country: c.country || 'US',
+                        teacherEmails: emails,
+                        teachers: teacherObjs,
+                        inviteCodes: Array.isArray(c.inviteCodes) ? c.inviteCodes : [],
+                        createdBy: c.createdBy || createdBy,
+                        lastActivityAt: c.lastActivityAt || c.createdAt || serverTimestamp()
+                    });
+                }
+
+                // teachers: auto-id → email-keyed; backfill classroomIds[]
+                const seenEmails = new Set();
+                for (const t of teachers) {
+                    if (!t.email) continue;
+                    const emailId = t.email;
+                    const classroomIds = classroomTeacherMap[emailId] || [];
+                    if (t.id === emailId) {
+                        if (!Array.isArray(t.classroomIds) || !t.lastActivityAt) {
+                            batch.update(doc(db, `${basePath}/teachers/${emailId}`), {
+                                classroomIds: Array.isArray(t.classroomIds) ? t.classroomIds : classroomIds,
+                                lastActivityAt: t.lastActivityAt || t.createdAt || serverTimestamp()
+                            });
+                        }
+                        seenEmails.add(emailId);
+                        continue;
+                    }
+                    if (seenEmails.has(emailId)) {
+                        batch.delete(doc(db, `${basePath}/teachers/${t.id}`));
+                        continue;
+                    }
+                    batch.set(doc(db, `${basePath}/teachers/${emailId}`), {
+                        name: t.name || '',
+                        email: emailId,
+                        ward: t.ward || '',
+                        role: t.role || '',
+                        photoURL: t.photoURL || '',
+                        classroomIds,
+                        createdAt: t.createdAt || serverTimestamp(),
+                        lastActivityAt: t.lastActivityAt || t.createdAt || serverTimestamp(),
+                        approvedFrom: t.approvedFrom || 'legacy-migration'
+                    });
+                    batch.delete(doc(db, `${basePath}/teachers/${t.id}`));
+                    seenEmails.add(emailId);
+                }
+
+                await batch.commit();
+                statusEl.textContent = `Migrated ${legacyTeachers.length} teachers + ${legacyClassrooms.length} classrooms.`;
+                showToast('Schema migration complete.');
+            } catch (e) {
+                statusEl.textContent = '';
+                btn.disabled = false;
+                showToast('Migration failed: ' + e.message, true);
+                console.error(e);
+            }
+        };
+
+        // ── Inactivity review (120-day auto-abandon + 30-day orphan purge, admin-driven) ──
+        const DAY = 24 * 60 * 60 * 1000;
+        const WARN_DAYS = 106; // 120 - 14 warning window
+        const ABANDON_DAYS = 120;
+        const ORPHAN_PURGE_DAYS = 30;
+
+        function daysSince(ts) {
+            if (!ts) return 0;
+            const ms = ts.toMillis?.() || ts.seconds * 1000 || new Date(ts).getTime();
+            return Math.floor((Date.now() - ms) / DAY);
+        }
+
+        function refreshInactivityPanel() {
+            const panel = document.getElementById('inactivity-panel');
+            const summary = document.getElementById('inactivity-summary');
+            const list = document.getElementById('inactivity-list');
+            if (!panel) return;
+
+            const buckets = { warn: [], abandon: [], purge: [] };
+            for (const c of classrooms) {
+                const emails = Array.isArray(c.teacherEmails) ? c.teacherEmails : [];
+                const lastTs = c.lastActivityAt || c.createdAt;
+                const stale = daysSince(lastTs);
+                if (emails.length === 0 && stale >= ORPHAN_PURGE_DAYS) {
+                    buckets.purge.push({ c, stale });
+                } else if (emails.length > 0 && stale >= ABANDON_DAYS) {
+                    buckets.abandon.push({ c, stale });
+                } else if (emails.length > 0 && stale >= WARN_DAYS) {
+                    buckets.warn.push({ c, stale });
+                }
+            }
+            const total = buckets.warn.length + buckets.abandon.length + buckets.purge.length;
+            if (total === 0) { panel.style.display = 'none'; return; }
+            panel.style.display = 'block';
+            summary.innerHTML = `<strong style="color:var(--text);">${total}</strong> classroom${total===1?'':'s'} need attention — <strong style="color:#f8b500;">${buckets.warn.length}</strong> nearing 120-day abandon, <strong style="color:var(--neon-pink);">${buckets.abandon.length}</strong> past 120 days, <strong style="color:var(--neon-pink);">${buckets.purge.length}</strong> orphans past 30 days.`;
+
+            const rowHtml = ({ c, stale }, action) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px; border:1px solid var(--border); border-radius:10px; margin-bottom:8px; gap:12px;">
+                    <div style="flex:1; min-width:0;">
+                        <div style="color:var(--text); font-size:0.9rem;">${esc(c.name || c.description || c.wardName || 'Classroom')}</div>
+                        <div style="color:var(--text-muted); font-size:0.78rem;">${stale} days inactive · ${(c.teacherEmails||[]).length} teacher${(c.teacherEmails||[]).length===1?'':'s'}</div>
+                    </div>
+                    ${action}
+                </div>`;
+
+            let html = '';
+            if (buckets.warn.length) {
+                html += `<div style="color:#f8b500; font-size:0.8rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; margin:10px 0 6px;">WARN (≥ ${WARN_DAYS}d)</div>`;
+                html += buckets.warn.map(b => rowHtml(b, `<button class="btn-secondary" style="padding:6px 12px; font-size:0.78rem;" onclick="window.touchClassroom('${b.c.id}')">Mark active</button>`)).join('');
+            }
+            if (buckets.abandon.length) {
+                html += `<div style="color:var(--neon-pink); font-size:0.8rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; margin:14px 0 6px;">AUTO-ABANDON (≥ ${ABANDON_DAYS}d)</div>`;
+                html += buckets.abandon.map(b => rowHtml(b, `<button class="btn-icon" style="padding:6px 12px;" title="Clear all teachers (orphan)" onclick="window.autoAbandon('${b.c.id}')">🪦 Abandon</button>`)).join('');
+            }
+            if (buckets.purge.length) {
+                html += `<div style="color:var(--neon-pink); font-size:0.8rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; margin:14px 0 6px;">PURGE (orphan ≥ ${ORPHAN_PURGE_DAYS}d)</div>`;
+                html += buckets.purge.map(b => rowHtml(b, `<button class="btn-icon" style="padding:6px 12px;" title="Delete permanently" onclick="window.confirmDelete('classroom','${b.c.id}','${esc(b.c.name || b.c.wardName || 'Classroom')}')">🗑 Delete</button>`)).join('');
+            }
+            list.innerHTML = html;
+        }
+
+        window.touchClassroom = async (id) => {
+            await updateDoc(doc(db, `${basePath}/classrooms/${id}`), { lastActivityAt: serverTimestamp() });
+            showToast('Classroom marked active.');
+        };
+
+        window.autoAbandon = async (id) => {
+            if (!confirm('Clear all teachers from this classroom? The classroom will become an orphan and auto-purge 30 days later.')) return;
+            const c = classrooms.find(cc => cc.id === id);
+            if (!c) return;
+            const batch = writeBatch(db);
+            for (const email of (c.teacherEmails || [])) {
+                batch.update(doc(db, `${basePath}/teachers/${email}`), { classroomIds: arrayRemove(id) });
+            }
+            batch.update(doc(db, `${basePath}/classrooms/${id}`), {
+                teacherEmails: [],
+                teachers: [],
+                lastActivityAt: serverTimestamp(),
+                abandonedAt: serverTimestamp()
+            });
+            await batch.commit();
+            showToast('Classroom abandoned.');
+        };
+
+        // ── Pending teacher requests ──
+        function renderPending() {
+            const list = document.getElementById('pending-list');
+            const section = document.getElementById('pending-section');
+            if (!pendingRequests.length) {
+                section.style.display = 'none';
+                list.innerHTML = '';
+                return;
+            }
+            section.style.display = 'block';
+            list.innerHTML = pendingRequests.map(p => {
+                const denied = p.status === 'denied';
+                const when = p.requestedAt?.toDate?.() ? p.requestedAt.toDate().toLocaleDateString() : '';
+                const isJoin = p.intent === 'join_classroom';
+                const intentBadge = isJoin
+                    ? `<span style="display:inline-block; padding:2px 8px; border-radius:10px; background:rgba(0,242,255,0.12); border:1px solid rgba(0,242,255,0.4); color:var(--neon-cyan); font-size:0.7rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; margin-right:6px;">JOIN</span>`
+                    : `<span style="display:inline-block; padding:2px 8px; border-radius:10px; background:rgba(255,0,128,0.08); border:1px solid rgba(255,0,128,0.35); color:var(--neon-pink); font-size:0.7rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; margin-right:6px;">NEW CLASS</span>`;
+                const target = isJoin
+                    ? (classrooms.find(c => c.id === p.classroomId)?.name || p.classroomId || '(missing)')
+                    : (p.classroomName || p.ward || '');
+                return `
+                <div class="pending-card ${denied ? 'denied' : ''}">
+                    <div class="record-avatar">${initials(p.name || p.email)}</div>
+                    <div class="pending-info">
+                        <div class="pending-name">${intentBadge}${esc(p.name || '(no name)')}</div>
+                        <div class="pending-meta">
+                            ${esc(p.email)}${p.ward ? ` · <strong style="color:var(--text);">${esc(p.ward)}</strong>` : ''}
+                            ${p.role ? ` · ${esc(p.role)}` : ''}
+                            ${target ? ` · <em>${isJoin ? 'joining' : 'new'}:</em> ${esc(target)}` : ''}
+                            ${p.country ? ` · ${esc(p.country)}` : ''}
+                            ${when ? ` · requested ${esc(when)}` : ''}
+                        </div>
+                    </div>
+                    <div class="pending-actions">
+                        ${denied
+                          ? `<span class="pending-status-denied">Denied</span>
+                             <button class="btn-deny" onclick="window.removePending('${esc(p.id)}')">Remove</button>`
+                          : `<button class="btn-approve" onclick="window.approvePending('${esc(p.id)}')">✓ Approve</button>
+                             <button class="btn-deny" onclick="window.denyPending('${esc(p.id)}')">✕ Deny</button>`
+                        }
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        window.approvePending = async (pendingId) => {
+            const req = pendingRequests.find(p => p.id === pendingId);
+            if (!req) return;
+            const email = req.email;
+            const teacherRef = doc(db, `${basePath}/teachers/${email}`);
+            const batch = writeBatch(db);
+
+            // Upsert teacher (merge preserves classroomIds if already set)
+            batch.set(teacherRef, {
+                name: req.name || '',
+                email,
+                ward: req.ward || '',
+                role: req.role || '',
+                photoURL: req.photoURL || '',
+                country: req.country || '',
+                createdAt: serverTimestamp(),
+                lastActivityAt: serverTimestamp(),
+                approvedFrom: req.intent || 'self-signup'
+            }, { merge: true });
+
+            // Branch on intent
+            if (req.intent === 'join_classroom' && req.classroomId) {
+                const classroomRef = doc(db, `${basePath}/classrooms/${req.classroomId}`);
+                const cSnap = await getDoc(classroomRef);
+                if (!cSnap.exists()) {
+                    showToast('Classroom from invite no longer exists.', true);
+                    return;
+                }
+                const cData = cSnap.data();
+                const emails = Array.isArray(cData.teacherEmails) ? cData.teacherEmails : [];
+                const teacherObjs = Array.isArray(cData.teachers) ? cData.teachers : [];
+                if (!emails.includes(email)) {
+                    batch.update(classroomRef, {
+                        teacherEmails: arrayUnion(email),
+                        teachers: [...teacherObjs.filter(t => t.email !== email), { email, name: req.name || '' }],
+                        lastActivityAt: serverTimestamp()
+                    });
+                }
+                batch.update(teacherRef, { classroomIds: arrayUnion(req.classroomId) });
+                batch.delete(doc(db, `${basePath}/pendingTeachers/${pendingId}`));
+                await batch.commit();
+                showToast(`Added ${req.name || email} to classroom.`);
+                return;
+            }
+
+            // Default: create_classroom (or legacy request with no intent)
+            const classroomName = req.classroomName || req.ward || 'Classroom';
+            const newClassroomRef = doc(classroomsCol);
+            batch.set(newClassroomRef, {
+                name: classroomName,
+                wardName: req.ward || '',
+                country: req.country || 'US',
+                description: req.role || '',
+                teacherEmails: [email],
+                teachers: [{ email, name: req.name || '' }],
+                inviteCodes: [],
+                createdBy: email,
+                createdAt: serverTimestamp(),
+                lastActivityAt: serverTimestamp()
+            });
+            batch.update(teacherRef, { classroomIds: arrayUnion(newClassroomRef.id) });
+            batch.delete(doc(db, `${basePath}/pendingTeachers/${pendingId}`));
+            await batch.commit();
+            showToast(`Approved ${req.name || email} — classroom "${classroomName}" created.`);
+        };
+
+        window.denyPending = async (pendingId) => {
+            const req = pendingRequests.find(p => p.id === pendingId);
+            if (!req) return;
+            await setDoc(doc(db, `${basePath}/pendingTeachers/${pendingId}`), {
+                ...req,
+                status: 'denied',
+                deniedAt: serverTimestamp()
+            });
+            showToast(`Denied ${req.name || req.email}.`);
+        };
+
+        window.removePending = async (pendingId) => {
+            await deleteDoc(doc(db, `${basePath}/pendingTeachers/${pendingId}`));
+            showToast('Request removed.');
+        };
+
         // ── Teachers ──
         window.addTeacher = async () => {
             const name = document.getElementById('t-name').value.trim();
-            const email = document.getElementById('t-email').value.trim();
+            const email = document.getElementById('t-email').value.trim().toLowerCase();
             const ward = document.getElementById('t-ward').value.trim();
             if (!name || !email) return showToast('Name and email are required.', true);
-            await addDoc(teachersCol, { name, email, ward, createdAt: serverTimestamp() });
+            await setDoc(doc(db, `${basePath}/teachers/${email}`), {
+                name, email, ward, role: '', photoURL: '',
+                classroomIds: [],
+                createdAt: serverTimestamp(),
+                lastActivityAt: serverTimestamp(),
+                approvedFrom: 'admin-add'
+            }, { merge: true });
             document.getElementById('t-name').value = '';
             document.getElementById('t-email').value = '';
             document.getElementById('t-ward').value = '';
@@ -1017,16 +1496,19 @@
                 list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">👩‍🏫</div><div class="empty-state-text">No teachers yet. Add one above.</div></div>`;
                 return;
             }
-            list.innerHTML = teachers.map(t => `
+            list.innerHTML = teachers.map(t => {
+                const roomCount = (t.classroomIds || []).length;
+                return `
                 <div class="record-card" id="tc-${t.id}">
                     <div class="record-avatar">${initials(t.name)}</div>
                     <div class="record-info" style="flex:1">
-                        <div class="record-name">${esc(t.name)}</div>
-                        <div class="record-meta">${esc(t.email)}${t.ward ? ` · ${esc(t.ward)}` : ''}</div>
+                        <div class="record-name">${esc(t.name)}${roomCount ? ` <span style="color:var(--text-muted); font-weight:400; font-size:0.78rem;">· ${roomCount} classroom${roomCount===1?'':'s'}</span>` : ''}</div>
+                        <div class="record-meta">${esc(t.email)}${t.ward ? ` · ${esc(t.ward)}` : ''}${t.role ? ` · ${esc(t.role)}` : ''}</div>
                         <div class="inline-edit" id="te-${t.id}">
                             <input type="text" id="te-name-${t.id}" value="${esc(t.name)}" placeholder="Name">
-                            <input type="email" id="te-email-${t.id}" value="${esc(t.email)}" placeholder="Email">
+                            <input type="email" id="te-email-${t.id}" value="${esc(t.email)}" placeholder="Email" disabled title="Email is the doc id — cannot change">
                             <input type="text" id="te-ward-${t.id}" value="${esc(t.ward||'')}" placeholder="Ward">
+                            <input type="text" id="te-role-${t.id}" value="${esc(t.role||'')}" placeholder="Calling / role">
                             <button class="btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="window.saveTeacher('${t.id}')">Save</button>
                             <button class="btn-secondary" style="padding:8px 14px;font-size:0.85rem" onclick="document.getElementById('te-${t.id}').classList.remove('open')">Cancel</button>
                         </div>
@@ -1036,15 +1518,15 @@
                         <button class="btn-icon" title="Delete" onclick="window.confirmDelete('teacher','${t.id}','${esc(t.name)}')">🗑</button>
                     </div>
                 </div>
-            `).join('');
+            `;}).join('');
         }
 
         window.saveTeacher = async (id) => {
             const name = document.getElementById(`te-name-${id}`).value.trim();
-            const email = document.getElementById(`te-email-${id}`).value.trim();
             const ward = document.getElementById(`te-ward-${id}`).value.trim();
-            if (!name || !email) return showToast('Name and email required.', true);
-            await updateDoc(doc(db, `${basePath}/teachers/${id}`), { name, email, ward });
+            const role = document.getElementById(`te-role-${id}`).value.trim();
+            if (!name) return showToast('Name required.', true);
+            await updateDoc(doc(db, `${basePath}/teachers/${id}`), { name, ward, role });
             showToast('Teacher updated.');
         };
 
@@ -1054,8 +1536,25 @@
             const description = document.getElementById('c-desc').value.trim();
             const teacherEmail = document.getElementById('c-teacher').value;
             if (!wardName || !description) return showToast('Ward name and description are required.', true);
-            const teacherName = teachers.find(t => t.email === teacherEmail)?.name || '';
-            await addDoc(classroomsCol, { wardName, description, teacherEmail, teacherName, createdAt: serverTimestamp() });
+            const t = teachers.find(tt => tt.email === teacherEmail);
+            const teacherEmails = teacherEmail ? [teacherEmail] : [];
+            const teacherObjs = teacherEmail ? [{ email: teacherEmail, name: t?.name || '' }] : [];
+            const newRef = doc(classroomsCol);
+            await setDoc(newRef, {
+                name: description,
+                wardName,
+                country: 'US',
+                description,
+                teacherEmails,
+                teachers: teacherObjs,
+                inviteCodes: [],
+                createdBy: teacherEmail || 'admin',
+                createdAt: serverTimestamp(),
+                lastActivityAt: serverTimestamp()
+            });
+            if (teacherEmail) {
+                await updateDoc(doc(db, `${basePath}/teachers/${teacherEmail}`), { classroomIds: arrayUnion(newRef.id) }).catch(() => {});
+            }
             document.getElementById('c-ward').value = '';
             document.getElementById('c-desc').value = '';
             document.getElementById('c-teacher').value = '';
@@ -1069,41 +1568,49 @@
                 list.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🏫</div><div class="empty-state-text">No classrooms yet. Add one above.</div></div>`;
                 return;
             }
-            list.innerHTML = classrooms.map(c => `
+            const orphanCount = classrooms.filter(c => Array.isArray(c.teacherEmails) && c.teacherEmails.length === 0).length;
+            const orphanBanner = orphanCount
+                ? `<div style="padding:10px 14px; margin-bottom:14px; border:1px solid var(--neon-pink); border-radius:10px; background:rgba(255,0,128,0.05); color:var(--neon-pink); font-size:0.85rem;">⚠ ${orphanCount} orphaned classroom${orphanCount===1?'':'s'} — all teachers have left. Consider deleting or reassigning.</div>`
+                : '';
+            list.innerHTML = orphanBanner + classrooms.map(c => {
+                const emails = Array.isArray(c.teacherEmails) ? c.teacherEmails : (c.teacherEmail ? [c.teacherEmail] : []);
+                const teacherObjs = Array.isArray(c.teachers) ? c.teachers : emails.map(e => ({ email: e, name: teachers.find(t => t.email === e)?.name || '' }));
+                const teacherChips = teacherObjs.length
+                    ? teacherObjs.map(t => `<span style="display:inline-block; padding:2px 9px; border-radius:9px; background:rgba(255,255,255,0.04); border:1px solid var(--border); margin:2px 4px 2px 0; font-size:0.76rem;">👤 ${esc(t.name || t.email)}</span>`).join('')
+                    : `<span style="color:var(--neon-pink); font-size:0.78rem;">⚠ orphaned</span>`;
+                const label = c.name || c.description || c.wardName || 'Classroom';
+                return `
                 <div class="record-card" id="cc-${c.id}">
                     <div class="record-avatar" style="background:linear-gradient(135deg,var(--neon-purple),var(--neon-pink));font-size:1.3rem;">🏫</div>
                     <div class="record-info" style="flex:1">
-                        <div class="record-name">${esc(c.wardName)}</div>
-                        <div class="record-meta">
-                            ${esc(c.description)}
-                            ${c.teacherName ? ` · 👤 ${esc(c.teacherName)}` : ''}
+                        <div class="record-name">${esc(label)}</div>
+                        <div class="record-meta" style="line-height:1.7;">
+                            ${c.wardName ? `🏘 ${esc(c.wardName)}` : ''}
+                            ${c.country ? ` · 🌐 ${esc(c.country)}` : ''}
+                            <br>${teacherChips}
                         </div>
                         <div class="inline-edit" id="ce-${c.id}">
-                            <input type="text" id="ce-ward-${c.id}" value="${esc(c.wardName)}" placeholder="Ward name">
-                            <input type="text" id="ce-desc-${c.id}" value="${esc(c.description)}" placeholder="Description">
-                            <select id="ce-teacher-${c.id}">
-                                <option value="">— No teacher —</option>
-                                ${teachers.map(t => `<option value="${esc(t.email)}" ${t.email === c.teacherEmail ? 'selected' : ''}>${esc(t.name)}</option>`).join('')}
-                            </select>
+                            <input type="text" id="ce-name-${c.id}" value="${esc(label)}" placeholder="Classroom name">
+                            <input type="text" id="ce-ward-${c.id}" value="${esc(c.wardName||'')}" placeholder="Ward name">
+                            <input type="text" id="ce-country-${c.id}" value="${esc(c.country||'US')}" placeholder="Country code (e.g. US)">
                             <button class="btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="window.saveClassroom('${c.id}')">Save</button>
                             <button class="btn-secondary" style="padding:8px 14px;font-size:0.85rem" onclick="document.getElementById('ce-${c.id}').classList.remove('open')">Cancel</button>
                         </div>
                     </div>
                     <div class="record-actions">
                         <button class="btn-icon edit" title="Edit" onclick="document.getElementById('ce-${c.id}').classList.toggle('open')">✏️</button>
-                        <button class="btn-icon" title="Delete" onclick="window.confirmDelete('classroom','${c.id}','${esc(c.wardName)} — ${esc(c.description)}')">🗑</button>
+                        <button class="btn-icon" title="Delete" onclick="window.confirmDelete('classroom','${c.id}','${esc(label)}')">🗑</button>
                     </div>
                 </div>
-            `).join('');
+            `;}).join('');
         }
 
         window.saveClassroom = async (id) => {
+            const name = document.getElementById(`ce-name-${id}`).value.trim();
             const wardName = document.getElementById(`ce-ward-${id}`).value.trim();
-            const description = document.getElementById(`ce-desc-${id}`).value.trim();
-            const teacherEmail = document.getElementById(`ce-teacher-${id}`).value;
-            if (!wardName || !description) return showToast('Ward name and description required.', true);
-            const teacherName = teachers.find(t => t.email === teacherEmail)?.name || '';
-            await updateDoc(doc(db, `${basePath}/classrooms/${id}`), { wardName, description, teacherEmail, teacherName });
+            const country = (document.getElementById(`ce-country-${id}`).value.trim() || 'US').toUpperCase();
+            if (!name) return showToast('Classroom name required.', true);
+            await updateDoc(doc(db, `${basePath}/classrooms/${id}`), { name, wardName, country, lastActivityAt: serverTimestamp() });
             showToast('Classroom updated.');
         };
 
@@ -1418,6 +1925,7 @@
         const libraryCol = collection(db, `${basePath}/lessonLibrary`);
 
         function initLibrary() {
+            mountErrorLogBadge();
             onSnapshot(query(libraryCol, orderBy('createdAt', 'asc')), snap => {
                 libraryItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderLibrary();
@@ -1605,10 +2113,41 @@
 
         window.fillCurrentCfmLesson = () => {
             const lesson = getCurrentCfmLesson();
-            document.getElementById('lib-name').value = `Come Follow Me — ${lesson.title}`;
+            document.getElementById('lib-name').value = `${lesson.dateRange} — ${lesson.title}`;
             document.getElementById('lib-url').value = lesson.url;
             const statusEl = document.getElementById('lib-add-status');
-            showLibStatus(statusEl, `Filled with lesson ${lesson.slug} (week of ${lesson.weekStart}).`, false);
+            showLibStatus(statusEl, `Filled with ${lesson.teachingDate} (${lesson.title}).`, false);
+        };
+
+        let autoTitleLastUrl = '';
+        window.autoFillTitleFromUrl = async () => {
+            const urlEl = document.getElementById('lib-url');
+            const nameEl = document.getElementById('lib-name');
+            const statusEl = document.getElementById('lib-add-status');
+            const url = urlEl.value.trim();
+            if (!url || url === autoTitleLastUrl) return;
+            if (nameEl.value.trim()) return;
+            let parsed;
+            try { parsed = new URL(url); } catch { return; }
+            if (!/(^|\.)churchofjesuschrist\.org$/i.test(parsed.hostname)) return;
+            autoTitleLastUrl = url;
+            showLibStatus(statusEl, 'Fetching title…', false);
+            try {
+                const resp = await fetch('/api/fetch-content', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }),
+                });
+                const data = await resp.json();
+                if (resp.ok && data.title && !nameEl.value.trim()) {
+                    nameEl.value = data.title;
+                    showLibStatus(statusEl, '✓ Title filled.', false);
+                } else if (!data.title) {
+                    showLibStatus(statusEl, 'No title found — enter manually.', true);
+                }
+            } catch (e) {
+                showLibStatus(statusEl, 'Could not fetch title — enter manually.', true);
+            }
         };
 
         function showLibStatus(el, msg, isError) {
@@ -1619,38 +2158,141 @@
             setTimeout(() => { el.style.display = 'none'; }, 4000);
         }
 
-        window.generateLibraryGame = async (entryId, gameType) => {
+        // Screen Wake Lock — keep the display awake while any generation is running.
+        // Browser auto-releases the lock when the tab is hidden; visibilitychange re-acquires it.
+        const wakeLock = (() => {
+            let sentinel = null;
+            let activeJobs = 0;
+            const supported = 'wakeLock' in navigator;
+            async function acquire() {
+                if (!supported || sentinel) return;
+                try {
+                    sentinel = await navigator.wakeLock.request('screen');
+                    sentinel.addEventListener('release', () => { sentinel = null; });
+                } catch (e) { console.warn('Wake Lock failed:', e.message); }
+            }
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible' && activeJobs > 0) acquire();
+            });
+            return {
+                async begin() { activeJobs++; if (activeJobs === 1) await acquire(); },
+                async end() {
+                    activeJobs = Math.max(0, activeJobs - 1);
+                    if (activeJobs === 0 && sentinel) {
+                        try { await sentinel.release(); } catch {}
+                        sentinel = null;
+                    }
+                },
+                get active() { return activeJobs > 0; },
+            };
+        })();
+
+        // Warn before navigating away mid-generation — otherwise the in-flight
+        // fetch gets aborted and the Firestore save never happens.
+        window.addEventListener('beforeunload', (e) => {
+            if (wakeLock.active) {
+                e.preventDefault();
+                e.returnValue = 'Generation in progress — leaving will cancel it.';
+                return e.returnValue;
+            }
+        });
+
+        window.generateLibraryGame = async (entryId, gameType, batchInfo) => {
             const entry = libraryItems.find(e => e.id === entryId);
             if (!entry?.url) { showToast('Entry has no URL.', true); return; }
             const statusEl = document.getElementById(`lib-status-${entryId}`);
-            if (statusEl) { statusEl.textContent = `⏳ Generating ${gameType === 'common-ground' ? 'Common Ground' : 'Scripture Scout'} — 30–45 seconds…`; statusEl.style.display = 'block'; }
+            const gameLabel = gameType === 'common-ground' ? 'Common Ground' : 'Scripture Scout';
+            const batchSuffix = batchInfo ? ` (${batchInfo.i}/${batchInfo.total})` : '';
+            // Progress bar — eases toward 85% while Claude is running, plus an elapsed timer
+            let pct = 0;
+            const startedAt = Date.now();
+            let label = `⏳ Generating ${gameLabel}${batchSuffix}…`;
+            const renderProgress = () => {
+                if (!statusEl) return;
+                const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                statusEl.style.display = 'block';
+                statusEl.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; font-family:'Orbitron',sans-serif; font-size:0.72rem; color:var(--neon-cyan);">
+                        <span>${label}</span>
+                        <span>${elapsed}s · ${Math.round(pct)}%</span>
+                    </div>
+                    <div style="height:6px; background:rgba(0,212,255,0.08); border-radius:3px; overflow:hidden;">
+                        <div style="height:100%; width:${pct}%; background:linear-gradient(90deg,#00d4ff,#9d00ff); transition:width 0.5s ease-out;"></div>
+                    </div>`;
+            };
+            renderProgress();
+            const progressTimer = setInterval(() => {
+                pct += (85 - pct) * 0.015;
+                const elapsed = Math.floor((Date.now() - startedAt) / 1000);
+                if (elapsed > 45 && elapsed <= 120) label = `⏳ Generating ${gameLabel}${batchSuffix} — complex lessons run Haiku extraction + Sonnet generation + safety review…`;
+                else if (elapsed > 120 && elapsed <= 240) label = `⏳ Over 2 min — still working; lessons with 25+ scripture refs can take up to 4 min.`;
+                else if (elapsed > 240) label = `⏳ Over 4 min — auto-abort at 5 min if no response.`;
+                renderProgress();
+            }, 500);
+
+            // Client-side 300s hard cap — pipeline can legitimately take up to ~4 min
+            // on complex lessons (Haiku extraction ~30s + Sonnet generation ~90s +
+            // safety review ~60s + network padding). Server per-call timeout is 180s.
+            const ctrl = new AbortController();
+            const clientTimeout = setTimeout(() => ctrl.abort(new DOMException('Client timeout', 'TimeoutError')), 300000);
+
+            await wakeLock.begin();
             try {
                 const resp = await fetch('/api/lesson-pipeline', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url: entry.url, gameType })
+                    body: JSON.stringify({ url: entry.url, gameType }),
+                    signal: ctrl.signal,
                 });
+                clearTimeout(clientTimeout);
                 const data = await resp.json();
                 if (!resp.ok) throw new Error(data.error || 'Pipeline failed');
                 const field = gameType === 'common-ground' ? 'commonGround' : 'memory';
                 await updateDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`), {
                     [field]: { ...data, generatedAt: Date.now() }
                 });
-                if (statusEl) statusEl.style.display = 'none';
-                showToast(`✓ ${gameType === 'common-ground' ? 'Common Ground' : 'Scripture Scout'} generated for "${entry.name}"`);
+                clearInterval(progressTimer);
+                pct = 100;
+                label = `✓ ${gameLabel}${batchSuffix} generated`;
+                renderProgress();
+                setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 1800);
+                showToast(`✓ ${gameLabel} generated for "${entry.name}"`);
             } catch(e) {
-                if (statusEl) { statusEl.textContent = `⚠ ${e.message}`; statusEl.style.color = 'var(--neon-pink)'; }
-                showToast('Generation failed.', true);
+                clearTimeout(clientTimeout);
+                clearInterval(progressTimer);
+                const isTimeout = e.name === 'TimeoutError' || e.name === 'AbortError';
+                const msg = isTimeout
+                    ? `Request timed out after 5 min — server never responded. Check the terminal for [pipeline …] logs.`
+                    : e.message;
+                // Log to Firestore errorLog for the admin dashboard
+                try {
+                    await addDoc(collection(db, `${basePath}/errorLog`), {
+                        context: 'admin.generateLibraryGame',
+                        lessonUrl: entry.url,
+                        entryName: entry.name,
+                        gameType,
+                        errorMessage: msg,
+                        source: 'admin.html',
+                        createdAt: serverTimestamp(),
+                    });
+                } catch (logErr) { console.warn('errorLog write failed:', logErr); }
+                if (statusEl) { statusEl.innerHTML = `<span style="color:var(--neon-pink);">⚠ ${msg}</span>`; statusEl.style.display = 'block'; }
+                showToast('Generation failed — check ⚠ Recent Errors.', true);
+            } finally {
+                await wakeLock.end();
             }
         };
 
         window.generateAllLibrary = async () => {
-            const missing = libraryItems.filter(e => !e.commonGround || !e.memory);
-            if (!missing.length) { showToast('All entries already generated.'); return; }
-            showToast(`Generating ${missing.length * 2} game types — this will take a while…`);
-            for (const entry of missing) {
-                if (!entry.commonGround) await window.generateLibraryGame(entry.id, 'common-ground');
-                if (!entry.memory) await window.generateLibraryGame(entry.id, 'memory');
+            const jobs = [];
+            for (const e of libraryItems) {
+                if (!e.commonGround) jobs.push({ id: e.id, type: 'common-ground' });
+                if (!e.memory) jobs.push({ id: e.id, type: 'memory' });
+            }
+            if (!jobs.length) { showToast('All entries already generated.'); return; }
+            showToast(`Generating ${jobs.length} game types — this will take a while…`);
+            for (let i = 0; i < jobs.length; i++) {
+                await window.generateLibraryGame(jobs[i].id, jobs[i].type, { i: i + 1, total: jobs.length });
             }
         };
 
@@ -1659,6 +2301,107 @@
             await deleteDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`));
             showToast('Library entry deleted.');
         };
+
+        // ── Error log viewer ───────────────────────────────────────
+        async function loadErrorLogDocs(max = 50) {
+            const q = query(collection(db, `${basePath}/errorLog`), orderBy('createdAt', 'desc'), limit(max));
+            const snap = await getDocs(q);
+            return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
+        // Live badge count on Library tab
+        function mountErrorLogBadge() {
+            const q = query(collection(db, `${basePath}/errorLog`), orderBy('createdAt', 'desc'), limit(20));
+            onSnapshot(q, snap => {
+                const countEl = document.getElementById('lib-errors-count');
+                const btnEl = document.getElementById('lib-errors-btn');
+                if (!countEl || !btnEl) return;
+                const n = snap.size;
+                countEl.textContent = n === 0 ? '(0)' : `(${n})`;
+                btnEl.style.opacity = n === 0 ? 0.5 : 1;
+            }, err => console.warn('errorLog badge snapshot failed:', err));
+        }
+
+        let cachedErrorDocs = [];
+        window.openErrorLog = async () => {
+            const modal = document.getElementById('errorlog-modal');
+            const list = document.getElementById('errorlog-list');
+            modal.style.display = 'flex';
+            list.innerHTML = `<p style="color:var(--text-muted); font-size:0.8rem;">Loading…</p>`;
+            try {
+                const docs = await loadErrorLogDocs(20);
+                cachedErrorDocs = docs;
+                if (!docs.length) {
+                    list.innerHTML = `<p style="color:var(--text-muted); font-size:0.8rem;">No errors logged. 🎉</p>`;
+                    return;
+                }
+                list.innerHTML = docs.map((d, i) => {
+                    const when = d.createdAt?.toDate ? d.createdAt.toDate().toLocaleString() : '—';
+                    return `
+                        <div style="border:1px solid rgba(239,68,68,0.25); background:rgba(239,68,68,0.04); border-radius:10px; padding:12px 14px; margin-bottom:10px;">
+                            <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+                                <span style="font-family:'Orbitron',sans-serif; font-size:0.72rem; color:#fca5a5;">${esc(d.context || d.source || 'error')}${d.gameType ? ` · ${esc(d.gameType)}` : ''}${d.step ? ` · step=${esc(d.step)}` : ''}</span>
+                                <span style="font-size:0.7rem; color:var(--text-muted);">${esc(when)}</span>
+                            </div>
+                            <div style="color:#fecaca; font-size:0.85rem; margin-bottom:6px;">${esc(d.errorMessage || 'Unknown error')}</div>
+                            ${d.lessonUrl ? `<div style="font-size:0.7rem; color:var(--text-muted); word-break:break-all;">URL: ${esc(d.lessonUrl)}</div>` : ''}
+                            ${d.debugExcerpt ? `<details style="margin-top:8px;"><summary style="cursor:pointer; color:#fca5a5; font-size:0.72rem;">Raw response excerpt</summary><pre style="white-space:pre-wrap; word-break:break-word; background:#000; padding:8px; border-radius:6px; font-size:0.7rem; color:#ddd; margin-top:6px; max-height:260px; overflow:auto;">${esc(d.debugExcerpt)}</pre></details>` : ''}
+                            <div style="margin-top:8px;">
+                                <button class="bl-add-btn" style="padding:4px 10px; font-size:0.7rem;" onclick="window.copyErrorLogEntry(${i})">📋 Copy this error</button>
+                            </div>
+                        </div>`;
+                }).join('');
+            } catch (e) {
+                list.innerHTML = `<p style="color:var(--neon-pink);">Failed to load errorLog: ${esc(e.message)}</p>`;
+            }
+        };
+
+        function formatErrorForCopy(d) {
+            const when = d.createdAt?.toDate ? d.createdAt.toDate().toISOString() : '—';
+            const lines = [
+                `[${when}] ${d.context || d.source || 'error'}${d.gameType ? ` · ${d.gameType}` : ''}${d.step ? ` · step=${d.step}` : ''}`,
+                `Error: ${d.errorMessage || 'Unknown error'}`,
+            ];
+            if (d.lessonUrl) lines.push(`URL: ${d.lessonUrl}`);
+            if (d.entryName) lines.push(`Entry: ${d.entryName}`);
+            if (d.debugExcerpt) lines.push(`--- Raw excerpt ---\n${d.debugExcerpt}\n--- end ---`);
+            return lines.join('\n');
+        }
+
+        window.copyErrorLogEntry = async (idx) => {
+            const d = cachedErrorDocs[idx];
+            if (!d) return;
+            try {
+                await navigator.clipboard.writeText(formatErrorForCopy(d));
+                showToast('Error copied to clipboard.');
+            } catch (e) { showToast(`Copy failed: ${e.message}`, true); }
+        };
+
+        window.copyErrorLog = async () => {
+            if (!cachedErrorDocs.length) { showToast('No errors to copy.'); return; }
+            const text = cachedErrorDocs.map(formatErrorForCopy).join('\n\n═══════════════════════\n\n');
+            try {
+                await navigator.clipboard.writeText(text);
+                showToast(`Copied ${cachedErrorDocs.length} error entries to clipboard.`);
+            } catch (e) { showToast(`Copy failed: ${e.message}`, true); }
+        };
+
+        // (reuses the existing esc() helper defined earlier in this module)
+
+        window.closeErrorLog = () => {
+            document.getElementById('errorlog-modal').style.display = 'none';
+        };
+
+        window.clearErrorLog = async () => {
+            if (!confirm('Delete all logged errors? This cannot be undone.')) return;
+            const docs = await loadErrorLogDocs(500);
+            const batch = writeBatch(db);
+            docs.forEach(d => batch.delete(doc(db, `${basePath}/errorLog/${d.id}`)));
+            await batch.commit();
+            showToast(`Cleared ${docs.length} error entries.`);
+            window.openErrorLog();
+        };
+
         // ── End Lesson Library ─────────────────────────────────────
     </script>
 
