@@ -464,6 +464,11 @@
                         <button class="admin-btn" onclick="window.changeRound(-1)">&lt;&lt; Prev</button>
                         <button class="admin-btn danger" style="background: rgba(255,0,0,0.1)" onclick="window.endGame()">🏁 End Game</button>
                     </div>
+                    <div style="color:#555; font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin:10px 0 4px 0;">Bookends</div>
+                    <div class="btn-grid">
+                        <button class="admin-btn" onclick="window.showBookend('opening')" style="border-color:var(--warning-gold); color:var(--warning-gold);">📖 Opening Scripture</button>
+                        <button class="admin-btn" onclick="window.showBookend('testimony')" style="border-color:var(--warning-gold); color:var(--warning-gold);">✝ Testimony Invite</button>
+                    </div>
                 </div>
 
                 <div class="admin-box">
@@ -521,6 +526,16 @@
     <div id="alert-win">TEAM WINS ROUND!</div>
     <div id="alert-switch">SWITCH PLAY!</div>
     <div id="game-over-pop">GAME OVER</div>
+
+    <!-- Bookend modals (OPUS-024) — opening scripture + testimony invitation.
+         Shown on the Monitor when sharedState.bookend ∈ { 'opening', 'testimony' }. -->
+    <div id="bookend-modal" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.92); padding:4vh 5vw; flex-direction:column; align-items:center; justify-content:center; text-align:center; font-family:'Rajdhani',sans-serif; color:#f5f5f5;">
+        <div id="bookend-kicker" style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:1.2rem; letter-spacing:4px; margin-bottom:24px;"></div>
+        <div id="bookend-ref" style="color:var(--warning-gold); font-family:'Orbitron',sans-serif; font-size:1.6rem; margin-bottom:18px;"></div>
+        <div id="bookend-body" style="font-size:2.3rem; line-height:1.5; font-style:italic; max-width:78ch; margin-bottom:32px;"></div>
+        <div id="bookend-prompt" style="font-size:1.4rem; line-height:1.5; color:#ddd; max-width:70ch; margin-bottom:36px;"></div>
+        <button class="admin-btn" onclick="window.closeBookend()" style="padding:14px 28px; font-size:1rem;">Continue</button>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
     <script type="module">
@@ -584,9 +599,9 @@
             { level: "Round 10", question: "What is the meaning behind Passover foods?", answers: [{ text: "Bitter herbs=Sin", points: 40 }, { text: "Unleavened=Leaving", points: 30 }, { text: "Haste=Urgency", points: 20 }] }
         ];
 
-        let sharedState = { currentRound: 0, t1Score: 0, t2Score: 0, strikes: 0, revealed: [], strikeTime: 0, winTime: 0, winningTeamId: 0, activeTeam: 0, originalTeamId: 0, t1Name: "LIGHT SQUAD", t2Name: "STAR SQUAD", gameOverTime: 0, consecutiveWins: 0, lastWinnerId: 0, switchPlayTime: 0, lastWinWasFaceOff: false, monitorScale: 1.0, showScripture: true, prevState: null };
+        let sharedState = { currentRound: 0, t1Score: 0, t2Score: 0, strikes: 0, revealed: [], strikeTime: 0, winTime: 0, winningTeamId: 0, activeTeam: 0, originalTeamId: 0, t1Name: "LIGHT SQUAD", t2Name: "STAR SQUAD", gameOverTime: 0, consecutiveWins: 0, lastWinnerId: 0, switchPlayTime: 0, lastWinWasFaceOff: false, monitorScale: 1.0, showScripture: true, bookend: null, prevState: null };
         let lastStrike = 0, lastWin = 0, lastRevCount = 0, lastGameOver = 0, lastSwitch = 0, autoAdvanceTimeout = null, user = null, resetConfirming = false;
-        let currentGameRounds = null, currentActiveGameId = null;
+        let currentGameRounds = null, currentActiveGameId = null, currentGameTopic = null;
         function getGameRounds() { return currentGameRounds || gameData; }
 
         async function init() {
@@ -602,8 +617,8 @@
                 }, (error) => console.error("Firestore sync error:", error));
                 const activeGameRef = doc(db, `${basePath}/activeGame/current`);
                 onSnapshot(activeGameRef, (snap) => {
-                    if (snap.exists()) { const d = snap.data(); currentGameRounds = d.rounds?.length ? d.rounds : null; currentActiveGameId = d.gameId || null; }
-                    else { currentGameRounds = null; currentActiveGameId = null; }
+                    if (snap.exists()) { const d = snap.data(); currentGameRounds = d.rounds?.length ? d.rounds : null; currentActiveGameId = d.gameId || null; currentGameTopic = d.topic || d.name || null; }
+                    else { currentGameRounds = null; currentActiveGameId = null; currentGameTopic = null; }
                     syncUI();
                 });
             });
@@ -693,6 +708,23 @@
                 adminList.appendChild(card);
             });
 
+            // Bookend modal (OPUS-024) — Monitor only.
+            const bookendEl = document.getElementById('bookend-modal');
+            if (bookendEl) {
+                const kind = sharedState.bookend;
+                if (isMon && (kind === 'opening' || kind === 'testimony')) {
+                    const c = getBookendContent(kind);
+                    document.getElementById('bookend-kicker').textContent = c.kicker;
+                    document.getElementById('bookend-ref').textContent = c.ref;
+                    document.getElementById('bookend-ref').style.display = c.ref ? 'block' : 'none';
+                    document.getElementById('bookend-body').textContent = c.body;
+                    document.getElementById('bookend-prompt').textContent = c.prompt;
+                    bookendEl.style.display = 'flex';
+                } else {
+                    bookendEl.style.display = 'none';
+                }
+            }
+
             if (sharedState.strikeTime > lastStrike && sharedState.strikeTime !== 0) { lastStrike = sharedState.strikeTime; if(isMon) doStrikeAnim(); }
             if (sharedState.winTime > lastWin && sharedState.winTime !== 0) { lastWin = sharedState.winTime; if(isMon) doWinAnim(sharedState.winningTeamId); }
             if (sharedState.switchPlayTime > lastSwitch && sharedState.switchPlayTime !== 0) { lastSwitch = sharedState.switchPlayTime; if(isMon) doSwitchAnim(); }
@@ -704,6 +736,43 @@
             const next = sharedState.showScripture === false ? true : false;
             window.cloudUpdate({ showScripture: next });
         };
+
+        // Bookends (OPUS-024) — teacher-triggered opening scripture and testimony invitation.
+        // Pulled from active lesson data when available; falls back to a generic scripture.
+        function getBookendContent(kind) {
+            const rounds = getGameRounds() || [];
+            if (kind === 'opening') {
+                const first = rounds.find(r => r.verseText && r.verseText.trim()) || rounds[0];
+                if (first && first.verseText && first.verseText.trim()) {
+                    return {
+                        kicker: 'OPENING SCRIPTURE',
+                        ref: first.scripture || first.ref || '',
+                        body: `"${first.verseText.trim()}"`,
+                        prompt: 'As we begin, let this verse set the tone for what we learn tonight.',
+                    };
+                }
+                return {
+                    kicker: 'OPENING SCRIPTURE',
+                    ref: 'Moroni 10:32',
+                    body: '"Come unto Christ, and be perfected in him."',
+                    prompt: 'As we begin, let this verse set the tone for what we learn tonight.',
+                };
+            }
+            // testimony
+            const topic = currentGameTopic || 'tonight\'s lesson';
+            return {
+                kicker: 'TESTIMONY INVITATION',
+                ref: '',
+                body: `What stood out to you about ${topic}?`,
+                prompt: 'If the Spirit prompts you, share one sentence about what you felt or learned. No pressure — listening is worship too.',
+            };
+        }
+
+        window.showBookend = (kind) => {
+            if (kind !== 'opening' && kind !== 'testimony') return;
+            window.cloudUpdate({ bookend: kind });
+        };
+        window.closeBookend = () => { window.cloudUpdate({ bookend: null }); };
 
         window.startApp = () => { initAudio(); document.getElementById('audio-unlock').style.display = 'none'; };
 
