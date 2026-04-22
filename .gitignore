@@ -6,4 +6,5 @@ dist/
 *.log
 *.mp4
 .claude/settings.local.json
+.claude/scheduled_tasks.lock
 GeminiMCP/

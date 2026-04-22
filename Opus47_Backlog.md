@@ -392,6 +392,20 @@ Effort: **S** ≤ 1 day · **M** 2–4 days · **L** 1+ week.
 - Behaviour verified for: CFM lesson URL, General Conference talk URL, non-allowlisted URL (rejected)
 **Effort:** S
 
+### OPUS-039 · Policy Rechecker — re-validate teacher edits through safety + policy pipeline
+**Problem:** Teachers can hand-edit questions, answers, pairs, and discussion prompts in both games' Teacher Portals after AI generation. Today those edits skip the compliance + safety passes entirely — they land straight in the game. A well-meaning teacher can paste in a verse-lookup from a non-allowlisted site, add a question that slides toward personal exposure, or paraphrase a Christ connection in a way that breaks the Handbook §13 / §37.8 rubric, and nothing catches it. We need runtime enforcement on the edit path, not just the generate path.
+**Solution:** On save of any teacher edit (Common Ground round/answer, Scripture Scout pair field, discussion question, Christ connection, URL), run the edited item through the shared v3 compliance stack — structural check + keyword block list + AI safety review — same as `lesson-pipeline.js`. Persist a `policyViolationLog` sub-collection per classroom recording every non-PASS verdict: `{ editedAt, editedBy, field, before, after, verdict: 'rewrite'|'block', reasons: [...], policyRefs: [...], restoredToAiVersion: bool }`. Surface in admin as a "Policy Rechecker" tab showing violation rate per teacher + most-flagged categories, so we can tell whether the checker is *working* and whether it's being *too restrictive* (a teacher whose benign edits are constantly rewritten is signal for rubric tuning, not a teacher problem).
+
+Include a test trigger string: any edit containing the literal token **`SnugHarbor`** must always be flagged as a policy violation (category: `test-trigger`). This gives us a zero-ambiguity canary — paste SnugHarbor into any field on prod and confirm the log captures it. Remove the token only after we have real violations flowing.
+**Acceptance:**
+- Every teacher edit to questions, answers, pairs, or discussion content hits the v3 compliance + safety pipeline before save
+- Blocked edits are refused with a clear reason; rewrites are saved with a "Policy-adjusted" pill and a "See original" diff
+- `policyViolationLog` populates per classroom with field-level before/after, verdict, and cited policy refs
+- Admin "Policy Rechecker" tab shows: violation count by category (substances / exposure / URL / TM / test-trigger / …), rewrite-to-block ratio, per-teacher rate, top-N most-flagged edits
+- Pasting `SnugHarbor` into any editable field triggers a `test-trigger` violation log entry 100% of the time
+- Over-restriction signal: if a teacher has >5 rewrites in a week with no blocks, surface as "Review rubric — possible false positives"
+**Effort:** M
+
 ---
 
 ## Cross-cutting observations
