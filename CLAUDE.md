@@ -61,13 +61,14 @@ FamilyFeud/
 │   ├── *.json                  # Structured lesson data with scriptures, themes, FSY connections
 │   └── *-mindmap.md            # Mermaid mindmaps per lesson
 ├── backups/                    # Timestamped backups of CLAUDE.md and MEMORY.md
-├── "Exodus Matching Game"/     # Reference game — HTML + audio assets
-│   ├── Exodus-game.html
-│   ├── Scriptures.docx
-│   └── *.mp3
+├── archive/                    # Historical reference — NOT wired into the build
+│   ├── README.md               # Why these files are kept
+│   ├── app.js.legacy           # Original prototype (pre-Vite)
+│   ├── Exodus Matching Game/   # Reference game — HTML + audio assets (*.mp3 for OPUS-017)
+│   ├── Exodus Family Feud Master Prompt.docx
+│   └── Deployment & Safeguard Guide.docx
 ├── wled-firmware/
 │   └── kindred-leds.ino        # Custom ESP8266 sketch — USB serial LED control (replaces WLED)
-├── app.js                      # Original prototype (pre-Vite, for reference)
 ├── .env                        # Firebase + Anthropic keys (gitignored)
 ├── .env.example                # Template for .env
 └── .gitignore
@@ -346,9 +347,11 @@ Extracted lesson JSON files from Come Follow Me. Not stored in Firestore — loc
 Current: `old-testament-2026-lesson-20` (Deuteronomy 6–8; 15; 18; 29–30; 34 · May 11–17)
 
 ## Reference Assets
-- `Exodus Matching Game/Exodus-game.html` — original Scripture memory matching game (reference for Scripture Scout)
-- `Exodus Family Feud Master Prompt.docx` — Original game design document
-- `Deployment & Safeguard Guide.docx` — Deployment notes
+Archived under `archive/` (see `archive/README.md` for why they're kept):
+- `archive/Exodus Matching Game/Exodus-game.html` — original Scripture memory matching game (reference for Scripture Scout)
+- `archive/Exodus Family Feud Master Prompt.docx` — Original game design document
+- `archive/Deployment & Safeguard Guide.docx` — Deployment notes
+- `archive/app.js.legacy` — Original pre-Vite prototype
 
 ## Deployment (Vercel)
 1. Push to GitHub (`Sugo69/FamilyFeud`, branch `main`)
