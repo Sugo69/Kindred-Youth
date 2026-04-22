@@ -929,6 +929,7 @@
                     ⚠ Recent Errors <span id="lib-errors-count" style="opacity:0.7;">(…)</span>
                 </button>
                 <button class="bl-gen-btn" id="lib-gen-all-btn" onclick="window.generateAllLibrary()" style="display:none;">⚡ Generate All Missing</button>
+                <button class="bl-gen-btn" onclick="window.generateNextEightWeeks()" title="Pre-generate the next 8 upcoming Come Follow Me lessons. Skips lessons already in the library and any -thoughts URLs.">📅 Generate Next 8 Weeks</button>
             </div>
 
             <div id="library-list"></div>
@@ -1042,6 +1043,12 @@
         </div>
     </div>
 
+    <!-- ── Non-affiliation disclaimer ── -->
+    <footer style="max-width:1200px; margin:40px auto 20px; padding:20px 24px; border-top:1px solid rgba(255,255,255,0.08); color:#8a8aa0; font-size:0.72rem; line-height:1.55; text-align:center;">
+        Kindred is an independent tool created by a volunteer Sunday School teacher. Kindred is <strong>not affiliated with, endorsed by, or sponsored by</strong> The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc.
+        "Come Follow Me," "For the Strength of Youth," "Teaching in the Savior's Way," and related Church program names are trademarks of Intellectual Reserve, Inc.
+    </footer>
+
     <!-- ── Toast ── -->
     <div id="toast"></div>
 
@@ -1051,7 +1058,7 @@
             collection, doc, addDoc, setDoc, updateDoc, deleteDoc,
             query, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, arrayUnion, arrayRemove, limit
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { resolveLessonIdFromUrl, getCurrentCfmLesson } from "/src/lib/cfm-schedule.js";
+        import { resolveLessonIdFromUrl, getCurrentCfmLesson, getUpcomingCfmLessons, isGeneratableLessonUrl } from "/src/lib/cfm-schedule.js";
         import {
             APP_ID,
             createFirebaseStack,
@@ -2311,6 +2318,66 @@
             for (let i = 0; i < jobs.length; i++) {
                 await window.generateLibraryGame(jobs[i].id, jobs[i].type, { i: i + 1, total: jobs.length });
             }
+        };
+
+        // Pre-generate the next 8 weeks of Come Follow Me lessons. Creates
+        // library entries for any missing lessons, then fills in any missing
+        // games. Skips -thoughts URLs (filtered inside getUpcomingCfmLessons).
+        window.generateNextEightWeeks = async () => {
+            const lessons = getUpcomingCfmLessons(new Date(), 8);
+            if (!lessons.length) {
+                showToast('No upcoming Come Follow Me lessons to generate.');
+                return;
+            }
+            const maxCostUsd = (lessons.length * 2 * 0.15).toFixed(2); // rough — 2 games/lesson × ~$0.15/game
+            const ok = confirm(
+                `Pre-generate the next ${lessons.length} Come Follow Me lessons?\n\n` +
+                `This will create any missing library entries and generate both\n` +
+                `games (Common Ground + Scripture Scout) for each. Already-generated\n` +
+                `games are skipped.\n\n` +
+                `Estimated Claude API cost: up to ~$${maxCostUsd} (fewer if some are already generated).\n\n` +
+                `Leave this tab open while it runs.`
+            );
+            if (!ok) return;
+
+            // Step 1 — create any missing library entries (fast, no API calls).
+            let createdEntries = 0;
+            for (const lesson of lessons) {
+                const entryId = `cfm-${lesson.lessonId}`;
+                const ref = doc(db, `${basePath}/lessonLibrary/${entryId}`);
+                const existing = await getDoc(ref);
+                if (!existing.exists()) {
+                    await setDoc(ref, {
+                        name: `${lesson.dateRange} — ${lesson.title}`,
+                        url: lesson.url,
+                        lessonId: lesson.lessonId,
+                        createdAt: Date.now(),
+                    });
+                    createdEntries++;
+                }
+            }
+            if (createdEntries) showToast(`Created ${createdEntries} new library entries.`);
+
+            // Step 2 — wait a tick for the snapshot listener to populate libraryItems
+            // with the new entries, then enumerate missing games.
+            await new Promise(r => setTimeout(r, 1500));
+            const wantedIds = new Set(lessons.map(l => `cfm-${l.lessonId}`));
+            const jobs = [];
+            for (const e of libraryItems) {
+                if (!wantedIds.has(e.id)) continue;
+                if (!isGeneratableLessonUrl(e.url)) continue; // defensive
+                if (!e.commonGround) jobs.push({ id: e.id, type: 'common-ground' });
+                if (!e.memory) jobs.push({ id: e.id, type: 'memory' });
+            }
+            if (!jobs.length) {
+                showToast('All 8 upcoming lessons are already generated. Nothing to do.');
+                return;
+            }
+            showToast(`Generating ${jobs.length} game types across ${lessons.length} lessons. Keep this tab open.`);
+            for (let i = 0; i < jobs.length; i++) {
+                await window.generateLibraryGame(jobs[i].id, jobs[i].type, { i: i + 1, total: jobs.length });
+            }
+            showToast(`✓ Finished — ${lessons.length} upcoming lessons ready.`);
         };
 
         window.deleteLibraryEntry = async (entryId, name) => {

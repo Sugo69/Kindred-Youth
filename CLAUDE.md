@@ -354,7 +354,7 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 - `archive/app.js.legacy` — Original pre-Vite prototype
 
 ## Deployment (Vercel)
-1. Push to GitHub (`Sugo69/FamilyFeud`, branch `main`)
+1. Push to GitHub (`Sugo69/kindred-youth`, branch `main`)
 2. Import repo in Vercel dashboard
 3. Set all `VITE_*` env vars + `ANTHROPIC_API_KEY` (no VITE_ prefix)
 4. Deploy — Vercel auto-detects Vite MPA; all `api/*.js` files become serverless functions

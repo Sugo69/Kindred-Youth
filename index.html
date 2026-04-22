@@ -480,11 +480,758 @@
             letter-spacing: 2px;
             text-transform: uppercase;
         }
+
+        /* ── Landing page (unauthenticated marketing view) ── */
+        /* Scrollable — overrides .auth-screen's fixed inset/centering. */
+        #landing-screen.auth-screen {
+            position: static;
+            inset: auto;
+            display: none;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 50% -10%, #0d1a2e 0%, var(--bg-dark) 55%);
+            align-items: stretch;
+            justify-content: flex-start;
+            flex-direction: column;
+        }
+        #landing-screen.auth-screen.active { display: flex; }
+
+        .ls-nav {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 20px 40px;
+            border-bottom: 1px solid rgba(0,242,255,0.08);
+        }
+        .ls-nav-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.3rem;
+            color: var(--neon-cyan);
+            text-shadow: 0 0 24px rgba(0,242,255,0.5);
+            letter-spacing: 3px;
+        }
+        .ls-nav-cta {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 18px;
+            background: var(--neon-cyan);
+            color: #0a0a12;
+            border: none;
+            border-radius: 8px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            letter-spacing: 1px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .ls-nav-cta:hover { opacity: 0.9; }
+        .ls-nav-cta svg { width: 16px; height: 16px; }
+
+        .ls-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .ls-section-tight { padding: 40px 40px 20px; }
+
+        /* Hero */
+        .ls-hero { text-align: center; padding-top: 100px; padding-bottom: 60px; }
+        .ls-hero-kicker {
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 4px;
+            margin-bottom: 24px;
+            opacity: 0.8;
+        }
+        .ls-hero h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.2rem;
+            line-height: 1.1;
+            margin: 0 0 28px;
+            color: #f5f5f5;
+            letter-spacing: 1px;
+        }
+        .ls-hero h1 .accent { color: var(--neon-cyan); text-shadow: 0 0 40px rgba(0,242,255,0.4); }
+        .ls-hero-sub {
+            font-size: 1.25rem;
+            line-height: 1.5;
+            color: #bfbfcf;
+            max-width: 720px;
+            margin: 0 auto 40px;
+        }
+        .ls-hero-ctas { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+        .ls-cta-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 28px;
+            background: var(--neon-cyan);
+            color: #0a0a12;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 0 32px rgba(0,242,255,0.25);
+        }
+        .ls-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 0 48px rgba(0,242,255,0.4); }
+        .ls-cta-primary svg { width: 18px; height: 18px; }
+        .ls-cta-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 26px;
+            background: transparent;
+            color: var(--text-silver);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 1rem;
+            letter-spacing: 1px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .ls-cta-secondary:hover { border-color: var(--neon-cyan); color: var(--neon-cyan); }
+
+        .ls-hero-pilot {
+            margin-top: 36px;
+            color: var(--text-muted);
+            font-size: 0.82rem;
+            letter-spacing: 1px;
+        }
+        .ls-hero-pilot .dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            background: var(--warning-gold, #fbbf24); margin-right: 8px;
+            box-shadow: 0 0 10px rgba(251,191,36,0.6);
+        }
+
+        /* Section headings */
+        .ls-h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2rem;
+            color: #f5f5f5;
+            margin: 0 0 14px;
+            letter-spacing: 1px;
+        }
+        .ls-h2 .accent { color: var(--neon-cyan); }
+        .ls-h2-sub { color: #a0a0b5; font-size: 1.05rem; line-height: 1.5; max-width: 680px; margin: 0 0 48px; }
+
+        /* Problem row */
+        .ls-problem {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 18px;
+            margin-top: 32px;
+        }
+        .ls-problem-card {
+            padding: 22px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+        }
+        .ls-problem-card .emoji { font-size: 1.8rem; margin-bottom: 10px; display: block; }
+        .ls-problem-card h3 { color: var(--neon-pink); font-family: 'Orbitron', sans-serif; font-size: 0.9rem; margin: 0 0 8px; letter-spacing: 1px; }
+        .ls-problem-card p { color: #a0a0b5; font-size: 0.95rem; line-height: 1.5; margin: 0; }
+
+        /* Feature rows (alternating text + mockup) */
+        .ls-feature {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            align-items: center;
+            margin-bottom: 80px;
+        }
+        .ls-feature.reverse { direction: rtl; }
+        .ls-feature.reverse > * { direction: ltr; }
+
+        .ls-feature-kicker {
+            color: var(--neon-cyan);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .ls-feature h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.6rem;
+            color: #f5f5f5;
+            margin: 0 0 16px;
+        }
+        .ls-feature p { color: #a0a0b5; font-size: 1.02rem; line-height: 1.6; margin: 0 0 18px; }
+        .ls-feature ul { list-style: none; padding: 0; margin: 0; }
+        .ls-feature li {
+            color: #c0c0d0;
+            padding: 8px 0 8px 28px;
+            position: relative;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
+        .ls-feature li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            color: var(--neon-cyan);
+            font-weight: 700;
+        }
+
+        /* Mockup frames */
+        .ls-mockup {
+            background: #000;
+            border: 1px solid rgba(0,242,255,0.2);
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,242,255,0.05);
+            position: relative;
+        }
+        .ls-mockup-bar {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 10px 14px;
+            background: #0a0a18;
+            border-bottom: 1px solid rgba(0,242,255,0.1);
+        }
+        .ls-mockup-bar .dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            background: #3a3a4a;
+        }
+        .ls-mockup-bar .label {
+            margin-left: 10px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .ls-mockup-body { padding: 22px; background: #0a0a12; min-height: 280px; }
+
+        /* Common Ground mockup */
+        .cg-scripture {
+            background: rgba(0,242,255,0.05);
+            border: 1px solid rgba(0,242,255,0.25);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-style: italic;
+            font-size: 0.82rem;
+            color: #c5e9ef;
+            margin-bottom: 14px;
+            line-height: 1.4;
+        }
+        .cg-round { color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; font-size: 0.72rem; letter-spacing: 2px; margin-bottom: 6px; }
+        .cg-question { font-size: 1.05rem; color: #f5f5f5; margin-bottom: 14px; font-weight: 700; }
+        .cg-answers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .cg-ans {
+            padding: 10px 12px;
+            background: #12122a;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.85rem;
+        }
+        .cg-ans.revealed {
+            background: linear-gradient(90deg, rgba(0,242,255,0.15), rgba(0,242,255,0.05));
+            border-color: var(--neon-cyan);
+            color: #f5f5f5;
+        }
+        .cg-ans.hidden { color: #444; }
+        .cg-ans .pts { color: var(--warning-gold, #fbbf24); font-weight: 700; font-family: 'Orbitron', sans-serif; font-size: 0.8rem; }
+        .cg-scoreboard { display: flex; justify-content: space-between; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+        .cg-team { font-family: 'Orbitron', sans-serif; }
+        .cg-team .name { font-size: 0.68rem; letter-spacing: 1px; color: var(--text-muted); }
+        .cg-team .score { font-size: 1.4rem; }
+        .cg-team.t1 .score { color: var(--neon-cyan); }
+        .cg-team.t2 .score { color: var(--neon-pink); }
+
+        /* Scripture Scout mockup */
+        .ss-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+        .ss-card {
+            aspect-ratio: 0.72;
+            border-radius: 6px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.62rem;
+            text-align: center;
+            padding: 4px;
+            line-height: 1.2;
+        }
+        .ss-card.face-a { background: rgba(0,242,255,0.12); border: 1px solid var(--neon-cyan); color: #c5e9ef; }
+        .ss-card.face-b { background: rgba(124,58,237,0.15); border: 1px solid var(--neon-purple); color: #d6c8f3; }
+        .ss-card.back {
+            background: #12122a;
+            border: 1px solid var(--border);
+            color: var(--neon-cyan);
+            font-size: 1.3rem;
+            opacity: 0.7;
+        }
+        .ss-card .icon { font-size: 1.2rem; margin-bottom: 2px; }
+        .ss-card .ref { font-family: 'Orbitron', sans-serif; font-size: 0.55rem; letter-spacing: 1px; opacity: 0.9; }
+        .ss-banner {
+            margin-top: 14px;
+            padding: 10px 14px;
+            background: linear-gradient(90deg, rgba(251,191,36,0.12), rgba(251,191,36,0.02));
+            border: 1px solid rgba(251,191,36,0.4);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            color: #f5d881;
+        }
+        .ss-banner strong { color: #fff; font-family: 'Orbitron', sans-serif; letter-spacing: 1px; }
+
+        /* Library mockup */
+        .lib-input-row {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 14px;
+        }
+        .lib-input {
+            flex: 1;
+            padding: 8px 10px;
+            background: #12122a;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: #a0a0b5;
+            font-size: 0.75rem;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .lib-add-btn {
+            padding: 8px 14px;
+            background: var(--neon-cyan);
+            color: #0a0a12;
+            border: none;
+            border-radius: 6px;
+            font-family: 'Rajdhani', sans-serif;
+            font-weight: 700;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+        .lib-entry {
+            padding: 12px 14px;
+            background: #0e0e1c;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        .lib-entry-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .lib-entry-title { color: #f5f5f5; font-weight: 700; font-size: 0.88rem; }
+        .lib-pill {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 99px;
+            font-size: 0.65rem;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 1px;
+        }
+        .lib-pill.compliant { background: rgba(52,211,153,0.15); color: #34d399; border: 1px solid rgba(52,211,153,0.4); }
+        .lib-buttons { display: flex; gap: 6px; }
+        .lib-btn {
+            flex: 1;
+            padding: 6px 8px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            font-family: 'Rajdhani', sans-serif;
+        }
+        .lib-btn.done { border-color: rgba(52,211,153,0.3); color: #34d399; }
+
+        /* How-it-works steps */
+        .ls-steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+            margin-top: 32px;
+        }
+        .ls-step {
+            padding: 28px 24px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            position: relative;
+        }
+        .ls-step-num {
+            font-family: 'Orbitron', sans-serif;
+            color: var(--neon-cyan);
+            font-size: 2.2rem;
+            opacity: 0.5;
+            margin-bottom: 8px;
+        }
+        .ls-step h4 { font-family: 'Orbitron', sans-serif; color: #f5f5f5; font-size: 1rem; margin: 0 0 10px; letter-spacing: 1px; }
+        .ls-step p { color: #a0a0b5; font-size: 0.92rem; line-height: 1.5; margin: 0; }
+
+        /* Trust / compliance */
+        .ls-trust {
+            background: linear-gradient(180deg, rgba(0,242,255,0.04), transparent);
+            border-top: 1px solid rgba(0,242,255,0.08);
+            border-bottom: 1px solid rgba(0,242,255,0.08);
+        }
+        .ls-trust-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-top: 32px;
+        }
+        .ls-trust-card {
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(0,242,255,0.12);
+            border-radius: 10px;
+        }
+        .ls-trust-card h4 { color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; font-size: 0.82rem; letter-spacing: 1px; margin: 0 0 10px; }
+        .ls-trust-card p { color: #bfbfcf; font-size: 0.9rem; line-height: 1.5; margin: 0; }
+        .ls-trust-refs {
+            margin-top: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+        .ls-trust-refs span {
+            padding: 6px 12px;
+            background: rgba(0,0,0,0.4);
+            border: 1px solid rgba(0,242,255,0.2);
+            border-radius: 99px;
+            color: #a0c5cc;
+            font-size: 0.78rem;
+            letter-spacing: 1px;
+        }
+
+        /* Final CTA */
+        .ls-final { text-align: center; padding-bottom: 100px; }
+        .ls-final h2 { font-family: 'Orbitron', sans-serif; font-size: 2.2rem; color: #f5f5f5; margin: 0 0 18px; }
+        .ls-final p { color: #a0a0b5; font-size: 1.05rem; margin: 0 0 36px; }
+
+        .ls-footer {
+            padding: 30px 40px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            border-top: 1px solid var(--border);
+            line-height: 1.6;
+        }
+        .ls-footer a { color: var(--neon-cyan); text-decoration: none; }
+        .ls-footer .ls-disclaimer {
+            max-width: 780px;
+            margin: 14px auto 0;
+            color: #8a8aa0;
+            font-size: 0.72rem;
+            line-height: 1.55;
+        }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            .ls-nav { padding: 16px 20px; }
+            .ls-section { padding: 60px 20px; }
+            .ls-hero { padding-top: 60px; }
+            .ls-hero h1 { font-size: 2.1rem; }
+            .ls-hero-sub { font-size: 1.05rem; }
+            .ls-feature { grid-template-columns: 1fr; gap: 30px; margin-bottom: 60px; }
+            .ls-feature.reverse { direction: ltr; }
+            .ls-steps { grid-template-columns: 1fr; }
+        }
+
     </style>
 </head>
 <body>
 
-    <!-- ── Sign-in screen ── -->
+    <!-- ── Landing page (default unauthenticated view) ── -->
+    <div id="landing-screen" class="auth-screen">
+        <nav class="ls-nav">
+            <div class="ls-nav-logo">KINDRED</div>
+            <button class="ls-nav-cta" onclick="window.signInGoogle()">
+                <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                </svg>
+                Sign in
+            </button>
+        </nav>
+
+        <!-- Hero -->
+        <section class="ls-section ls-hero">
+            <div class="ls-hero-kicker">YOUTH LEARNING TOGETHER</div>
+            <h1>Sunday School <span class="accent">that teens actually lean into.</span></h1>
+            <p class="ls-hero-sub">
+                Kindred turns a Come Follow Me lesson URL into a classroom-ready,
+                scripture-anchored game in under a minute. No slides. No printouts.
+                No dead air between you and fifteen 14-year-olds on their phones.
+            </p>
+            <div class="ls-hero-ctas">
+                <button class="ls-cta-primary" onclick="window.signInGoogle()">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#0a0a12"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#0a0a12"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#0a0a12"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#0a0a12"/>
+                    </svg>
+                    Request Early Access
+                </button>
+                <a href="#how-it-works" class="ls-cta-secondary">See how it works ↓</a>
+            </div>
+            <div class="ls-hero-pilot">
+                <span class="dot"></span>INVITE-ONLY PILOT · FREE WHILE WE VALIDATE COSTS &amp; FINISH LEGAL REVIEW
+            </div>
+        </section>
+
+        <!-- Problem -->
+        <section class="ls-section ls-section-tight">
+            <h2 class="ls-h2">You've got <span class="accent">45 minutes</span> and a room of teenagers.</h2>
+            <p class="ls-h2-sub">
+                Sunday School teachers aren't paid curriculum designers. They're
+                volunteers with a calling and a Saturday night to prep. Kindred
+                handles the mechanics so you can focus on the Spirit.
+            </p>
+            <div class="ls-problem">
+                <div class="ls-problem-card">
+                    <span class="emoji">📖</span>
+                    <h3>LESSON PREP OVERLOAD</h3>
+                    <p>Reading the manual, finding verses, building discussion questions, pulling a video — every week, from scratch.</p>
+                </div>
+                <div class="ls-problem-card">
+                    <span class="emoji">😶</span>
+                    <h3>SILENT TEENS</h3>
+                    <p>"Who wants to share?" No hands. Teens don't want to sound uncool or wrong. Most lessons reward the two loud kids.</p>
+                </div>
+                <div class="ls-problem-card">
+                    <span class="emoji">📺</span>
+                    <h3>SLIDE FATIGUE</h3>
+                    <p>PowerPoint doesn't work with teens raised on TikTok. You need something that looks like the media they already consume.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature 1: Common Ground -->
+        <section class="ls-section">
+            <div class="ls-feature">
+                <div>
+                    <div class="ls-feature-kicker">GAME 1 · COMMON GROUND</div>
+                    <h3>Survey-style game, scripture-anchored.</h3>
+                    <p>
+                        Two teams. Four answers behind each card. Teens race to
+                        reveal what their peers said — then you pull the verse
+                        up on the Monitor and connect the answer back to Christ.
+                    </p>
+                    <ul>
+                        <li>Monitor view on the classroom TV; admin view on your phone</li>
+                        <li>Strikes, steals, switch-play — all the rhythm of the TV format</li>
+                        <li>Every scripture-based round shows the source verse live on screen</li>
+                        <li>Opening scripture + testimony invitation bookends every session</li>
+                    </ul>
+                </div>
+                <div class="ls-mockup">
+                    <div class="ls-mockup-bar">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="label">MONITOR · COMMON GROUND</span>
+                    </div>
+                    <div class="ls-mockup-body">
+                        <div class="cg-scripture">"Thou shalt love the Lord thy God with all thine heart, and with all thy soul, and with all thy might." — Deut. 6:5</div>
+                        <div class="cg-round">ROUND 3 · SCRIPTURE APPLICATION</div>
+                        <div class="cg-question">Name a way you show God comes first.</div>
+                        <div class="cg-answers">
+                            <div class="cg-ans revealed"><span>Keep the Sabbath</span><span class="pts">40</span></div>
+                            <div class="cg-ans revealed"><span>Pay tithing</span><span class="pts">30</span></div>
+                            <div class="cg-ans hidden"><span>— — —</span><span class="pts">20</span></div>
+                            <div class="cg-ans hidden"><span>— — —</span><span class="pts">10</span></div>
+                        </div>
+                        <div class="cg-scoreboard">
+                            <div class="cg-team t1"><div class="name">LIGHT SQUAD</div><div class="score">70</div></div>
+                            <div class="cg-team t2"><div class="name">STAR SQUAD</div><div class="score">40</div></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 2: Scripture Scout -->
+            <div class="ls-feature reverse">
+                <div>
+                    <div class="ls-feature-kicker">GAME 2 · SCRIPTURE SCOUT</div>
+                    <h3>Memory matching with scripture depth.</h3>
+                    <p>
+                        Match a scripture reference to its key phrase. When a
+                        pair clicks, a full-screen card unfolds: the verse, the
+                        scene, the discussion question, and a Christ connection
+                        your class can read from the back row.
+                    </p>
+                    <ul>
+                        <li>QR code on every match — students can open the verse on their phone</li>
+                        <li>Friendly sabotage shuffles unmatched cards to keep it competitive</li>
+                        <li>Default Exodus pack ships immediately — no setup required</li>
+                        <li>Any Come Follow Me URL becomes a custom pair set</li>
+                    </ul>
+                </div>
+                <div class="ls-mockup">
+                    <div class="ls-mockup-bar">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="label">MONITOR · SCRIPTURE SCOUT</span>
+                    </div>
+                    <div class="ls-mockup-body">
+                        <div class="ss-grid">
+                            <div class="ss-card face-a"><div class="icon">🔥</div><div class="ref">EX 3:2</div></div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card face-b"><div class="icon">🔥</div><div>Burning Bush</div></div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card face-a"><div class="icon">🐑</div><div class="ref">EX 12:3</div></div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card face-b"><div class="icon">💧</div><div>Red Sea Parted</div></div>
+                            <div class="ss-card back">?</div>
+                            <div class="ss-card face-a"><div class="icon">💧</div><div class="ref">EX 14:21</div></div>
+                        </div>
+                        <div class="ss-banner">
+                            <strong>MATCH ✓</strong> &nbsp;“And the angel of the Lord appeared unto him in a flame of fire out of the midst of a bush…”
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Feature 3: Lesson Library -->
+            <div class="ls-feature">
+                <div>
+                    <div class="ls-feature-kicker">LESSON LIBRARY · AI-ASSISTED</div>
+                    <h3>Paste a URL. Get a game.</h3>
+                    <p>
+                        Drop any churchofjesuschrist.org lesson link into your
+                        library. Kindred fetches the verses, the video links,
+                        and the discussion prompts — then writes you question
+                        sets for both games. You review, tweak, and publish.
+                    </p>
+                    <ul>
+                        <li>Auto-detects this week's Come Follow Me lesson</li>
+                        <li>Generates scripture-based + scripture-application + survey rounds</li>
+                        <li>Every output is tagged Compliant / Rewritten / Needs Review</li>
+                        <li>One lesson → both games, one click each</li>
+                    </ul>
+                </div>
+                <div class="ls-mockup">
+                    <div class="ls-mockup-bar">
+                        <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+                        <span class="label">LESSON LIBRARY</span>
+                    </div>
+                    <div class="ls-mockup-body">
+                        <div class="lib-input-row">
+                            <div class="lib-input">churchofjesuschrist.org/study/manual/come-follow-me-2026…</div>
+                            <button class="lib-add-btn">ADD</button>
+                        </div>
+                        <div class="lib-entry">
+                            <div class="lib-entry-top">
+                                <div class="lib-entry-title">Deuteronomy 6–8 · Love God</div>
+                                <span class="lib-pill compliant">✓ COMPLIANT</span>
+                            </div>
+                            <div class="lib-buttons">
+                                <button class="lib-btn done">🔗 Common Ground ✓</button>
+                                <button class="lib-btn done">🧩 Scripture Scout ✓</button>
+                            </div>
+                        </div>
+                        <div class="lib-entry">
+                            <div class="lib-entry-top">
+                                <div class="lib-entry-title">Exodus 12 · The Passover</div>
+                                <span class="lib-pill compliant">✓ COMPLIANT</span>
+                            </div>
+                            <div class="lib-buttons">
+                                <button class="lib-btn done">🔗 Common Ground ✓</button>
+                                <button class="lib-btn done">🧩 Scripture Scout ✓</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How it works -->
+        <section class="ls-section" id="how-it-works">
+            <h2 class="ls-h2">Three steps to <span class="accent">a classroom-ready game.</span></h2>
+            <p class="ls-h2-sub">Set up once. Every Sunday, it takes about a minute.</p>
+            <div class="ls-steps">
+                <div class="ls-step">
+                    <div class="ls-step-num">01</div>
+                    <h4>SIGN IN</h4>
+                    <p>Sign in with Google. Start a classroom or join with an invite link from a co-teacher. Once approved, your classroom is yours.</p>
+                </div>
+                <div class="ls-step">
+                    <div class="ls-step-num">02</div>
+                    <h4>ADD A LESSON</h4>
+                    <p>Paste this week's Come Follow Me URL (or click ⭐ Fill This Week). Kindred pulls the verses and generates both games.</p>
+                </div>
+                <div class="ls-step">
+                    <div class="ls-step-num">03</div>
+                    <h4>HIT PLAY</h4>
+                    <p>Cast the Monitor view to the classroom TV. Keep the admin panel on your phone. Tap to reveal, tap to move on.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Trust / compliance -->
+        <section class="ls-section ls-trust">
+            <h2 class="ls-h2" style="text-align:center;">Content you can <span class="accent">put on the classroom TV</span> with confidence.</h2>
+            <p class="ls-h2-sub" style="text-align:center; margin-left:auto; margin-right:auto;">
+                Every game runs through two review layers before it reaches a teen. The output ships with a compliance report you can audit.
+            </p>
+            <div class="ls-trust-grid">
+                <div class="ls-trust-card">
+                    <h4>STRUCTURAL RULES</h4>
+                    <p>A keyword filter (substances, sexual content, self-harm, violence) runs on every generated string before the game can render.</p>
+                </div>
+                <div class="ls-trust-card">
+                    <h4>AI SAFETY REVIEW</h4>
+                    <p>A second pass tags each item pass / rewrite / block — using Handbook §13, §37.8, and For the Strength of Youth as its rubric.</p>
+                </div>
+                <div class="ls-trust-card">
+                    <h4>POLICY-CITED OUTPUT</h4>
+                    <p>Every generated lesson ships with a compliance report naming the policies it was checked against — not a black box.</p>
+                </div>
+                <div class="ls-trust-card">
+                    <h4>NO STUDENT PII</h4>
+                    <p>Players use anonymous auth. Only teachers sign in. Team names, not student names, appear on the classroom display.</p>
+                </div>
+            </div>
+            <div class="ls-trust-refs">
+                <span>General Handbook §13</span>
+                <span>General Handbook §37.8</span>
+                <span>Teaching in the Savior's Way</span>
+                <span>For the Strength of Youth</span>
+            </div>
+        </section>
+
+        <!-- Final CTA -->
+        <section class="ls-section ls-final">
+            <h2>Bring Kindred to your classroom.</h2>
+            <p>
+                We're in an invite-only pilot while we validate AI costs and<br>
+                complete legal review for broader distribution. Request access — we'll be in touch.
+            </p>
+            <div class="ls-hero-ctas">
+                <button class="ls-cta-primary" onclick="window.signInGoogle()">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#0a0a12"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#0a0a12"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#0a0a12"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#0a0a12"/>
+                    </svg>
+                    Sign in with Google to Request Access
+                </button>
+            </div>
+            <div id="landing-signin-error" class="auth-error" style="text-align:center; margin-top:18px;"></div>
+        </section>
+
+        <footer class="ls-footer">
+            Kindred · Built for volunteer Sunday School teachers · Questions? <a href="mailto:lewiswf@gmail.com">lewiswf@gmail.com</a>
+            <div class="ls-disclaimer">
+                Kindred is an independent tool created by a volunteer Sunday School teacher. Kindred is <strong>not affiliated with, endorsed by, or sponsored by</strong> The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc.
+                "Come Follow Me," "For the Strength of Youth," "Teaching in the Savior's Way," and related Church program names are trademarks of Intellectual Reserve, Inc.
+            </div>
+        </footer>
+    </div>
+
+    <!-- ── Sign-in screen (error fallback) ── -->
     <div id="signin-screen" class="auth-screen" style="display:none;">
         <div class="auth-card">
             <div class="auth-logo">Kindred</div>
@@ -639,7 +1386,10 @@
         <!-- Classroom details live in the ⚙ Profile modal (top-right). -->
         <div id="classroom-section" style="display:none;"><div id="classroom-card-host"></div></div>
 
-        <div class="portal-footer">Kindred · LDS Youth Platform · Powered by Firebase + Claude</div>
+        <div class="portal-footer">
+            Kindred · Powered by Firebase + Claude<br>
+            <span style="opacity:0.7; font-size:0.72rem;">Not affiliated with or endorsed by The Church of Jesus Christ of Latter-day Saints. Come Follow Me and For the Strength of Youth are trademarks of Intellectual Reserve, Inc.</span>
+        </div>
     </div>
 
     <!-- ── Profile modal ── -->
@@ -750,7 +1500,7 @@
         onAuthStateChanged(auth, async user => {
             currentUser = user;
             if (!user) {
-                showScreen('signin');
+                showScreen('landing');
                 return;
             }
 
@@ -998,7 +1748,7 @@
             }, 'req-j-submit');
         };
 
-        const AUTH_SCREENS = ['signin', 'request', 'pending', 'denied'];
+        const AUTH_SCREENS = ['landing', 'signin', 'request', 'pending', 'denied'];
 
         function showScreen(name) {
             AUTH_SCREENS.forEach(s => {
@@ -1310,10 +2060,13 @@
         };
 
         window.signInGoogle = async () => {
-            const errEl = document.getElementById('signin-error');
+            // Mirror errors on the landing page too — landing CTAs call this
+            // directly without routing through the signin screen first.
+            const errEls = ['signin-error', 'landing-signin-error']
+                .map(id => document.getElementById(id)).filter(Boolean);
             const btn = document.getElementById('google-signin-btn');
-            errEl.style.display = 'none';
-            btn.disabled = true;
+            errEls.forEach(el => { el.style.display = 'none'; });
+            if (btn) btn.disabled = true;
             try {
                 await signInWithGoogle(auth, provider);
             } catch (e) {
@@ -1322,9 +2075,8 @@
                 if (e.code === 'auth/operation-not-allowed') {
                     console.warn('Kindred: Google Sign-In is not enabled in Firebase Console. Enable it under Authentication → Sign-in method → Google.');
                 }
-                errEl.textContent = e.message;
-                errEl.style.display = 'block';
-                btn.disabled = false;
+                errEls.forEach(el => { el.textContent = e.message; el.style.display = 'block'; });
+                if (btn) btn.disabled = false;
             }
         };
 

@@ -96,6 +96,34 @@ export function getNextCfmLesson(date = new Date()) {
   return toResolvedLesson(next);
 }
 
+// Returns `count` upcoming lessons starting from `date`'s current lesson
+// (inclusive). Stops at the end of the manual. Used by admin's "Generate
+// next N weeks" batch button — only returns lessons whose URLs are safe
+// to feed to the pipeline.
+export function getUpcomingCfmLessons(date = new Date(), count = 8) {
+  const current = getCfmLessonForDate(date);
+  const startIdx = CFM_2026_OT.findIndex(l => l.slug === current.slug);
+  if (startIdx < 0) return [];
+  return CFM_2026_OT
+    .slice(startIdx, startIdx + count)
+    .map(toResolvedLesson)
+    .filter(l => isGeneratableLessonUrl(l.url));
+}
+
+// Lessons with `-thoughts?lang=eng` URLs are reflection/devotional pages,
+// not teaching manuals — the pipeline's prompt rubric expects teaching
+// content, so skip them in any batch generation path.
+export function isGeneratableLessonUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  try {
+    const u = new URL(url);
+    if (/-thoughts$/i.test(u.pathname)) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function resolveLessonIdFromUrl(url) {
   try {
     const u = new URL(url);
