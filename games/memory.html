@@ -69,6 +69,10 @@
             return u.getIdToken();
         };
 
+        window.__kindredApiBase = (location.hostname === 'kindred-youth.org' || location.hostname === 'www.kindred-youth.org')
+            ? 'https://api.kindred-youth.org'
+            : '';
+
         // Load lesson library entries that have memory content
         window.loadMemoryLibrary = async function() {
             try {
@@ -353,7 +357,7 @@
                 try {
                     const token = await window.__kindredGetIdToken?.();
                     if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
-                    const resp = await fetch('/api/lesson-pipeline', {
+                    const resp = await fetch(`${window.__kindredApiBase}/api/lesson-pipeline`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',

@@ -1072,6 +1072,10 @@
 
         const { auth, db, provider } = createFirebaseStack();
 
+        const API_BASE = (location.hostname === 'kindred-youth.org' || location.hostname === 'www.kindred-youth.org')
+            ? 'https://api.kindred-youth.org'
+            : '';
+
         const basePath = `artifacts/${APP_ID}/public/data`;
         const teachersCol = collection(db, `${basePath}/teachers`);
         const classroomsCol = collection(db, `${basePath}/classrooms`);
@@ -1857,7 +1861,7 @@
             try {
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Please sign in before generating.');
-                const res = await fetch('/api/generate', {
+                const res = await fetch(`${API_BASE}/api/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -2173,7 +2177,7 @@
             autoTitleLastUrl = url;
             showLibStatus(statusEl, 'Fetching title…', false);
             try {
-                const resp = await fetch('/api/fetch-content', {
+                const resp = await fetch(`${API_BASE}/api/fetch-content`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ url }),
@@ -2272,7 +2276,7 @@
             try {
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Please sign in before generating.');
-                const resp = await fetch('/api/lesson-pipeline', {
+                const resp = await fetch(`${API_BASE}/api/lesson-pipeline`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

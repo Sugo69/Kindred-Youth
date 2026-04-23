@@ -570,6 +570,9 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const appId = 'exodus-feud-final-v10';
+        const API_BASE = (location.hostname === 'kindred-youth.org' || location.hostname === 'www.kindred-youth.org')
+            ? 'https://api.kindred-youth.org'
+            : '';
 
         // Classroom-scoped path — falls back to global when no ?room= param (dev/solo/monitor)
         const classroomId = new URLSearchParams(location.search).get('room');
@@ -1124,7 +1127,7 @@
             try {
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
-                const res = await fetch('/api/generate', {
+                const res = await fetch(`${API_BASE}/api/generate`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -1296,13 +1299,13 @@
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
                 const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
-                const cr = await fetch('/api/fetch-content', { method: 'POST', headers: authHeaders, body: JSON.stringify({ url }) });
+                const cr = await fetch(`${API_BASE}/api/fetch-content`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ url }) });
                 const cd = await cr.json();
                 if (!cr.ok) throw new Error(cd.error || 'Failed to fetch page');
                 if (!cd.text || cd.text.length < 80) throw new Error('Page had too little readable text — try a different URL.');
                 showTpStatus('Generating questions with Claude… (15–20 seconds)', 'loading');
                 const questionType = document.getElementById('tp-q-type')?.value || 'scripture_based';
-                const qr = await fetch('/api/generate-questions', { method: 'POST', headers: authHeaders, body: JSON.stringify({ text: cd.text, sourceUrl: url, questionType }) });
+                const qr = await fetch(`${API_BASE}/api/generate-questions`, { method: 'POST', headers: authHeaders, body: JSON.stringify({ text: cd.text, sourceUrl: url, questionType }) });
                 const qd = await qr.json();
                 if (!qr.ok) throw new Error(qd.error || 'AI generation failed');
                 window.editorGame.rounds = qd.rounds || [];
@@ -1334,7 +1337,7 @@
                 const lessonType = document.getElementById('tp-lesson-type')?.value || 'mixed';
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
-                const resp = await fetch('/api/lesson-pipeline', {
+                const resp = await fetch(`${API_BASE}/api/lesson-pipeline`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
