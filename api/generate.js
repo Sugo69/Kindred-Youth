@@ -1,8 +1,12 @@
 import { applyCors } from './_lib/origin.js';
+import { requireAuth } from './_lib/auth.js';
 
 export default async function handler(req, res) {
     if (!applyCors(req, res)) return;
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+    const claims = await requireAuth(req, res, process.env.VITE_FIREBASE_PROJECT_ID);
+    if (!claims) return;
 
     const { items, batchId } = req.body;
     if (!items?.length || !batchId) return res.status(400).json({ error: 'items and batchId required' });

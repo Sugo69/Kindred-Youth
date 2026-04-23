@@ -1159,9 +1159,14 @@
             document.getElementById('ai-output-section').style.display = 'none';
             document.getElementById('ai-idle-close').style.display = 'none';
             try {
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
                 const res = await fetch('/api/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
                     body: JSON.stringify({ items, batchId })
                 });
                 const ct = res.headers.get('content-type') || '';
@@ -1325,13 +1330,16 @@
             btn.disabled = true;
             showTpStatus('Fetching page content…', 'loading');
             try {
-                const cr = await fetch('/api/fetch-content', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
+                const authHeaders = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+                const cr = await fetch('/api/fetch-content', { method: 'POST', headers: authHeaders, body: JSON.stringify({ url }) });
                 const cd = await cr.json();
                 if (!cr.ok) throw new Error(cd.error || 'Failed to fetch page');
                 if (!cd.text || cd.text.length < 80) throw new Error('Page had too little readable text — try a different URL.');
                 showTpStatus('Generating questions with Claude… (15–20 seconds)', 'loading');
                 const questionType = document.getElementById('tp-q-type')?.value || 'scripture_based';
-                const qr = await fetch('/api/generate-questions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: cd.text, sourceUrl: url, questionType }) });
+                const qr = await fetch('/api/generate-questions', { method: 'POST', headers: authHeaders, body: JSON.stringify({ text: cd.text, sourceUrl: url, questionType }) });
                 const qd = await qr.json();
                 if (!qr.ok) throw new Error(qd.error || 'AI generation failed');
                 window.editorGame.rounds = qd.rounds || [];
@@ -1361,9 +1369,14 @@
             showTpStatus('Running lesson pipeline… extracting scriptures, applying Youth Leader principles, generating questions (30–45 seconds)', 'loading');
             try {
                 const lessonType = document.getElementById('tp-lesson-type')?.value || 'mixed';
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
                 const resp = await fetch('/api/lesson-pipeline', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
                     body: JSON.stringify({ url, gameType: 'common-ground', questionType: lessonType })
                 });
                 const data = await resp.json();

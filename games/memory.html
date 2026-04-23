@@ -59,6 +59,16 @@
             if (!auth.currentUser) return signInAnonymously(auth);
         }).catch(e => console.warn('Anon auth failed:', e));
 
+        // Bridge for the Babel/React tree so it can attach an Authorization
+        // header when calling /api/lesson-pipeline. Returns null if the user is
+        // anonymous or signed out — caller surfaces a "please sign in" error.
+        window.__kindredGetIdToken = async function() {
+            await _authReady;
+            const u = auth.currentUser;
+            if (!u || u.isAnonymous) return null;
+            return u.getIdToken();
+        };
+
         // Load lesson library entries that have memory content
         window.loadMemoryLibrary = async function() {
             try {
@@ -341,9 +351,14 @@
                     setProgress(Math.min(pct, 89));
                 }, 500);
                 try {
+                    const token = await window.__kindredGetIdToken?.();
+                    if (!token) throw new Error('Please sign in via the Kindred Hub before generating.');
                     const resp = await fetch('/api/lesson-pipeline', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`,
+                        },
                         body: JSON.stringify({ url: lessonUrl, gameType: 'memory' })
                     });
                     const data = await resp.json();

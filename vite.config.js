@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import { resolve } from 'path'
 import { runLessonPipeline } from './api/_lib/pipeline.js'
 import { applyCors } from './api/_lib/origin.js'
+import { requireAuth } from './api/_lib/auth.js'
 
 function extractPageTitle(html) {
     const og = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)
@@ -143,7 +144,7 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                         })
                     })
 
-                    server.middlewares.use('/api/generate-questions', (req, res) => {
+                    server.middlewares.use('/api/generate-questions', async (req, res) => {
                         if (!applyCors(req, res)) return
                         if (req.method !== 'POST') {
                             res.statusCode = 405
@@ -151,6 +152,8 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                             res.end(JSON.stringify({ error: 'Method not allowed' }))
                             return
                         }
+                        const claims = await requireAuth(req, res, env.VITE_FIREBASE_PROJECT_ID)
+                        if (!claims) return
                         let body = ''
                         req.on('data', chunk => body += chunk)
                         req.on('end', async () => {
@@ -191,9 +194,11 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                         })
                     })
 
-                    server.middlewares.use('/api/lesson-pipeline', (req, res) => {
+                    server.middlewares.use('/api/lesson-pipeline', async (req, res) => {
                         if (!applyCors(req, res)) return
                         if (req.method !== 'POST') { res.statusCode = 405; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({error:'Method not allowed'})); return }
+                        const claims = await requireAuth(req, res, env.VITE_FIREBASE_PROJECT_ID)
+                        if (!claims) return
                         let body = ''
                         req.on('data', chunk => body += chunk)
                         req.on('end', async () => {
@@ -242,7 +247,7 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                         })
                     })
 
-                    server.middlewares.use('/api/generate', (req, res) => {
+                    server.middlewares.use('/api/generate', async (req, res) => {
                         if (!applyCors(req, res)) return
                         if (req.method !== 'POST') {
                             res.statusCode = 405
@@ -250,6 +255,8 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                             res.end(JSON.stringify({ error: 'Method not allowed' }))
                             return
                         }
+                        const claims = await requireAuth(req, res, env.VITE_FIREBASE_PROJECT_ID)
+                        if (!claims) return
                         let body = ''
                         req.on('data', chunk => body += chunk)
                         req.on('end', async () => {

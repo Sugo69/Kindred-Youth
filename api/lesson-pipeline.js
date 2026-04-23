@@ -8,10 +8,14 @@
 
 import { runLessonPipeline } from './_lib/pipeline.js'
 import { applyCors } from './_lib/origin.js'
+import { requireAuth } from './_lib/auth.js'
 
 export default async function handler(req, res) {
     if (!applyCors(req, res)) return
     if (req.method !== 'POST') { res.status(405).json({ error: 'Method not allowed' }); return }
+
+    const claims = await requireAuth(req, res, process.env.VITE_FIREBASE_PROJECT_ID)
+    if (!claims) return
 
     let raw = ''
     await new Promise(resolve => { req.on('data', c => raw += c); req.on('end', resolve) })

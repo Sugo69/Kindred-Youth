@@ -1855,9 +1855,14 @@
             document.getElementById('ai-output-section').style.display = 'none';
             document.getElementById('ai-idle-close').style.display = 'none';
             try {
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error('Please sign in before generating.');
                 const res = await fetch('/api/generate', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
                     body: JSON.stringify({ items, batchId })
                 });
                 const ct = res.headers.get('content-type') || '';
@@ -2265,9 +2270,14 @@
 
             await wakeLock.begin();
             try {
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error('Please sign in before generating.');
                 const resp = await fetch('/api/lesson-pipeline', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
                     body: JSON.stringify({ url: entry.url, gameType }),
                     signal: ctrl.signal,
                 });
