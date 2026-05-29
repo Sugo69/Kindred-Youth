@@ -541,11 +541,16 @@
         .ls-nav-cta:hover { opacity: 0.9; }
         .ls-nav-cta svg { width: 16px; height: 16px; }
 
-        .ls-section { padding: 80px 40px; max-width: 1200px; margin: 0 auto; width: 100%; }
-        .ls-section-tight { padding: 40px 40px 20px; }
+        .ls-section { padding: 52px 40px; max-width: 1200px; margin: 0 auto; width: 100%; }
+        .ls-section-tight { padding: 32px 40px 16px; }
+
+        /* Audience badges */
+        .ls-audience-row { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; align-items:center; margin-top:22px; }
+        .ls-audience-row > .ls-audience-label { color:var(--text-muted); font-size:0.78rem; letter-spacing:1px; font-family:'Orbitron',sans-serif; }
+        .ls-audience-badge { padding:4px 13px; background:rgba(0,242,255,0.07); border:1px solid rgba(0,242,255,0.2); border-radius:99px; color:#a0c5cc; font-size:0.72rem; font-family:'Orbitron',sans-serif; letter-spacing:1px; }
 
         /* Hero */
-        .ls-hero { text-align: center; padding-top: 100px; padding-bottom: 60px; }
+        .ls-hero { text-align: center; padding-top: 64px; padding-bottom: 44px; }
         .ls-hero-kicker {
             color: var(--neon-cyan);
             font-family: 'Orbitron', sans-serif;
@@ -629,7 +634,7 @@
             letter-spacing: 1px;
         }
         .ls-h2 .accent { color: var(--neon-cyan); }
-        .ls-h2-sub { color: #a0a0b5; font-size: 1.05rem; line-height: 1.5; max-width: 680px; margin: 0 0 48px; }
+        .ls-h2-sub { color: #a0a0b5; font-size: 1.05rem; line-height: 1.5; max-width: 680px; margin: 0 0 36px; }
 
         /* Problem row */
         .ls-problem {
@@ -652,9 +657,9 @@
         .ls-feature {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 60px;
+            gap: 52px;
             align-items: center;
-            margin-bottom: 80px;
+            margin-bottom: 52px;
         }
         .ls-feature.reverse { direction: rtl; }
         .ls-feature.reverse > * { direction: ltr; }
@@ -760,7 +765,7 @@
         .cg-team.t1 .score { color: var(--neon-cyan); }
         .cg-team.t2 .score { color: var(--neon-pink); }
 
-        /* Scripture Scout mockup */
+        /* Scripture Match mockup */
         .ss-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
         .ss-card {
             aspect-ratio: 0.72;
@@ -940,11 +945,11 @@
         /* Responsive */
         @media (max-width: 800px) {
             .ls-nav { padding: 16px 20px; }
-            .ls-section { padding: 60px 20px; }
-            .ls-hero { padding-top: 60px; }
+            .ls-section { padding: 40px 20px; }
+            .ls-hero { padding-top: 44px; }
             .ls-hero h1 { font-size: 2.1rem; }
             .ls-hero-sub { font-size: 1.05rem; }
-            .ls-feature { grid-template-columns: 1fr; gap: 30px; margin-bottom: 60px; }
+            .ls-feature { grid-template-columns: 1fr; gap: 28px; margin-bottom: 40px; }
             .ls-feature.reverse { direction: ltr; }
             .ls-steps { grid-template-columns: 1fr; }
         }
@@ -970,12 +975,11 @@
 
         <!-- Hero -->
         <section class="ls-section ls-hero">
-            <div class="ls-hero-kicker">YOUTH LEARNING TOGETHER</div>
-            <h1>Sunday School <span class="accent">that teens actually lean into.</span></h1>
+            <div class="ls-hero-kicker">SCRIPTURE-ANCHORED GAMES FOR YOUTH LEADERS</div>
+            <h1>Turn any lesson into a <span class="accent">classroom-ready game.</span></h1>
             <p class="ls-hero-sub">
-                Kindred turns a Come Follow Me lesson URL into a classroom-ready,
-                scripture-anchored game in under a minute. No slides. No printouts.
-                No dead air between you and fifteen 14-year-olds on their phones.
+                Kindred helps volunteer youth leaders run engaging, scripture-focused games
+                in under a minute of prep — no slides, no printouts, no planning from scratch every week.
             </p>
             <div class="ls-hero-ctas">
                 <button class="ls-cta-primary" onclick="window.signInGoogle()">
@@ -989,34 +993,41 @@
                 </button>
                 <a href="#how-it-works" class="ls-cta-secondary">See how it works ↓</a>
             </div>
-            <div class="ls-hero-pilot">
+            <div class="ls-audience-row">
+                <span class="ls-audience-label">Built for</span>
+                <span class="ls-audience-badge">Sunday School</span>
+                <span class="ls-audience-badge">Seminary</span>
+                <span class="ls-audience-badge">Institute</span>
+                <span class="ls-audience-badge">Youth Programs</span>
+                <span class="ls-audience-badge">Young Adults</span>
+            </div>
+            <div class="ls-hero-pilot" style="margin-top:18px;">
                 <span class="dot"></span>INVITE-ONLY PILOT · FREE WHILE WE VALIDATE COSTS &amp; FINISH LEGAL REVIEW
             </div>
         </section>
 
         <!-- Problem -->
         <section class="ls-section ls-section-tight">
-            <h2 class="ls-h2">You've got <span class="accent">45 minutes</span> and a room of teenagers.</h2>
+            <h2 class="ls-h2">Volunteers shouldn't need hours of prep <span class="accent">to run a great class.</span></h2>
             <p class="ls-h2-sub">
-                Sunday School teachers aren't paid curriculum designers. They're
-                volunteers with a calling and a Saturday night to prep. Kindred
-                handles the mechanics so you can focus on the Spirit.
+                Youth leaders in Sunday School, Seminary, and Institute give their time — not their weekdays.
+                Kindred handles the lesson mechanics so you can focus on the people in the room.
             </p>
             <div class="ls-problem">
                 <div class="ls-problem-card">
                     <span class="emoji">📖</span>
-                    <h3>LESSON PREP OVERLOAD</h3>
-                    <p>Reading the manual, finding verses, building discussion questions, pulling a video — every week, from scratch.</p>
+                    <h3>PREP TIME</h3>
+                    <p>Finding the right verses, writing discussion questions, and keeping the energy up — every week, on top of everything else you're managing.</p>
                 </div>
                 <div class="ls-problem-card">
-                    <span class="emoji">😶</span>
-                    <h3>SILENT TEENS</h3>
-                    <p>"Who wants to share?" No hands. Teens don't want to sound uncool or wrong. Most lessons reward the two loud kids.</p>
+                    <span class="emoji">🙋</span>
+                    <h3>GETTING STUDENTS TALKING</h3>
+                    <p>Games lower the barrier to participation. Students who stay quiet in a lecture will jump into a team round — and take the lesson home with them.</p>
                 </div>
                 <div class="ls-problem-card">
                     <span class="emoji">📺</span>
-                    <h3>SLIDE FATIGUE</h3>
-                    <p>PowerPoint doesn't work with teens raised on TikTok. You need something that looks like the media they already consume.</p>
+                    <h3>HOLDING ATTENTION</h3>
+                    <p>A visual, interactive format works for youth raised on interactive media. Kindred looks like something worth paying attention to.</p>
                 </div>
             </div>
         </section>
@@ -1062,10 +1073,10 @@
                 </div>
             </div>
 
-            <!-- Feature 2: Scripture Scout -->
+            <!-- Feature 2: Scripture Match -->
             <div class="ls-feature reverse">
                 <div>
-                    <div class="ls-feature-kicker">GAME 2 · SCRIPTURE SCOUT</div>
+                    <div class="ls-feature-kicker">GAME 2 · SCRIPTURE MATCH</div>
                     <h3>Memory matching with scripture depth.</h3>
                     <p>
                         Match a scripture reference to its key phrase. When a
@@ -1083,7 +1094,7 @@
                 <div class="ls-mockup">
                     <div class="ls-mockup-bar">
                         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-                        <span class="label">MONITOR · SCRIPTURE SCOUT</span>
+                        <span class="label">MONITOR · SCRIPTURE MATCH</span>
                     </div>
                     <div class="ls-mockup-body">
                         <div class="ss-grid">
@@ -1113,16 +1124,16 @@
                     <div class="ls-feature-kicker">LESSON LIBRARY · AI-ASSISTED</div>
                     <h3>Paste a URL. Get a game.</h3>
                     <p>
-                        Drop any churchofjesuschrist.org lesson link into your
-                        library. Kindred fetches the verses, the video links,
-                        and the discussion prompts — then writes you question
-                        sets for both games. You review, tweak, and publish.
+                        Drop any churchofjesuschrist.org study link into your library —
+                        a Come Follow Me lesson, a Seminary chapter, a scripture block,
+                        or a General Conference talk. Kindred pulls the verses and
+                        generates question sets for both games.
                     </p>
                     <ul>
                         <li>Auto-detects this week's Come Follow Me lesson</li>
-                        <li>Generates scripture-based + scripture-application + survey rounds</li>
-                        <li>Every output runs through an automated keyword filter + AI safety pass before it reaches you</li>
-                        <li>One lesson → both games, one click each</li>
+                        <li>Works with Seminary, Institute, and scripture study URLs too</li>
+                        <li>Every output runs through a keyword filter + AI safety pass before it reaches you</li>
+                        <li>One URL → both games, one click each</li>
                     </ul>
                 </div>
                 <div class="ls-mockup">
@@ -1142,7 +1153,7 @@
                             </div>
                             <div class="lib-buttons">
                                 <button class="lib-btn done">🔗 Common Ground ✓</button>
-                                <button class="lib-btn done">🧩 Scripture Scout ✓</button>
+                                <button class="lib-btn done">🧩 Scripture Match ✓</button>
                             </div>
                         </div>
                         <div class="lib-entry">
@@ -1152,7 +1163,7 @@
                             </div>
                             <div class="lib-buttons">
                                 <button class="lib-btn done">🔗 Common Ground ✓</button>
-                                <button class="lib-btn done">🧩 Scripture Scout ✓</button>
+                                <button class="lib-btn done">🧩 Scripture Match ✓</button>
                             </div>
                         </div>
                     </div>
@@ -1163,22 +1174,22 @@
         <!-- How it works -->
         <section class="ls-section" id="how-it-works">
             <h2 class="ls-h2">Three steps to <span class="accent">a classroom-ready game.</span></h2>
-            <p class="ls-h2-sub">Set up once. Every Sunday, it takes about a minute.</p>
+            <p class="ls-h2-sub">Set up once. Each class session takes about a minute to prepare.</p>
             <div class="ls-steps">
                 <div class="ls-step">
                     <div class="ls-step-num">01</div>
                     <h4>SIGN IN</h4>
-                    <p>Sign in with Google. Start a classroom or join with an invite link from a co-teacher. Once approved, your classroom is yours.</p>
+                    <p>Sign in with Google. Your leader can invite you directly, or you can request access. Once set up, your classroom is ready to go.</p>
                 </div>
                 <div class="ls-step">
                     <div class="ls-step-num">02</div>
                     <h4>ADD A LESSON</h4>
-                    <p>Paste this week's Come Follow Me URL (or click ⭐ Fill This Week). Kindred pulls the verses and generates both games.</p>
+                    <p>Paste any churchofjesuschrist.org study URL — Come Follow Me, Seminary, Institute, or scripture. Kindred pulls the verses and generates both games.</p>
                 </div>
                 <div class="ls-step">
                     <div class="ls-step-num">03</div>
                     <h4>HIT PLAY</h4>
-                    <p>Cast the Monitor view to the classroom TV. Keep the admin panel on your phone. Tap to reveal, tap to move on.</p>
+                    <p>Mirror or cast the Monitor view to the classroom display. Keep the admin panel on your phone. Tap to reveal, tap to move on.</p>
                 </div>
             </div>
         </section>
@@ -1214,10 +1225,10 @@
 
         <!-- Final CTA -->
         <section class="ls-section ls-final">
-            <h2>Bring Kindred to your classroom.</h2>
+            <h2>Bring Kindred to your class.</h2>
             <p>
-                We're in an invite-only pilot while we validate AI costs and<br>
-                complete legal review for broader distribution. Request access — we'll be in touch.
+                We're in an invite-only pilot while we validate AI costs and complete legal review.
+                Request access — it's free while we grow.
             </p>
             <div class="ls-hero-ctas">
                 <button class="ls-cta-primary" onclick="window.signInGoogle()">
@@ -1234,10 +1245,10 @@
         </section>
 
         <footer class="ls-footer">
-            Kindred · Built for volunteer Sunday School teachers · Questions? <a href="mailto:lewiswf@gmail.com">lewiswf@gmail.com</a>
+            Kindred · Built for youth leaders and volunteer teachers · Questions? <a href="mailto:lewiswf@gmail.com">lewiswf@gmail.com</a>
             <div class="ls-disclaimer">
-                Kindred is an independent tool created by a volunteer Sunday School teacher. Kindred is <strong>not affiliated with, endorsed by, or sponsored by</strong> The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc.
-                "Come Follow Me," "For the Strength of Youth," "Teaching in the Savior's Way," and related Church program names are trademarks of Intellectual Reserve, Inc.
+                Kindred is an independent tool created by a volunteer youth leader. Kindred is <strong>not affiliated with, endorsed by, or sponsored by</strong> The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc.
+                "Come Follow Me," "Seminary," "Institute," "For the Strength of Youth," "Teaching in the Savior's Way," and related Church program names are trademarks of Intellectual Reserve, Inc.
             </div>
         </footer>
     </div>
@@ -1386,8 +1397,8 @@
 
                 <a id="link-memory" href="games/memory.html" class="game-card pink">
                     <div class="game-card-icon">🧩</div>
-                    <h3 class="game-card-name">Scripture Scout</h3>
-                    <p class="game-card-desc">Memory matching game — pair scripture references with key phrases and modern applications. Builds recall and sparks discussion.</p>
+                    <h3 class="game-card-name">Scripture Match</h3>
+                    <p class="game-card-desc">Memory matching game — pair scripture references with key phrases and applications. Every match opens a full verse, Christ connection, and discussion question.</p>
                     <span class="game-card-tag">Memory · Pairs · Discussion</span>
                     <div class="game-card-play">Play →</div>
                 </a>
