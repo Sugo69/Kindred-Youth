@@ -676,6 +676,11 @@
             font-size: 0.78rem;
             color: #a0a0b5;
         }
+        .upcoming-type-row {
+            margin-top: 6px;
+            padding-top: 8px;
+            border-top: 1px solid #1a1a35;
+        }
         .upcoming-rec .twg-icon { font-size: 1rem; }
         .upcoming-rec-game { font-weight: 600; }
         .upcoming-rec-game.cyan { color: var(--neon-cyan); }
@@ -2358,16 +2363,16 @@
             document.getElementById('this-week-games').innerHTML = tiles;
 
             // ── Upcoming CFM Lessons ──
+            // Quiet preview — lesson type badge only, no game-recommendation chip.
+            // The full recommendation engine lives on the This Week hero card.
             const upcomingHtml = upcoming.map(lesson => {
                 const rec = S.getRecommendedGame(lesson.type);
                 return `
                     <a class="upcoming-card" href="${lessonLink(lesson, rec.href)}">
                         <div class="upcoming-date">${S.formatLessonDateRange(lesson)}</div>
                         <div class="upcoming-title">${lesson.title}</div>
-                        <div class="upcoming-rec">
-                            <span class="twg-icon">${rec.icon}</span>
-                            <span>Recommended:</span>
-                            <span class="upcoming-rec-game ${rec.color}">${rec.name}</span>
+                        <div class="upcoming-type-row">
+                            <span class="lesson-type-badge ${lesson.type || 'mixed'}">${S.formatLessonTypeBadge(lesson.type)}</span>
                         </div>
                     </a>`;
             }).join('');
@@ -2443,7 +2448,7 @@
             }).join('');
             document.getElementById('seminary-games').innerHTML = tiles;
 
-            // This week (Mon–Fri) strip
+            // This week (Mon–Fri) strip — quiet preview, type badge only.
             const upcomingHtml = upcoming.map(lesson => {
                 const rec = S.getRecommendedGame(lesson.type);
                 const dmHint = lesson.dmPassage ? `<span style="color:#b388ff; font-weight:600;"> · 📖 DM</span>` : '';
@@ -2451,10 +2456,8 @@
                     <a class="upcoming-card" href="${lessonLink(lesson, rec.href)}">
                         <div class="upcoming-date">${lesson.displayDate}${dmHint}</div>
                         <div class="upcoming-title">${lesson.title}</div>
-                        <div class="upcoming-rec">
-                            <span class="twg-icon">${rec.icon}</span>
-                            <span>Recommended:</span>
-                            <span class="upcoming-rec-game ${rec.color}">${rec.name}</span>
+                        <div class="upcoming-type-row">
+                            <span class="lesson-type-badge ${lesson.type || 'mixed'}">${S.formatLessonTypeBadge(lesson.type)}</span>
                         </div>
                     </a>`;
             }).join('');
