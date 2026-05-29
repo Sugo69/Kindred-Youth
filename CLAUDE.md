@@ -366,6 +366,16 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 - **`vercel.json`**: sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` for all paths — required for the Google sign-in popup flow not to warn/break in Chrome
 - **Non-affiliation disclaimer**: rendered in the landing hero footer, portal footer, and admin footer — cites no affiliation with The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc. (precaution, not legal opinion; see `legal-review-2026-04-22.md`)
 
+## Next actions (queued 2026-05-29)
+Full handoff detail in `CHECKPOINT-2026-05-29.md`. Priority order:
+1. **P1 — `/api/lesson-pipeline` `gameType: 'scripture-trail'` generator.** Today returns 501 stub. Needs the full extract→generate→compliance pipeline implementation for the new game type (arc detection, multiple-choice questions with distractors, Church video URL resolution, board-art selection).
+2. **P1 — Fill NT 2026–27 Seminary daily schedule in [src/lib/seminary-schedule.js](src/lib/seminary-schedule.js).** Currently a 2-week stub for Aug 17–28. Need ~180 daily lessons covering the school year, each tagged `narrative/doctrinal/mixed` + an optional `dmPassage` field for Doctrinal Mastery lessons. Hard deadline: NT Seminary opens Aug 2026.
+3. **P1 — "By Heart — Doctrinal Mastery" memorization game (Phase A).** Cloze-deletion mechanic (progressive word blanking, 5 levels: Read → Echo → Recall → Speak → Heart-Set). Setup screen needs a scripture picker so FHE families can pick *any* verse, not just Seminary-scheduled ones. Three picker modes: (a) this week's DM passage, (b) all 25 NT DM passages, (c) custom scripture reference paste.
+4. **P1 — Doctrinal Mastery NT 25-passage library file** (`src/lib/doctrinal-mastery-nt.js`) — hand-coded data: reference, full KJV text, key phrase, doctrinal theme. Powers both the By Heart picker and the Seminary tab's DM badges.
+5. **P2 — Lesson-type detector for the pipeline.** Replace hand-coded CFM `type` field with an AI step that flags each lesson `narrative/doctrinal/mixed` during extraction. Lets the recommendation engine scale to NT 2027 and beyond without manual tagging.
+6. **P2 — Curriculum picker in teacher profile.** Today both CFM and Seminary tabs show by default. Some teachers only teach one. Profile setting "Primary curriculum" defaults the portal tab and the pipeline's batch-generate horizon.
+7. **P3 — Convert hidden legacy long-form game-feature sections** in [index.html](index.html) to deleted (currently `display:none` after the toolkit revision; nothing references them).
+
 ## Key Constraints
 - Dev port **must be 5173** — flipped from 5174 on 2026-05-29 (the other project on this machine now uses 5174)
 - Firebase anonymous auth — game players use anonymous auth; teachers sign in via Google (index.html + admin.html)
