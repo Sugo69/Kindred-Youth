@@ -136,16 +136,107 @@ body {
 
 /* === Setup === */
 #setup-scene .setup-body {
-  flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  flex: 1;
+  display: flex; flex-direction: column;
+  gap: 18px;
   padding: 18px 24px;
 }
-.team-panel {
-  background: var(--bg-2); border-radius: 16px; padding: 22px 22px;
-  border: 3px solid transparent;
-  display: flex; flex-direction: column; gap: 16px;
+
+/* Two team cards (name + captain + chosen-champion summary) side-by-side at the top */
+.setup-teams-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
 }
-.team-panel[data-team="1"] { border-color: var(--cyan); box-shadow: 0 0 32px rgba(56,210,255,0.15); }
-.team-panel[data-team="2"] { border-color: var(--magenta); box-shadow: 0 0 32px rgba(255,107,214,0.15); }
+.setup-team-card {
+  background: var(--bg-2); border-radius: 14px; padding: 16px 18px;
+  border: 2px solid transparent;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.setup-team-card[data-team="1"] { border-color: var(--cyan); }
+.setup-team-card[data-team="2"] { border-color: var(--magenta); }
+.setup-team-card[data-team="1"] .team-name-input:focus { border-color: var(--cyan); outline: none; }
+.setup-team-card[data-team="2"] .team-name-input:focus { border-color: var(--magenta); outline: none; }
+
+/* Summary line: shows which character this team has chosen */
+.setup-team-pick {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 13px; color: var(--ink-muted);
+  padding-top: 8px; border-top: 1px solid var(--bg-3);
+  min-height: 32px;
+}
+.setup-team-pick .pick-name { color: var(--ink); font-weight: 700; }
+.setup-team-pick.empty .pick-name { color: var(--ink-muted); font-style: italic; font-weight: 400; }
+.setup-team-pick img {
+  width: 32px; height: 32px;
+  object-fit: cover; object-position: center top;
+  border-radius: 50%; background: var(--bg-3);
+}
+.setup-team-card[data-team="1"] .setup-team-pick img { border: 2px solid var(--cyan); }
+.setup-team-card[data-team="2"] .setup-team-pick img { border: 2px solid var(--magenta); }
+
+/* Shared character picker — one grid, sequential turns */
+.shared-picker {
+  background: var(--bg-2); border-radius: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--bg-3);
+}
+.shared-picker-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 12px;
+}
+.picker-turn-indicator {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; color: var(--ink-2);
+  letter-spacing: 0.02em;
+}
+.picker-turn-indicator strong { color: var(--gold); font-weight: 800; }
+.picker-turn-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 12px rgba(255,200,87,0.6);
+  animation: pulse 1.5s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+.shared-picker[data-active="2"] .picker-turn-dot { background: var(--magenta); box-shadow: 0 0 12px rgba(255,107,214,0.6); }
+.shared-picker[data-active="2"] .picker-turn-indicator strong { color: var(--magenta); }
+.shared-picker[data-active="1"] .picker-turn-indicator strong { color: var(--cyan); }
+.shared-picker[data-active="done"] .picker-turn-dot { background: var(--leaf); }
+.shared-picker[data-active="done"] .picker-turn-indicator strong { color: var(--leaf); }
+
+.picker-reset-btn {
+  background: transparent; color: var(--ink-muted);
+  border: 1px solid var(--bg-3);
+  padding: 6px 14px; border-radius: 8px;
+  font-size: 12px; cursor: pointer;
+}
+.picker-reset-btn:hover { color: var(--ink); border-color: var(--ink-muted); }
+
+/* Locked tile = already chosen by one team — can't be picked again */
+.character-tile.locked-team-1 { border-color: var(--cyan); cursor: not-allowed; }
+.character-tile.locked-team-2 { border-color: var(--magenta); cursor: not-allowed; }
+.character-tile.locked-team-1::after,
+.character-tile.locked-team-2::after {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(10, 22, 40, 0.55);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.character-tile .lock-flag {
+  position: absolute; top: 4px; right: 4px;
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800;
+  border-radius: 50%; color: var(--bg);
+  z-index: 2;
+}
+.character-tile.locked-team-1 .lock-flag { background: var(--cyan); }
+.character-tile.locked-team-2 .lock-flag { background: var(--magenta); }
+
+.start-btn:disabled { opacity: 0.45; cursor: not-allowed; }
 .team-label { font-size: 11px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.12em; }
 .team-name-input {
   background: var(--bg); border: 2px solid var(--bg-3); color: var(--ink);
@@ -700,44 +791,48 @@ body {
   </header>
 
   <div class="setup-body">
-    <div class="team-panel" data-team="1">
-      <div>
+    <!-- Both teams' names + captains at the top, side-by-side -->
+    <div class="setup-teams-row">
+      <div class="setup-team-card" data-team="1">
         <div class="team-label">Team 1 · Cyan</div>
         <input type="text" class="team-name-input" data-team="1" value="The Faithful Gleaners" />
-      </div>
-      <div>
-        <div class="section-label">Team captain</div>
         <div class="captain-row">
           <span class="captain-crown">👑</span>
           <input type="text" class="captain-input" data-team="1" placeholder="Captain's name" value="Eliza" />
         </div>
+        <div class="setup-team-pick" id="setup-pick-1">
+          <span class="pick-label">Champion:</span>
+          <span class="pick-name">— not chosen —</span>
+        </div>
       </div>
-      <div>
-        <div class="section-label">Pick your champion</div>
-        <div class="character-grid" data-team="1"></div>
-      </div>
-    </div>
-
-    <div class="team-panel" data-team="2">
-      <div>
+      <div class="setup-team-card" data-team="2">
         <div class="team-label">Team 2 · Magenta</div>
         <input type="text" class="team-name-input" data-team="2" value="The Ebenezer Crew" />
-      </div>
-      <div>
-        <div class="section-label">Team captain</div>
         <div class="captain-row">
           <span class="captain-crown">👑</span>
           <input type="text" class="captain-input" data-team="2" placeholder="Captain's name" value="Caleb" />
         </div>
+        <div class="setup-team-pick" id="setup-pick-2">
+          <span class="pick-label">Champion:</span>
+          <span class="pick-name">— not chosen —</span>
+        </div>
       </div>
-      <div>
-        <div class="section-label">Pick your champion</div>
-        <div class="character-grid" data-team="2"></div>
+    </div>
+
+    <!-- Single shared character pool. Team 1 picks first, then Team 2 from the remaining. -->
+    <div class="shared-picker">
+      <div class="shared-picker-header">
+        <div class="picker-turn-indicator" id="picker-turn-indicator">
+          <span class="picker-turn-dot"></span>
+          <span><strong id="picker-turn-team">Team 1</strong> — pick your champion</span>
+        </div>
+        <button class="picker-reset-btn" id="picker-reset-btn" type="button" style="display:none;">↺ Reset picks</button>
       </div>
+      <div class="character-grid" id="shared-character-grid"></div>
     </div>
   </div>
 
-  <button class="start-btn" id="start-btn">Begin the Journey →</button>
+  <button class="start-btn" id="start-btn" disabled>Both teams must pick a champion to begin</button>
 </section>
 
 
@@ -1134,8 +1229,8 @@ function charSrc(id) {
 }
 
 const state = {
-  team1: { name:"The Faithful Gleaners", captain:"Eliza", char:"gleaner-girl",  points:0, position:0 },
-  team2: { name:"The Ebenezer Crew",      captain:"Caleb", char:"prophet-elder", points:0, position:0 },
+  team1: { name:"The Faithful Gleaners", captain:"Eliza", char:null, points:0, position:0 },
+  team2: { name:"The Ebenezer Crew",      captain:"Caleb", char:null, points:0, position:0 },
   currentTurn: 1,
   completedStops: [],
   stopResults: {},  // { [stopN]: teamN (1, 2, or null for "discuss only") } — used for backwards review/reassign
@@ -1156,29 +1251,112 @@ document.querySelectorAll('.help-btn').forEach(btn => {
 // Show automatically on first load
 instructionsBd.classList.add('open');
 
-// Render character tiles for both teams
-function renderCharacterGrids() {
-  document.querySelectorAll('.character-grid').forEach(grid => {
-    const team = grid.dataset.team;
-    const selectedId = state['team'+team].char;
-    grid.innerHTML = '';
-    CHARACTERS.forEach(c => {
-      const tile = document.createElement('div');
-      tile.className = 'character-tile' + (c.id === selectedId ? ' selected' : '');
-      tile.dataset.char = c.id;
-      tile.innerHTML = `<img src="${charSrc(c.id)}" alt="${c.name}" loading="lazy" /><div class="char-name">${c.name}</div>`;
-      tile.addEventListener('click', () => {
-        grid.querySelectorAll('.character-tile').forEach(t => t.classList.remove('selected'));
-        tile.classList.add('selected');
-        state['team'+team].char = c.id;
-      });
-      grid.appendChild(tile);
-    });
+// Setup picker state — tracks whose turn it is to pick a champion.
+// Sequence: team 1 picks first → team 2 picks → 'done' (both chosen).
+const pickerState = {
+  activeTeam: 1,             // 1 → 2 → 'done'
+  picks: { 1: null, 2: null }, // characterId per team (null until chosen)
+};
+
+function renderSharedPicker() {
+  const grid = document.getElementById('shared-character-grid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  CHARACTERS.forEach(c => {
+    const tile = document.createElement('div');
+    tile.className = 'character-tile';
+    tile.dataset.char = c.id;
+
+    // Lock state — if either team has picked this character, lock it
+    let lockedBy = null;
+    if (pickerState.picks[1] === c.id) lockedBy = 1;
+    else if (pickerState.picks[2] === c.id) lockedBy = 2;
+
+    if (lockedBy) {
+      tile.classList.add('locked-team-' + lockedBy);
+      tile.innerHTML = `
+        <span class="lock-flag">T${lockedBy}</span>
+        <img src="${charSrc(c.id)}" alt="${c.name}" loading="lazy" />
+        <div class="char-name">${c.name}</div>`;
+    } else {
+      tile.innerHTML = `
+        <img src="${charSrc(c.id)}" alt="${c.name}" loading="lazy" />
+        <div class="char-name">${c.name}</div>`;
+      tile.addEventListener('click', () => handleCharacterPick(c.id));
+    }
+    grid.appendChild(tile);
+  });
+  updatePickerUI();
+}
+
+function handleCharacterPick(charId) {
+  const team = pickerState.activeTeam;
+  if (team !== 1 && team !== 2) return; // done already
+  pickerState.picks[team] = charId;
+  state['team' + team].char = charId;
+  // Advance: 1 → 2 → done
+  pickerState.activeTeam = team === 1 ? 2 : 'done';
+  renderSharedPicker();
+}
+
+function updatePickerUI() {
+  const picker = document.querySelector('.shared-picker');
+  const turnTeamSpan = document.getElementById('picker-turn-team');
+  const indicator = document.getElementById('picker-turn-indicator');
+  const resetBtn = document.getElementById('picker-reset-btn');
+  const startBtn = document.getElementById('start-btn');
+
+  picker.dataset.active = pickerState.activeTeam;
+  if (pickerState.activeTeam === 1) {
+    turnTeamSpan.textContent = state.team1.name || 'Team 1';
+    indicator.innerHTML = `<span class="picker-turn-dot"></span><span><strong id="picker-turn-team">${state.team1.name || 'Team 1'}</strong> — pick your champion first</span>`;
+    resetBtn.style.display = 'none';
+    startBtn.disabled = true;
+    startBtn.textContent = 'Both teams must pick a champion to begin';
+  } else if (pickerState.activeTeam === 2) {
+    indicator.innerHTML = `<span class="picker-turn-dot"></span><span><strong>${state.team2.name || 'Team 2'}</strong> — pick from the remaining</span>`;
+    resetBtn.style.display = '';
+    startBtn.disabled = true;
+    startBtn.textContent = state.team2.name + ' still needs a champion';
+  } else {
+    indicator.innerHTML = `<span class="picker-turn-dot"></span><span><strong>Both teams ready</strong> — begin the journey</span>`;
+    resetBtn.style.display = '';
+    startBtn.disabled = false;
+    startBtn.textContent = 'Begin the Journey →';
+  }
+
+  // Update the team-card "champion" summary lines
+  [1, 2].forEach(t => {
+    const pickedId = pickerState.picks[t];
+    const summary = document.getElementById('setup-pick-' + t);
+    if (!summary) return;
+    if (pickedId) {
+      const char = CHAR_BY_ID[pickedId];
+      summary.classList.remove('empty');
+      summary.innerHTML = `<img src="${charSrc(pickedId)}" alt=""><span class="pick-label">Champion:</span><span class="pick-name">${char.name}</span>`;
+    } else {
+      summary.classList.add('empty');
+      summary.innerHTML = `<span class="pick-label">Champion:</span><span class="pick-name">— not chosen —</span>`;
+    }
   });
 }
-renderCharacterGrids();
+
+// Reset picker so teams can choose again
+function resetPicker() {
+  pickerState.activeTeam = 1;
+  pickerState.picks = { 1: null, 2: null };
+  state.team1.char = null;
+  state.team2.char = null;
+  renderSharedPicker();
+}
+
+renderSharedPicker();
+document.getElementById('picker-reset-btn').addEventListener('click', resetPicker);
 document.querySelectorAll('.team-name-input').forEach(inp => {
-  inp.addEventListener('input', () => { state['team'+inp.dataset.team].name = inp.value; });
+  inp.addEventListener('input', () => {
+    state['team'+inp.dataset.team].name = inp.value;
+    updatePickerUI(); // turn indicator references team name
+  });
 });
 document.querySelectorAll('.captain-input').forEach(inp => {
   inp.addEventListener('input', () => { state['team'+inp.dataset.team].captain = inp.value; });
