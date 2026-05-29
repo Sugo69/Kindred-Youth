@@ -797,7 +797,7 @@
             <div class="quick-links">
                 <a href="index.html" class="quick-link">🏠 Kindred Portal</a>
                 <a href="games/common-ground.html" class="quick-link">🎯 Common Ground</a>
-                <a href="games/memory.html" class="quick-link">🧩 Scripture Scout</a>
+                <a href="games/memory.html" class="quick-link">🧩 Scripture Match</a>
             </div>
 
             <div id="migrate-panel" style="display:none; margin-top:28px; padding:18px 22px; border:1px solid var(--neon-pink); border-radius:12px; background:rgba(255,0,128,0.05);">
@@ -829,9 +829,38 @@
 
             <div class="section-head">
                 <div class="section-title">Teachers</div>
-                <button class="btn-add" onclick="toggleForm('teacher-form')">+ Add Teacher</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-primary" style="padding:8px 16px; font-size:0.8rem;" onclick="toggleForm('invite-form'); document.getElementById('invite-success').style.display='none';">⚡ Invite Teacher</button>
+                    <button class="btn-add" onclick="toggleForm('teacher-form')">+ Add (no class)</button>
+                </div>
             </div>
 
+            <!-- Fast-path: creates teacher doc + classroom in one shot -->
+            <div class="add-form" id="invite-form">
+                <p style="color:var(--text-muted); font-size:0.82rem; margin:0 0 14px; line-height:1.5;">Enter the teacher's Gmail and their class info. They'll have <strong style="color:#00f2ff;">immediate access</strong> the moment they sign in — no approval step needed.</p>
+                <div class="form-row">
+                    <input type="email" id="inv-email" placeholder="Gmail address (required)" autocomplete="off">
+                    <input type="text" id="inv-name" placeholder="Display name (optional)" autocomplete="off">
+                </div>
+                <div class="form-row">
+                    <input type="text" id="inv-ward" placeholder="Ward / Branch (required)" autocomplete="off">
+                    <input type="text" id="inv-class" placeholder="Class name, e.g. Sunday School 14–16 (required)" autocomplete="off">
+                </div>
+                <div class="form-actions">
+                    <button class="btn-primary" onclick="window.inviteTeacher()">✓ Invite &amp; Create Classroom</button>
+                    <button class="btn-secondary" onclick="toggleForm('invite-form')">Cancel</button>
+                </div>
+                <div id="invite-success" style="display:none; margin-top:14px; padding:14px; background:rgba(0,242,255,0.07); border:1px solid rgba(0,242,255,0.3); border-radius:8px;">
+                    <div style="color:#00f2ff; font-family:'Orbitron',sans-serif; font-size:0.72rem; letter-spacing:0.05em; margin-bottom:10px;">✓ Teacher invited! Share this link:</div>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <code id="invite-link-text" style="flex:1; color:#f1f5f9; font-size:0.85rem; background:rgba(0,0,0,0.35); padding:7px 10px; border-radius:5px; word-break:break-all; font-family:monospace;"></code>
+                        <button class="btn-secondary" onclick="window.copyInviteLink()" style="white-space:nowrap; padding:7px 14px; flex-shrink:0;">Copy</button>
+                    </div>
+                    <div style="color:#6b7280; font-size:0.75rem; margin-top:8px;">They sign in with Google → immediate access, no waiting.</div>
+                </div>
+            </div>
+
+            <!-- Legacy: add teacher record only, no classroom -->
             <div class="add-form" id="teacher-form">
                 <div class="form-row">
                     <input type="text" id="t-name" placeholder="Full name" autocomplete="off">
@@ -1472,6 +1501,53 @@
         };
 
         // ── Teachers ──
+        window.inviteTeacher = async () => {
+            const email = document.getElementById('inv-email').value.trim().toLowerCase();
+            const name = document.getElementById('inv-name').value.trim();
+            const ward = document.getElementById('inv-ward').value.trim();
+            const className = document.getElementById('inv-class').value.trim();
+            if (!email) return showToast('Gmail address is required.', true);
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showToast('Enter a valid email address.', true);
+            if (!ward) return showToast('Ward / Branch is required.', true);
+            if (!className) return showToast('Class name is required.', true);
+            const displayName = name || email.split('@')[0];
+            try {
+                // Create / update teacher record (merge so existing classroomIds survive)
+                await setDoc(doc(db, `${basePath}/teachers/${email}`), {
+                    name: displayName, email, ward, role: '', photoURL: '',
+                    createdAt: serverTimestamp(), lastActivityAt: serverTimestamp(),
+                    approvedFrom: 'admin-invite'
+                }, { merge: true });
+                // Create classroom
+                const newRef = doc(classroomsCol);
+                await setDoc(newRef, {
+                    name: className, wardName: ward, country: 'US', description: className,
+                    teacherEmails: [email], teachers: [{ email, name: displayName }],
+                    inviteCodes: [], createdBy: 'admin',
+                    createdAt: serverTimestamp(), lastActivityAt: serverTimestamp()
+                });
+                // Link classroom back to teacher (safe even if teacher already had others)
+                await updateDoc(doc(db, `${basePath}/teachers/${email}`), { classroomIds: arrayUnion(newRef.id) });
+                // Show success
+                document.getElementById('invite-link-text').textContent = 'https://kindred-youth.org';
+                document.getElementById('invite-success').style.display = 'block';
+                document.getElementById('inv-email').value = '';
+                document.getElementById('inv-name').value = '';
+                document.getElementById('inv-ward').value = '';
+                document.getElementById('inv-class').value = '';
+                showToast(`${displayName} invited — classroom created.`);
+            } catch (e) {
+                showToast('Error: ' + e.message, true);
+            }
+        };
+
+        window.copyInviteLink = () => {
+            const link = document.getElementById('invite-link-text').textContent;
+            navigator.clipboard.writeText(link)
+                .then(() => showToast('Link copied!'))
+                .catch(() => showToast('Copy failed — select manually.', true));
+        };
+
         window.addTeacher = async () => {
             const name = document.getElementById('t-name').value.trim();
             const email = document.getElementById('t-email').value.trim().toLowerCase();
@@ -2015,10 +2091,10 @@
                 </div>`;
             }
 
-            // ── Scripture Scout pairs preview ──
+            // ── Scripture Match pairs preview ──
             if (mem.pairs?.length) {
                 html += `<div style="margin-bottom:6px;">
-                    <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#a78bfa; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">🧩 Scripture Scout — ${mem.pairs.length} Pairs</div>
+                    <div style="font-family:'Orbitron',sans-serif; font-size:0.6rem; color:#a78bfa; text-transform:uppercase; letter-spacing:2px; margin-bottom:8px;">🧩 Scripture Match — ${mem.pairs.length} Pairs</div>
                     ${mem.pairs.map(p => `
                         <div style="background:rgba(124,58,237,0.05); border:1px solid rgba(124,58,237,0.15); border-radius:8px; padding:10px 12px; margin-bottom:6px; display:flex; gap:10px; align-items:flex-start;">
                             <span style="font-size:1.5rem; flex-shrink:0;">${p.icon||'📖'}</span>
@@ -2237,7 +2313,7 @@
             const entry = libraryItems.find(e => e.id === entryId);
             if (!entry?.url) { showToast('Entry has no URL.', true); return; }
             const statusEl = document.getElementById(`lib-status-${entryId}`);
-            const gameLabel = gameType === 'common-ground' ? 'Common Ground' : 'Scripture Scout';
+            const gameLabel = gameType === 'common-ground' ? 'Common Ground' : 'Scripture Match';
             const batchSuffix = batchInfo ? ` (${batchInfo.i}/${batchInfo.total})` : '';
             // Progress bar — eases toward 85% while Claude is running, plus an elapsed timer
             let pct = 0;
@@ -2350,7 +2426,7 @@
             const ok = confirm(
                 `Pre-generate the next ${lessons.length} Come Follow Me lessons?\n\n` +
                 `This will create any missing library entries and generate both\n` +
-                `games (Common Ground + Scripture Scout) for each. Already-generated\n` +
+                `games (Common Ground + Scripture Match) for each. Already-generated\n` +
                 `games are skipped.\n\n` +
                 `Estimated Claude API cost: up to ~$${maxCostUsd} (fewer if some are already generated).\n\n` +
                 `Leave this tab open while it runs.`
