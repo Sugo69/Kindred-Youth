@@ -8,7 +8,7 @@
 
 **Games:**
 - `games/common-ground.html` — **Common Ground** (survey/Family Feud-style, renamed from "Family Feud" to avoid Fremantle trademark)
-- `games/memory.html` — **Scripture Scout** (memory matching pairs, renamed from "Memory Game")
+- `games/memory.html` — **Scripture Match** (memory matching pairs, renamed from "Memory Game")
 
 **Each game has:**
 - **Monitor View** — full-screen 16:9 TV display for the classroom
@@ -17,10 +17,10 @@
 
 ## Tech Stack
 - **Frontend**: Vite MPA + vanilla HTML/CSS/JS (`index.html` + `games/*.html`)
-- **Scripture Scout**: React 18 + Babel CDN (inline, no build step)
+- **Scripture Match**: React 18 + Babel CDN (inline, no build step)
 - **Real-time sync**: Firebase Firestore (anonymous auth)
 - **AI**: Claude `claude-sonnet-4-6` via Anthropic API (Vite middleware in dev, Vercel functions in prod)
-- **Dev port**: 5174 (5173 is reserved for another project on this machine)
+- **Dev port**: 5173 (flipped from 5174 on 2026-05-29 — the other project on this machine now uses 5174)
 - **Deployment target**: Vercel (static build + serverless functions in `/api`)
 
 ## Project Structure
@@ -36,7 +36,7 @@ Kindred-Youth/                  # Repo: github.com/Sugo69/Kindred-Youth (renamed
 │   └── favicon.svg             # Kindred "K" logo — dark navy + neon cyan glow
 ├── games/
 │   ├── common-ground.html      # Common Ground game — Monitor + Admin + Teacher Portal
-│   └── memory.html             # Scripture Scout game — React 18, memory matching
+│   └── memory.html             # Scripture Match game — React 18, memory matching
 ├── api/
 │   ├── generate.js             # Vercel serverless — AI backlog story generator
 │   ├── fetch-content.js        # Vercel serverless — URL proxy/scraper for Teacher Portal
@@ -118,7 +118,7 @@ artifacts/exodus-feud-final-v10/public/data/
 ## Dev Commands
 ```bash
 npm install
-npm run dev        # starts at http://localhost:5174 — all AI endpoints live
+npm run dev        # starts at http://localhost:5173 — all AI endpoints live
 npm run build      # production build → dist/ (4 pages: index, admin, common-ground, memory)
 npm run preview    # preview production build
 ```
@@ -154,7 +154,7 @@ Two-step Claude pipeline used by both games' Teacher Portal "From Lesson" mode. 
 - **Step 3 — Structural compliance (server-side, cannot be prompted away)**: validates required fields (verse/scene/question for pairs; question/answers/christConnection for rounds), scans all string fields against a hard-block keyword regex list (substances, sexual content, self-harm, etc.), stamps every item with `complianceCheck: "PASS" | "REVIEW: <reason>"`.
 - **Step 4 — AI safety review** (gated by `ENABLE_SAFETY_REVIEW`, default on): a second Claude pass tags each item `pass | rewrite | block`, rewrites fields in place, and removes blocked items.
 - **Common Ground output**: `{ topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
-- **Scripture Scout output**: `{ topic, pairs[{cardA, cardB, icon, iconLabel, scene, verse, question, christConnection, url, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
+- **Scripture Match output**: `{ topic, pairs[{cardA, cardB, icon, iconLabel, scene, verse, question, christConnection, url, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
 - **`complianceReport` shape**: `{ version: 'v3', policyRefs: ['Handbook §13', 'Handbook §37.8', "Teaching in the Savior's Way"], structural: {...}, safety: {...}, passCount, reviewCount, rewrittenCount, blockedCount, overall: 'PASS' | 'PASS_WITH_REWRITES' | 'REVIEW_REQUIRED' }`
 - **Server-side retry**: if Claude API returns 500/503/529 or timeout/overload error, waits 5s and retries once
 - **Client-side retry**: on any error, shows 30-second countdown in status bar and auto-retries; clicking Generate again cancels the countdown and retries immediately
@@ -223,7 +223,7 @@ Addressable 9×7 WS2812B matrix (63 LEDs) on ESP8266 NodeMCU, controlled from th
 - `window.wledConnectUsb()` — triggers Chrome serial port picker (requires user gesture)
 - `buildSerialCmd(event, text)` — formats the serial command string
 
-## Scripture Scout Game (`games/memory.html`)
+## Scripture Match Game (`games/memory.html`)
 - React 18 + Babel CDN — no separate build step, inline in single HTML file
 - Back nav: `← Kindred Hub` → `../index.html`
 - **12 default Exodus pairs** as fallback (no Firestore dependency for playing); each pair has `scene` (narrative context) and `verse` (KJV text) fields
@@ -350,7 +350,7 @@ Current: `old-testament-2026-lesson-20` (Deuteronomy 6–8; 15; 18; 29–30; 34 
 
 ## Reference Assets
 Archived under `archive/` (see `archive/README.md` for why they're kept):
-- `archive/Exodus Matching Game/Exodus-game.html` — original Scripture memory matching game (reference for Scripture Scout)
+- `archive/Exodus Matching Game/Exodus-game.html` — original Scripture memory matching game (reference for Scripture Match)
 - `archive/Exodus Family Feud Master Prompt.docx` — Original game design document
 - `archive/Deployment & Safeguard Guide.docx` — Deployment notes
 - `archive/app.js.legacy` — Original pre-Vite prototype
@@ -367,7 +367,7 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 - **Non-affiliation disclaimer**: rendered in the landing hero footer, portal footer, and admin footer — cites no affiliation with The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc. (precaution, not legal opinion; see `legal-review-2026-04-22.md`)
 
 ## Key Constraints
-- Dev port **must be 5174** — 5173 is used by another project on this machine
+- Dev port **must be 5173** — flipped from 5174 on 2026-05-29 (the other project on this machine now uses 5174)
 - Firebase anonymous auth — game players use anonymous auth; teachers sign in via Google (index.html + admin.html)
 - **Portal + Admin use Google auth** — `lewiswf@gmail.com` is admin; other Google accounts are teachers (must be assigned to a classroom in admin)
 - `ANTHROPIC_API_KEY` must never have `VITE_` prefix
@@ -375,9 +375,9 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 - `.claude/settings.local.json` is gitignored — contains machine-specific Claude Code permissions
 - `getGameRounds()` must always be used instead of direct `gameData[]` access in Common Ground
 - `appId = 'exodus-feud-final-v10'` is intentionally kept — changing it would orphan all Firestore data
-- Display scale is stored in `localStorage.kindred_display_scale` — read by both games on mount; written by portal gear menu and Scripture Scout portal gear icon
-- Scripture Scout playing view scale fix: use inverse-size formula (`width: ${100/scale}vw, height: calc((100vh - 34px) * ${100/scale})` + `top: 34px`) — `transform: scale()` does not affect CSS layout, so logical dimensions must compensate
+- Display scale is stored in `localStorage.kindred_display_scale` — read by both games on mount; written by portal gear menu and Scripture Match portal gear icon
+- Scripture Match playing view scale fix: use inverse-size formula (`width: ${100/scale}vw, height: calc((100vh - 34px) * ${100/scale})` + `top: 34px`) — `transform: scale()` does not affect CSS layout, so logical dimensions must compensate
 - **Classroom isolation**: `?room={classroomId}` gates both games to classroom-scoped Firestore. `basePath` variable switches; Monitor view (no param) falls back to global path
 - **`lessonLibrary` is always global** — admin populates it; all teachers read from it regardless of `?room=`
-- **Scripture Scout Firebase**: module script (`<script type="module">`) must call `signInAnonymously` before any Firestore read; Babel script (`<script type="text/babel">`) cannot use ES module `import`
+- **Scripture Match Firebase**: module script (`<script type="module">`) must call `signInAnonymously` before any Firestore read; Babel script (`<script type="text/babel">`) cannot use ES module `import`
 - `sessionStorage` keys: `kindred_classroom_id` (room ID), `kindred_classroom_name` (display name) — cleared on sign-out

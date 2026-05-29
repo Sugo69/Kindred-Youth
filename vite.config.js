@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => {
         return `You are a senior product manager and software architect. Generate a complete implementation document for the following batch of backlog items from the Kindred-Youth app (kindred-youth.org).
 
 ## App Context
-- **Stack:** Vite MPA (port 5174) + Firebase Firestore (real-time sync)
+- **Stack:** Vite MPA (port 5173) + Firebase Firestore (real-time sync)
 - **Views:** TV Monitor (16:9 classroom display) | Admin (phone/iPad controller) | Backlog tracker
 - **Deployment:** Vercel (static build + serverless functions in /api)
 - **Users:** Sunday School teacher (admin) and youth students age 13–16 (players)
@@ -76,11 +76,11 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
 
     return {
         server: {
-            port: 5174,
+            port: 5173,
             strictPort: true,
         },
         preview: {
-            port: 5174,
+            port: 5173,
         },
         build: {
             rollupOptions: {
@@ -89,6 +89,7 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                     admin: resolve(__dirname, 'admin.html'),
                     commonGround: resolve(__dirname, 'games/common-ground.html'),
                     memory: resolve(__dirname, 'games/memory.html'),
+                    scriptureTrail: resolve(__dirname, 'games/scripture-trail.html'),
                 }
             }
         },

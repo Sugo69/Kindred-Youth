@@ -41,6 +41,20 @@ const DEFAULT_MODELS = {
 export async function runLessonPipeline({ url, gameType = 'common-ground', questionType = 'mixed', apiKey, enableSafetyReview = true, models = {} }) {
     if (!url) return { status: 400, body: { error: 'Missing URL' } }
     if (!apiKey) return { status: 500, body: { error: 'ANTHROPIC_API_KEY not configured' } }
+
+    // P0 stub: Scripture Trail generation lands in P1. The game's loader catches this and
+    // keeps the inline lesson-23 default content visible so classroom play is never blocked.
+    if (gameType === 'scripture-trail') {
+        return {
+            status: 501,
+            body: {
+                error: 'Scripture Trail generation is not yet implemented (P1 work). The game will use its inline default content.',
+                notImplemented: true,
+                pipeline: 'lesson-pipeline-v3',
+            }
+        }
+    }
+
     const activeModels = { ...DEFAULT_MODELS, ...models }
 
     const runId = Math.random().toString(36).slice(2, 8)
@@ -549,7 +563,7 @@ For every item, include a "christConnection" field — one sentence tying the it
 `
 
     if (isMemory) {
-        return `You are the Kindred Gamemaster designing a Scripture Scout memory matching game for LDS youth (ages 13–16).
+        return `You are the Kindred Gamemaster designing a Scripture Match memory matching game for LDS youth (ages 13–16).
 
 Lesson: ${lessonStructure.title} (${lessonStructure.weekLabel || ''})
 Source: ${sourceUrl}

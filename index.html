@@ -432,9 +432,11 @@
         }
         .game-card.cyan::before { background: radial-gradient(ellipse at top left, rgba(0,242,255,0.06) 0%, transparent 70%); }
         .game-card.pink::before { background: radial-gradient(ellipse at top left, rgba(255,0,127,0.06) 0%, transparent 70%); }
+        .game-card.gold::before { background: radial-gradient(ellipse at top left, rgba(255,200,87,0.06) 0%, transparent 70%); }
         .game-card:hover { transform: translateY(-3px); }
         .game-card.cyan:hover { border-color: var(--neon-cyan); box-shadow: 0 0 40px rgba(0,242,255,0.15); }
         .game-card.pink:hover { border-color: var(--neon-pink); box-shadow: 0 0 40px rgba(255,0,127,0.15); }
+        .game-card.gold:hover { border-color: #ffc857; box-shadow: 0 0 40px rgba(255,200,87,0.18); }
         .game-card:hover::before { opacity: 1; }
         .game-card-icon { font-size: 2.2rem; line-height: 1; }
         .game-card-name {
@@ -445,6 +447,7 @@
         }
         .game-card.cyan .game-card-name { color: var(--neon-cyan); }
         .game-card.pink .game-card-name { color: var(--neon-pink); }
+        .game-card.gold .game-card-name { color: #ffc857; }
         .game-card-desc { font-size: 0.9rem; color: #888; line-height: 1.5; flex: 1; }
         .game-card-tag {
             display: inline-block;
@@ -458,6 +461,7 @@
         }
         .game-card.cyan .game-card-tag { background: rgba(0,242,255,0.1); color: var(--neon-cyan); border: 1px solid rgba(0,242,255,0.3); }
         .game-card.pink .game-card-tag { background: rgba(255,0,127,0.1); color: var(--neon-pink); border: 1px solid rgba(255,0,127,0.3); }
+        .game-card.gold .game-card-tag { background: rgba(255,200,87,0.1); color: #ffc857; border: 1px solid rgba(255,200,87,0.3); }
         .game-card-play {
             margin-top: 6px;
             font-family: 'Orbitron', sans-serif;
@@ -469,6 +473,7 @@
         }
         .game-card.cyan:hover .game-card-play { color: var(--neon-cyan); }
         .game-card.pink:hover .game-card-play { color: var(--neon-pink); }
+        .game-card.gold:hover .game-card-play { color: #ffc857; }
 
         /* ── Footer ── */
         .portal-footer {
@@ -1402,6 +1407,14 @@
                     <span class="game-card-tag">Memory · Pairs · Discussion</span>
                     <div class="game-card-play">Play →</div>
                 </a>
+
+                <a id="link-scripture-trail" href="games/scripture-trail.html" class="game-card gold">
+                    <div class="game-card-icon">🚶</div>
+                    <h3 class="game-card-name">Scripture Trail</h3>
+                    <p class="game-card-desc">Journey through the lesson's stories in order. Two teams, two captains, and a hand-painted trail board — each stop opens a video, a verse, and a multiple-choice question.</p>
+                    <span class="game-card-tag">Sequential · Arcs · 30 min</span>
+                    <div class="game-card-play">Play →</div>
+                </a>
             </div>
         </div>
 
@@ -1798,6 +1811,7 @@
             const suffix = classroomId ? `?room=${classroomId}` : '';
             document.getElementById('link-common-ground').href = `games/common-ground.html${suffix}`;
             document.getElementById('link-memory').href = `games/memory.html${suffix}`;
+            document.getElementById('link-scripture-trail').href = `games/scripture-trail.html${suffix}`;
 
             // Top bar
             const badge = document.getElementById('classroom-badge');

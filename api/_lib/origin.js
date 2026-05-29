@@ -8,7 +8,7 @@
 const ALLOWED_ORIGINS = new Set([
     'https://kindred-youth.org',
     'https://www.kindred-youth.org',
-    'http://localhost:5174',
+    'http://localhost:5173',
 ])
 
 export function applyCors(req, res) {

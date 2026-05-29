@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scripture Trail — Kindred</title>
+
+<!-- Firebase module: anonymous auth + classroom-scoped lessonLibrary access -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+  import { getCurrentCfmLesson, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
+
+  const APP_ID = 'exodus-feud-final-v10';
+  const params = new URLSearchParams(location.search);
+  const classroomId = params.get('room');
+  const lessonIdParam = params.get('lesson');
+
+  window.__kindredClassroomId  = classroomId;
+  window.__kindredBasePath     = classroomId
+    ? `artifacts/${APP_ID}/public/data/classrooms/${classroomId}`
+    : `artifacts/${APP_ID}/public/data`;
+  window.__kindredGlobalBasePath = `artifacts/${APP_ID}/public/data`;
+  window.__kindredLessonId     = lessonIdParam || getCurrentCfmLesson().lessonId;
+  window.__kindredCurrentCfmLesson = getCurrentCfmLesson();
+
+  const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  };
+  const fbApp = initializeApp(firebaseConfig);
+  const db = getFirestore(fbApp);
+  const auth = getAuth(fbApp);
+
+  // Wait for Firebase to restore auth (Google session may exist) before deciding to sign in anonymously
+  const _authReady = auth.authStateReady().then(() => {
+    if (!auth.currentUser) return signInAnonymously(auth);
+  }).catch(e => console.warn('Anon auth failed:', e));
+
+  window.__kindredGetIdToken = async function() {
+    await _authReady;
+    const u = auth.currentUser;
+    if (!u || u.isAnonymous) return null;
+    return u.getIdToken();
+  };
+
+  window.__kindredApiBase = (location.hostname === 'kindred-youth.org' || location.hostname === 'www.kindred-youth.org')
+    ? 'https://api.kindred-youth.org'
+    : '';
+
+  // Try to load a pre-generated Scripture Trail from the library; resolves null when missing.
+  window.loadScriptureTrailFromLibrary = async function(lessonId) {
+    await _authReady;
+    try {
+      const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/lessonLibrary/${lessonId}`));
+      if (!snap.exists()) return null;
+      const data = snap.data();
+      if (!data.scriptureTrail?.stops?.length) return null;
+      return data.scriptureTrail;
+    } catch (e) {
+      console.warn('Library read failed:', e);
+      return null;
+    }
+  };
+
+  // Auto-trigger pipeline generation when library is empty for the chosen lesson.
+  window.triggerScriptureTrailPipeline = async function(lessonUrl) {
+    const token = await window.__kindredGetIdToken();
+    if (!token) throw new Error('SIGN_IN_REQUIRED');
+    const r = await fetch((window.__kindredApiBase || '') + '/api/lesson-pipeline', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ url: lessonUrl, gameType: 'scripture-trail' }),
+    });
+    if (!r.ok) {
+      const txt = await r.text();
+      throw new Error('PIPELINE_FAILED: ' + txt);
+    }
+    return r.json();
+  };
+</script>
+
+<style>
+:root {
+  --bg: #0a1628; --bg-2: #122236; --bg-3: #1a2d47;
+  --ink: #f4ecd8; --ink-2: #d4c9a8; --ink-muted: #8fa0bb;
+  --cyan: #38d2ff; --magenta: #ff6bd6;
+  --gold: #ffc857; --amber: #ff9f43; --christ-amber: #ffd166;
+  --parchment: #e8d8a8; --stone: #6b5841; --leaf: #4a7c59;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg); color: var(--ink);
+  min-height: 100vh; padding-top: 34px;
+}
+
+/* Back-nav strip (matches Common Ground / Scripture Match) */
+.back-nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 9999;
+  background: rgba(10,22,40,0.96); border-bottom: 1px solid rgba(56,210,255,0.18);
+  padding: 6px 14px; display: flex; align-items: center; gap: 12px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+.back-nav a {
+  color: var(--cyan); font-size: 11px; text-decoration: none;
+  text-transform: uppercase; letter-spacing: 2px; opacity: 0.75;
+}
+.back-nav a:hover { opacity: 1; }
+.back-nav .sep { color: #333; font-size: 11px; }
+.back-nav .game-name { color: #555; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+.back-nav .lesson-badge {
+  margin-left: auto; font-size: 11px; color: var(--ink-muted);
+  background: var(--bg-2); padding: 3px 10px; border-radius: 12px;
+  border: 1px solid var(--bg-3);
+}
+/* Each scene is at least full-viewport-tall but allowed to grow. Setup may scroll on short screens; game/end views stay contained. */
+.scene { display: none; min-height: 100vh; width: 100vw; }
+.scene.active { display: flex; flex-direction: column; }
+#setup-scene.active, #end-scene.active { height: auto; overflow-y: auto; }
+#board-scene.active { height: 100vh; overflow: hidden; }
+
+.app-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 28px; background: var(--bg-2); border-bottom: 2px solid var(--bg-3);
+}
+.app-logo { font-weight: 800; font-size: 18px; letter-spacing: 0.02em; }
+.app-logo .accent { color: var(--cyan); }
+.app-subtitle { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+.mockup-tag { font-size: 10px; color: var(--ink-muted); border: 1px solid var(--bg-3); padding: 4px 10px; border-radius: 20px; letter-spacing: 0.1em; }
+
+/* === Setup === */
+#setup-scene .setup-body {
+  flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 4px;
+  padding: 18px 24px;
+}
+.team-panel {
+  background: var(--bg-2); border-radius: 16px; padding: 22px 22px;
+  border: 3px solid transparent;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.team-panel[data-team="1"] { border-color: var(--cyan); box-shadow: 0 0 32px rgba(56,210,255,0.15); }
+.team-panel[data-team="2"] { border-color: var(--magenta); box-shadow: 0 0 32px rgba(255,107,214,0.15); }
+.team-label { font-size: 11px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.12em; }
+.team-name-input {
+  background: var(--bg); border: 2px solid var(--bg-3); color: var(--ink);
+  font-size: 28px; font-weight: 800; padding: 10px 14px; border-radius: 10px; width: 100%;
+  margin-top: 6px;
+}
+.team-panel[data-team="1"] .team-name-input:focus { border-color: var(--cyan); outline: none; }
+.team-panel[data-team="2"] .team-name-input:focus { border-color: var(--magenta); outline: none; }
+.section-label { font-size: 11px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+.captain-row { display: flex; align-items: center; gap: 12px; }
+.captain-crown { font-size: 26px; }
+.captain-input {
+  flex: 1; background: var(--bg); border: 2px solid var(--bg-3); color: var(--ink);
+  font-size: 16px; padding: 9px 14px; border-radius: 8px;
+}
+.character-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(56px, 12vw, 96px), 1fr));
+  gap: clamp(4px, 0.6vw, 8px);
+}
+.character-tile {
+  background: var(--parchment); border: 2px solid var(--bg-3); border-radius: 8px;
+  padding: 0; cursor: pointer; text-align: center;
+  transition: border-color 0.15s, transform 0.15s;
+  position: relative; overflow: hidden;
+}
+.character-tile:hover { border-color: var(--ink-muted); transform: translateY(-1px); }
+.character-tile.selected {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold), 0 4px 14px rgba(255,200,87,0.35);
+  transform: translateY(-2px);
+}
+.character-tile img {
+  width: 100%; aspect-ratio: 1;
+  object-fit: cover; object-position: center top;
+  display: block;
+  image-rendering: auto; /* let the browser bicubic-downsample; "crisp-edges" was making illustrations look chunky */
+}
+.char-name {
+  font-size: 9px; color: #4a3a22; background: rgba(255,255,255,0.65);
+  padding: 3px 4px; letter-spacing: 0.03em; line-height: 1.15;
+  font-weight: 600; backdrop-filter: blur(2px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.character-tile.selected .char-name { color: #6b4a08; background: var(--gold); font-weight: 800; }
+
+.start-btn {
+  margin: 4px 24px 20px; padding: 18px 24px;
+  background: linear-gradient(135deg, var(--gold), var(--amber));
+  color: var(--bg); border: none; border-radius: 14px;
+  font-size: 18px; font-weight: 800; cursor: pointer;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  transition: transform 0.15s;
+}
+.start-btn:hover { transform: translateY(-2px); }
+
+/* === Board === */
+#board-scene .board-body {
+  flex: 1; position: relative;
+  background: radial-gradient(ellipse at center, #1a2d47 0%, #0a1628 100%);
+}
+.scoreboard { display: flex; gap: 16px; padding: 12px 24px; background: var(--bg-2); border-bottom: 2px solid var(--bg-3); }
+.score-card {
+  flex: 1; display: flex; align-items: center; gap: 12px;
+  padding: 8px 14px; border-radius: 10px; background: var(--bg); border: 2px solid var(--bg-3);
+}
+.score-card[data-team="1"] { border-left: 6px solid var(--cyan); }
+.score-card[data-team="2"] { border-left: 6px solid var(--magenta); }
+.score-card.active-turn { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+.score-card svg { width: 38px; height: 38px; flex-shrink: 0; }
+.score-avatar {
+  width: 44px; height: 44px; flex-shrink: 0;
+  object-fit: cover; object-position: center 18%;
+  border-radius: 50%; background: var(--bg-2);
+  border: 2px solid var(--bg-3);
+}
+.score-card[data-team="1"] .score-avatar { border-color: var(--cyan); }
+.score-card[data-team="2"] .score-avatar { border-color: var(--magenta); }
+.score-info { flex: 1; }
+.score-name { font-size: 15px; font-weight: 700; }
+.score-captain { font-size: 11px; color: var(--ink-muted); margin-top: 2px; }
+.score-points { font-size: 26px; font-weight: 800; color: var(--gold); }
+
+.turn-indicator {
+  text-align: center; padding: 10px;
+  background: var(--bg-2); color: var(--ink-2); font-size: 15px;
+  border-bottom: 1px solid var(--bg-3);
+}
+.turn-indicator .turn-team { font-weight: 800; color: var(--gold); }
+
+.trail-canvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+.stop-node { cursor: pointer; }
+.stop-node:hover .stop-circle { filter: brightness(1.18); }
+.stop-node.locked { cursor: not-allowed; opacity: 0.5; }
+.stop-node.locked .stop-circle { filter: grayscale(0.4); }
+.stop-label { font-size: 13px; font-weight: 700; fill: var(--ink); }
+.stop-ref { font-size: 10px; fill: var(--ink-muted); }
+
+/* === Modal === */
+.modal-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(10,22,40,0.85); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center; z-index: 100;
+}
+.modal-backdrop.open { display: flex; }
+.stop-modal {
+  background: var(--bg-2); border-radius: 20px;
+  width: min(94vw, 980px); max-height: 94vh; overflow-y: auto;
+  box-shadow: 0 24px 80px rgba(0,0,0,0.6); border: 2px solid var(--bg-3);
+}
+.modal-header {
+  display: flex; align-items: center; gap: 16px;
+  padding: 22px 30px;
+  background: linear-gradient(135deg, var(--bg-3), var(--bg-2));
+  border-radius: 18px 18px 0 0;
+}
+.modal-stop-num {
+  width: 52px; height: 52px; background: var(--gold); color: var(--bg);
+  font-size: 24px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; flex-shrink: 0;
+}
+.modal-title { font-size: 26px; font-weight: 800; }
+.modal-ref { font-size: 14px; color: var(--cyan); margin-top: 4px; }
+
+.modal-body { padding: 26px 30px; }
+
+/* Header tools (Help button + mockup tag) */
+.header-tools { display: flex; align-items: center; gap: 12px; }
+.help-btn {
+  background: var(--bg-2); color: var(--ink-muted);
+  border: 1px solid var(--bg-3);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; font-weight: 800;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.help-btn:hover { background: var(--bg-3); color: var(--gold); border-color: var(--gold); }
+
+/* Instructions modal */
+.instructions-modal {
+  background: var(--bg-2);
+  border-radius: 24px;
+  width: min(95vw, 760px);
+  max-height: 95vh; overflow-y: auto;
+  box-shadow: 0 30px 100px rgba(0,0,0,0.7);
+  border: 2px solid var(--bg-3);
+}
+.instructions-header {
+  background: linear-gradient(135deg, #6b5841 0%, #1a2d47 70%, #0a1628 100%);
+  padding: 28px 32px 24px; border-radius: 22px 22px 0 0;
+}
+.instructions-eyebrow { font-size: 12px; color: var(--gold); font-weight: 800; letter-spacing: 0.22em; }
+.instructions-headline { font-size: clamp(20px, 2.6vw, 26px); font-weight: 800; margin-top: 6px; line-height: 1.25; }
+.instructions-tagline { font-size: 13px; color: var(--ink-muted); margin-top: 10px; }
+
+.instructions-body { padding: 24px 32px 8px; }
+.instructions-step { display: flex; gap: 14px; margin-bottom: 16px; }
+.instructions-step-num {
+  width: 34px; height: 34px; border-radius: 50%;
+  background: var(--bg-3); color: var(--gold);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 15px;
+  flex-shrink: 0;
+}
+.instructions-step-content { flex: 1; }
+.instructions-step-title { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.instructions-step-body { font-size: 14px; color: var(--ink-muted); line-height: 1.5; }
+
+.instructions-req {
+  background: var(--bg-3); border-radius: 12px;
+  padding: 14px 18px; margin: 16px 0 8px;
+}
+.instructions-req-label { font-size: 11px; color: var(--gold); font-weight: 800; letter-spacing: 0.12em; margin-bottom: 8px; }
+.instructions-req ul { list-style: none; padding: 0; }
+.instructions-req li {
+  font-size: 14px; color: var(--ink-2);
+  padding-left: 24px; position: relative; line-height: 1.5;
+}
+.instructions-req li + li { margin-top: 4px; }
+.instructions-req li::before { content: "✓"; position: absolute; left: 0; color: var(--leaf); font-weight: 800; }
+
+.instructions-got-it {
+  display: block; margin: 16px 32px 30px;
+  padding: 18px 28px;
+  background: linear-gradient(135deg, var(--gold), var(--amber));
+  color: var(--bg); border: none; border-radius: 14px;
+  font-size: clamp(16px, 1.8vw, 20px); font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; width: calc(100% - 64px);
+  transition: transform 0.15s;
+}
+.instructions-got-it:hover { transform: translateY(-2px); }
+
+/* Stop modal — review mode banner (shown when re-opening a completed stop) */
+.review-banner {
+  display: none;
+  background: linear-gradient(135deg, rgba(74,124,89,0.25), rgba(74,124,89,0.08));
+  border-left: 4px solid var(--leaf);
+  padding: 12px 18px; border-radius: 8px; margin-bottom: 18px;
+  font-size: 14px;
+}
+.stop-modal.review-mode .review-banner { display: block; }
+.review-banner-label { font-size: 10px; color: var(--leaf); font-weight: 800; letter-spacing: 0.12em; margin-bottom: 4px; }
+.review-banner-body { color: var(--ink-2); }
+.review-banner-body b { color: var(--ink); }
+
+/* When in review mode, award buttons act as "reassign" — slightly different label tone */
+.stop-modal.review-mode .award-btn::before { content: "↻ "; }
+.stop-modal.review-mode .award-btn.current-holder { outline: 3px solid var(--gold); outline-offset: 2px; opacity: 0.7; cursor: default; }
+
+/* Arc-intro modal — plays before the first stop of each arc, with the big video card */
+.arc-intro-modal {
+  background: var(--bg-2);
+  border-radius: 24px;
+  width: min(95vw, 880px);
+  max-height: 95vh;
+  overflow-y: auto;
+  box-shadow: 0 30px 100px rgba(0,0,0,0.7);
+  border: 2px solid var(--bg-3);
+}
+.arc-intro-header {
+  background: linear-gradient(135deg, #6b5841 0%, #1a2d47 70%, #0a1628 100%);
+  padding: 28px 36px 24px;
+  border-radius: 22px 22px 0 0;
+}
+.arc-region { font-size: 13px; color: var(--gold); font-weight: 800; letter-spacing: 0.22em; }
+.arc-title { font-size: clamp(26px, 3.5vw, 36px); font-weight: 800; margin-top: 4px; line-height: 1.1; }
+.arc-subtitle { font-size: 14px; color: var(--ink-muted); margin-top: 6px; }
+
+.arc-intro-body { padding: 26px 36px 18px; }
+.arc-context { font-size: 16px; color: var(--ink-2); line-height: 1.55; margin-bottom: 22px; }
+
+.arc-video-btn {
+  display: flex; align-items: center; gap: 18px;
+  background: linear-gradient(135deg, var(--gold), var(--amber));
+  color: var(--bg);
+  padding: 16px 22px;
+  border-radius: 14px;
+  text-decoration: none;
+  margin-bottom: 22px;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 6px 22px rgba(255,200,87,0.28);
+}
+.arc-video-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px rgba(255,200,87,0.5); }
+.arc-video-btn-icon {
+  width: clamp(50px, 7vw, 64px); aspect-ratio: 1;
+  background: var(--bg);
+  color: var(--gold);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: clamp(20px, 2.5vw, 26px); padding-left: 4px; font-weight: 800;
+  flex-shrink: 0;
+}
+.arc-video-btn-content { flex: 1; min-width: 0; }
+.arc-video-btn-title { font-size: clamp(17px, 1.8vw, 20px); font-weight: 800; line-height: 1.15; }
+.arc-video-btn-meta { font-size: clamp(11px, 1.1vw, 13px); margin-top: 4px; opacity: 0.78; font-weight: 600; }
+.arc-video-btn-duration {
+  font-size: clamp(15px, 1.7vw, 18px); font-weight: 800;
+  font-family: ui-monospace, monospace;
+  background: rgba(0,0,0,0.18); padding: 6px 12px; border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.arc-stops-preview { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.arc-stop-chip {
+  background: var(--bg);
+  border: 1px solid var(--bg-3);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 12px; color: var(--ink-muted);
+  display: flex; gap: 8px; align-items: center;
+}
+.arc-stop-chip-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--bg-3); color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 11px;
+}
+
+.arc-begin-btn {
+  display: block;
+  margin: 8px 36px 30px;
+  padding: 18px 28px;
+  background: linear-gradient(135deg, var(--gold), var(--amber));
+  color: var(--bg);
+  border: none; border-radius: 14px;
+  font-size: clamp(16px, 1.8vw, 20px); font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  cursor: pointer; width: calc(100% - 72px);
+  transition: transform 0.15s;
+}
+.arc-begin-btn:hover { transform: translateY(-2px); }
+
+/* Video — poster card that links out to Gospel Library (matches Scripture Match pattern) */
+.video-block { margin-bottom: 18px; }
+.video-block.no-video { display: none; }
+.video-card {
+  display: flex; align-items: stretch; gap: 0;
+  background: var(--bg-3); border: 2px solid var(--bg-3);
+  border-radius: 14px; overflow: hidden;
+  text-decoration: none; color: inherit;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.video-card:hover { border-color: var(--gold); transform: translateY(-2px); }
+.video-poster {
+  position: relative; flex-shrink: 0;
+  width: clamp(140px, 30%, 220px); aspect-ratio: 16/9;
+  background: linear-gradient(135deg, #6b5841 0%, #1a2d47 60%, #0a1628 100%);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.video-poster-icon {
+  position: absolute; font-size: 56px; opacity: 0.18;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+}
+.video-play-btn {
+  position: relative;
+  width: 56px; height: 56px;
+  background: rgba(255, 200, 87, 0.96);
+  color: var(--bg);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800;
+  padding-left: 4px;
+  box-shadow: 0 6px 22px rgba(0,0,0,0.5);
+  transition: transform 0.15s;
+}
+.video-card:hover .video-play-btn { transform: scale(1.1); }
+.video-card-info {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; justify-content: center;
+  flex: 1; gap: 4px;
+}
+.video-card-label {
+  font-size: 10px; color: var(--gold); font-weight: 800; letter-spacing: 0.12em;
+}
+.video-card-title { font-size: clamp(15px, 1.4vw, 18px); font-weight: 700; line-height: 1.2; }
+.video-card-meta { font-size: 12px; color: var(--ink-muted); display: flex; gap: 8px; align-items: center; }
+.video-card-duration { font-family: ui-monospace, monospace; }
+.video-card-host { display: flex; align-items: center; gap: 4px; }
+.video-card-host::before { content: "→"; }
+
+.verse-row { display: grid; grid-template-columns: 1fr 168px; gap: 14px; margin-bottom: 18px; }
+.verse-block {
+  background: var(--parchment); color: #2d2419;
+  padding: 20px 24px; border-radius: 12px;
+  font-family: Georgia, serif; font-size: 19px; line-height: 1.5;
+  border-left: 6px solid var(--amber);
+}
+.verse-ref { display: block; font-size: 11px; color: var(--stone); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.1em; }
+.qr-block {
+  background: var(--parchment); border-radius: 12px;
+  padding: 12px 10px 10px;
+  display: flex; flex-direction: column; align-items: center; gap: 6px;
+}
+.qr-block img { width: 144px; height: 144px; display: block; border-radius: 6px; }
+.qr-label { font-size: 10px; color: var(--stone); font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; text-align: center; line-height: 1.3; }
+
+.summary-block { font-size: 15px; color: var(--ink-muted); margin-bottom: 22px; line-height: 1.5; font-style: italic; }
+
+.objective-section {
+  background: var(--bg-3); border-radius: 14px;
+  padding: 18px 22px; margin-bottom: 18px;
+  border: 2px solid var(--gold);
+}
+.objective-header {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px;
+}
+.objective-label { font-size: 11px; color: var(--gold); font-weight: 800; letter-spacing: 0.12em; }
+.objective-points { font-size: 13px; color: var(--ink-muted); }
+.objective-points b { color: var(--gold); font-size: 18px; font-weight: 800; }
+.objective-question { font-size: 22px; font-weight: 700; line-height: 1.35; margin-bottom: 14px; }
+
+/* Multiple-choice tiles */
+.choices-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.choice-btn {
+  display: flex; align-items: stretch; gap: 12px;
+  padding: 14px 12px;
+  background: var(--bg); border: 2px solid var(--bg-3);
+  border-radius: 10px; cursor: pointer;
+  text-align: left; color: var(--ink);
+  font: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.choice-btn:hover:not(.revealed) { border-color: var(--gold); background: var(--bg-3); }
+.choice-letter {
+  width: 30px; height: 30px; flex-shrink: 0;
+  background: var(--bg-3); color: var(--ink);
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 14px;
+}
+.choice-text { font-size: 14px; line-height: 1.35; flex: 1; align-self: center; }
+.choice-check { font-size: 22px; align-self: center; font-weight: 800; }
+.choice-btn.revealed { cursor: default; }
+.choice-btn.revealed.correct {
+  background: rgba(74,124,89,0.22);
+  border-color: var(--leaf);
+}
+.choice-btn.revealed.correct .choice-letter { background: var(--leaf); color: #fff; }
+.choice-btn.revealed.correct .choice-check { color: var(--leaf); }
+.choice-btn.revealed.incorrect { opacity: 0.45; }
+
+.answer-explain {
+  padding: 12px 16px;
+  background: rgba(255, 209, 102, 0.10);
+  border-left: 4px solid var(--christ-amber);
+  border-radius: 8px;
+}
+.answer-explain-label { font-size: 10px; color: var(--christ-amber); font-weight: 800; letter-spacing: 0.12em; margin-bottom: 4px; }
+.answer-explain-body { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+
+.christ-callout {
+  background: linear-gradient(135deg, rgba(255,209,102,0.15), rgba(255,159,67,0.08));
+  border-left: 4px solid var(--christ-amber);
+  padding: 14px 20px; border-radius: 8px; margin-bottom: 14px;
+}
+.christ-callout-label { font-size: 11px; color: var(--christ-amber); font-weight: 800; letter-spacing: 0.12em; margin-bottom: 4px; }
+.christ-callout-body { font-size: 15px; color: var(--ink-2); line-height: 1.5; }
+
+.discussion-callout {
+  background: linear-gradient(135deg, rgba(56,210,255,0.12), rgba(56,210,255,0.04));
+  border-left: 4px solid var(--cyan);
+  padding: 14px 20px; border-radius: 8px; margin-bottom: 18px;
+}
+.discussion-label { font-size: 11px; color: var(--cyan); font-weight: 800; letter-spacing: 0.12em; margin-bottom: 4px; }
+.discussion-body { font-size: 15px; color: var(--ink-2); line-height: 1.5; }
+.discussion-hint { font-size: 11px; color: var(--ink-muted); margin-top: 6px; font-style: italic; }
+.modal-actions { display: flex; gap: 12px; padding: 0 30px 26px; }
+.award-btn {
+  flex: 1; padding: 16px; border: none; border-radius: 12px;
+  font-size: 16px; font-weight: 800; cursor: pointer;
+  color: var(--bg); letter-spacing: 0.03em; transition: transform 0.15s;
+}
+.award-btn:hover { transform: translateY(-2px); }
+.award-btn[data-team="1"] { background: var(--cyan); }
+.award-btn[data-team="2"] { background: var(--magenta); }
+.award-btn.skip { background: var(--bg); color: var(--ink-muted); border: 2px solid var(--bg-3); flex: 0.7; }
+
+/* === End === */
+#end-scene { align-items: center; justify-content: center; text-align: center;
+  background: radial-gradient(ellipse at center, #1a2d47 0%, #0a1628 100%); padding: 40px; }
+.end-trophy { font-size: 60px; margin-bottom: 8px; }
+.end-headline { font-size: 36px; font-weight: 800; margin-bottom: 6px; }
+.end-subhead { font-size: 16px; color: var(--ink-muted); margin-bottom: 28px; }
+.end-scores { display: flex; gap: 24px; margin-bottom: 28px; }
+.end-score-card { background: var(--bg-2); padding: 22px 30px; border-radius: 16px; min-width: 220px; transition: transform 0.3s; }
+.end-score-card[data-team="1"] { border-top: 6px solid var(--cyan); }
+.end-score-card[data-team="2"] { border-top: 6px solid var(--magenta); }
+.end-score-card.winner { transform: scale(1.08); box-shadow: 0 0 40px var(--gold); }
+.end-team-name { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.end-team-pts { font-size: 52px; font-weight: 900; color: var(--gold); }
+.testimony-card {
+  background: linear-gradient(135deg, rgba(255,209,102,0.15), rgba(255,159,67,0.08));
+  border-left: 4px solid var(--christ-amber);
+  padding: 22px 28px; border-radius: 12px; max-width: 680px; text-align: left; margin-bottom: 20px;
+}
+.testimony-label { font-size: 12px; color: var(--christ-amber); font-weight: 800; letter-spacing: 0.12em; margin-bottom: 8px; }
+.testimony-prompt { font-size: 17px; line-height: 1.5; }
+.end-restart { background: var(--bg-2); color: var(--ink); border: 2px solid var(--bg-3);
+  padding: 12px 26px; border-radius: 10px; font-size: 14px; cursor: pointer; }
+
+.demo-hint { position: fixed; bottom: 12px; right: 16px; font-size: 10px; color: var(--ink-muted); opacity: 0.6; }
+</style>
+</head>
+<body>
+
+<!-- Back-nav (matches Common Ground / Scripture Match) -->
+<div class="back-nav">
+  <a href="../index.html">← Kindred Hub</a>
+  <span class="sep">|</span>
+  <span class="game-name">Scripture Trail</span>
+  <span class="lesson-badge" id="back-nav-lesson">Loading…</span>
+</div>
+
+<!-- === Character library (placeholder SVG — swap for Gemini portraits later) === -->
+<svg style="position:absolute; width:0; height:0;" aria-hidden="true">
+  <defs>
+    <symbol id="char-shepherd" viewBox="0 0 100 100">
+      <path d="M30 70 L20 95 L80 95 L70 70 Z" fill="currentColor" opacity="0.85"/>
+      <circle cx="50" cy="40" r="18" fill="#e8c39a"/>
+      <path d="M32 40 Q32 22 50 22 Q68 22 68 40 Q66 30 50 30 Q34 30 32 40 Z" fill="#3a2818"/>
+      <line x1="78" y1="20" x2="86" y2="94" stroke="#7a5c3a" stroke-width="3"/>
+      <rect x="28" y="68" width="44" height="6" fill="#5a4028"/>
+    </symbol>
+    <symbol id="char-prophet" viewBox="0 0 100 100">
+      <path d="M28 70 L18 95 L82 95 L72 70 Z" fill="currentColor" opacity="0.85"/>
+      <path d="M28 50 Q28 18 50 18 Q72 18 72 50 L72 40 L28 40 Z" fill="currentColor"/>
+      <circle cx="50" cy="42" r="14" fill="#e8c39a"/>
+      <path d="M38 48 Q38 64 50 64 Q62 64 62 48 Q58 54 50 54 Q42 54 38 48 Z" fill="#dadada"/>
+      <rect x="40" y="74" width="22" height="14" fill="#e8d8a8" rx="2"/>
+      <line x1="42" y1="78" x2="60" y2="78" stroke="#7a5c3a"/>
+      <line x1="42" y1="82" x2="60" y2="82" stroke="#7a5c3a"/>
+    </symbol>
+    <symbol id="char-maiden" viewBox="0 0 100 100">
+      <path d="M28 70 L18 95 L82 95 L72 70 Z" fill="currentColor" opacity="0.85"/>
+      <path d="M26 38 Q26 12 50 12 Q74 12 74 38 L74 58 L26 58 Z" fill="currentColor" opacity="0.55"/>
+      <circle cx="50" cy="40" r="14" fill="#e8c39a"/>
+      <path d="M68 70 L73 88 L92 88 L97 70 Z" fill="#a8784a"/>
+      <line x1="75" y1="60" x2="75" y2="70" stroke="#d4a857" stroke-width="2"/>
+      <line x1="82" y1="58" x2="82" y2="70" stroke="#d4a857" stroke-width="2"/>
+      <line x1="89" y1="60" x2="89" y2="70" stroke="#d4a857" stroke-width="2"/>
+    </symbol>
+    <symbol id="char-soldier" viewBox="0 0 100 100">
+      <path d="M30 70 L20 95 L80 95 L70 70 Z" fill="currentColor" opacity="0.85"/>
+      <rect x="32" y="55" width="36" height="20" fill="#8b8378" rx="2"/>
+      <circle cx="50" cy="38" r="16" fill="#e8c39a"/>
+      <path d="M30 38 Q30 18 50 18 Q70 18 70 38 L70 28 L30 28 Z" fill="#5a5048"/>
+      <rect x="28" y="36" width="44" height="4" fill="#3a302a"/>
+      <line x1="82" y1="50" x2="82" y2="92" stroke="#8b8378" stroke-width="3"/>
+      <rect x="78" y="48" width="8" height="4" fill="#5a4028"/>
+    </symbol>
+    <symbol id="char-scribe" viewBox="0 0 100 100">
+      <path d="M28 70 L18 95 L82 95 L72 70 Z" fill="currentColor" opacity="0.85"/>
+      <circle cx="50" cy="42" r="16" fill="#e8c39a"/>
+      <path d="M30 38 Q30 18 50 18 Q70 18 70 38 Q66 30 50 30 Q34 30 30 38 Z" fill="currentColor"/>
+      <rect x="30" y="32" width="40" height="4" fill="currentColor" opacity="0.7"/>
+      <path d="M40 50 Q40 62 50 62 Q60 62 60 50 Q56 56 50 56 Q44 56 40 50 Z" fill="#3a2818"/>
+      <rect x="58" y="68" width="22" height="16" fill="#e8d8a8" rx="2"/>
+      <line x1="60" y1="73" x2="78" y2="73" stroke="#7a5c3a"/>
+      <line x1="60" y1="77" x2="78" y2="77" stroke="#7a5c3a"/>
+    </symbol>
+    <symbol id="char-judge" viewBox="0 0 100 100">
+      <path d="M28 70 L18 95 L82 95 L72 70 Z" fill="currentColor" opacity="0.85"/>
+      <circle cx="50" cy="42" r="16" fill="#e8c39a"/>
+      <path d="M32 42 Q32 26 50 26 Q68 26 68 42 Q60 34 50 34 Q40 34 32 42 Z" fill="#5a3a1a"/>
+      <path d="M28 30 Q35 20 50 20 Q65 20 72 30" stroke="#4a7c59" stroke-width="3" fill="none"/>
+      <circle cx="34" cy="26" r="3" fill="#4a7c59"/>
+      <circle cx="44" cy="22" r="3" fill="#4a7c59"/>
+      <circle cx="56" cy="22" r="3" fill="#4a7c59"/>
+      <circle cx="66" cy="26" r="3" fill="#4a7c59"/>
+      <path d="M40 54 Q40 66 50 66 Q60 66 60 54 Q56 60 50 60 Q44 60 40 54 Z" fill="#7a5028"/>
+    </symbol>
+  </defs>
+</svg>
+
+
+<!-- === Scene 1: Setup === -->
+<section id="setup-scene" class="scene active">
+  <header class="app-header">
+    <div>
+      <div class="app-logo">Scripture<span class="accent">Trail</span></div>
+      <div class="app-subtitle">Lesson 23 · June 1–7, 2026 · Ruth; 1 Samuel 1–7</div>
+    </div>
+    <div class="header-tools">
+      <button class="help-btn" data-action="open-instructions" title="How to play">?</button>
+    </div>
+  </header>
+
+  <div class="setup-body">
+    <div class="team-panel" data-team="1">
+      <div>
+        <div class="team-label">Team 1 · Cyan</div>
+        <input type="text" class="team-name-input" data-team="1" value="The Faithful Gleaners" />
+      </div>
+      <div>
+        <div class="section-label">Team captain</div>
+        <div class="captain-row">
+          <span class="captain-crown">👑</span>
+          <input type="text" class="captain-input" data-team="1" placeholder="Captain's name" value="Eliza" />
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Pick your champion</div>
+        <div class="character-grid" data-team="1"></div>
+      </div>
+    </div>
+
+    <div class="team-panel" data-team="2">
+      <div>
+        <div class="team-label">Team 2 · Magenta</div>
+        <input type="text" class="team-name-input" data-team="2" value="The Ebenezer Crew" />
+      </div>
+      <div>
+        <div class="section-label">Team captain</div>
+        <div class="captain-row">
+          <span class="captain-crown">👑</span>
+          <input type="text" class="captain-input" data-team="2" placeholder="Captain's name" value="Caleb" />
+        </div>
+      </div>
+      <div>
+        <div class="section-label">Pick your champion</div>
+        <div class="character-grid" data-team="2"></div>
+      </div>
+    </div>
+  </div>
+
+  <button class="start-btn" id="start-btn">Begin the Journey →</button>
+</section>
+
+
+<!-- === Scene 2: Board === -->
+<section id="board-scene" class="scene">
+  <header class="app-header">
+    <div>
+      <div class="app-logo">Scripture<span class="accent">Trail</span></div>
+      <div class="app-subtitle">Ruth & Samuel · Stop <span id="stop-counter">0</span> of 7</div>
+    </div>
+    <div class="header-tools">
+      <button class="help-btn" data-action="open-instructions" title="How to play">?</button>
+    </div>
+  </header>
+
+  <div class="scoreboard">
+    <div class="score-card active-turn" data-team="1" id="score-1">
+      <img id="score-img-1" class="score-avatar" alt="" />
+      <div class="score-info">
+        <div class="score-name" id="score-name-1">The Faithful Gleaners</div>
+        <div class="score-captain">Captain 👑 <span id="score-cap-1">Eliza</span></div>
+      </div>
+      <div class="score-points" id="score-pts-1">0</div>
+    </div>
+    <div class="score-card" data-team="2" id="score-2">
+      <img id="score-img-2" class="score-avatar" alt="" />
+      <div class="score-info">
+        <div class="score-name" id="score-name-2">The Ebenezer Crew</div>
+        <div class="score-captain">Captain 👑 <span id="score-cap-2">Caleb</span></div>
+      </div>
+      <div class="score-points" id="score-pts-2">0</div>
+    </div>
+  </div>
+
+  <div class="turn-indicator">
+    👉 <span class="turn-team" id="turn-team-name">The Faithful Gleaners</span>' turn. Captain 👑 <span id="turn-cap">Eliza</span> — open the next stop and pick a teammate to answer the question for points.
+  </div>
+
+  <div class="board-body">
+    <svg class="trail-canvas" viewBox="0 0 2000 1116" preserveAspectRatio="xMidYMid meet">
+      <defs>
+        <filter id="glow"><feGaussianBlur stdDeviation="6" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+        <filter id="label-bg" x="-10%" y="-30%" width="120%" height="160%">
+          <feFlood flood-color="#0a1628" flood-opacity="0.55"/>
+          <feComposite in2="SourceGraphic" operator="in"/>
+          <feGaussianBlur stdDeviation="3"/>
+          <feComposite in="SourceGraphic" operator="over"/>
+        </filter>
+        <clipPath id="token-clip"><circle r="30"/></clipPath>
+      </defs>
+
+      <!-- Painted board (Gemini) -->
+      <image href="assets/scripture-trail-board.png" x="0" y="0" width="2000" height="1116" preserveAspectRatio="xMidYMid slice"/>
+
+      <!-- region labels — drop-shadowed so they read on warm painted background -->
+      <g font-family="sans-serif" font-size="22" font-weight="800" letter-spacing="5" fill="#f4ecd8" style="paint-order: stroke; stroke: #0a1628; stroke-width: 5px; stroke-linejoin: round;">
+        <text x="120"  y="1020">MOAB</text>
+        <text x="560"  y="1070">BETHLEHEM</text>
+        <text x="1180" y="1070">SHILOH</text>
+        <text x="1780" y="1020">MIZPAH</text>
+      </g>
+
+      <g id="stops-layer"></g>
+      <g id="tokens-layer"></g>
+    </svg>
+  </div>
+</section>
+
+
+<!-- === Stop Modal === -->
+<div class="modal-backdrop" id="stop-modal-bd">
+  <div class="stop-modal" id="stop-modal">
+    <div class="modal-header">
+      <div class="modal-stop-num" id="modal-stop-num">1</div>
+      <div>
+        <div class="modal-title" id="modal-title">Ruth Chooses Naomi</div>
+        <div class="modal-ref" id="modal-ref">Ruth 1:4–18</div>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="review-banner">
+        <div class="review-banner-label">✓ ALREADY PLAYED</div>
+        <div class="review-banner-body" id="review-banner-body"></div>
+      </div>
+      <div class="verse-row">
+        <div class="verse-block">
+          "<span id="modal-verse"></span>"
+          <span class="verse-ref" id="modal-verse-ref"></span>
+        </div>
+        <div class="qr-block">
+          <img id="modal-qr" src="" alt="Scan to read in Gospel Library" />
+          <div class="qr-label">📱 Read in<br>Gospel Library</div>
+        </div>
+      </div>
+
+      <div class="summary-block" id="modal-summary"></div>
+
+      <div class="objective-section">
+        <div class="objective-header">
+          <div class="objective-label">🎯 THE QUESTION — pick one</div>
+          <div class="objective-points">Worth <b id="modal-points">20</b> pts</div>
+        </div>
+        <div class="objective-question" id="modal-objective"></div>
+        <div class="choices-grid" id="choices-grid"></div>
+        <div class="answer-explain" id="answer-explain" style="display:none">
+          <div class="answer-explain-label">📖 WHY</div>
+          <div class="answer-explain-body" id="modal-answer"></div>
+        </div>
+      </div>
+
+      <div class="christ-callout">
+        <div class="christ-callout-label">✝ CHRIST CONNECTION</div>
+        <div class="christ-callout-body" id="modal-christ"></div>
+      </div>
+
+      <div class="discussion-callout">
+        <div class="discussion-label">💬 FOR THE CLASS TO DISCUSS</div>
+        <div class="discussion-body" id="modal-discussion"></div>
+        <div class="discussion-hint">After points are awarded — open it up to the whole class, not just the team that answered.</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="award-btn" data-team="1" id="award-1">Team 1 Got It</button>
+      <button class="award-btn skip" id="skip-btn">Discuss only</button>
+      <button class="award-btn" data-team="2" id="award-2">Team 2 Got It</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- === Arc Intro Modal (plays before the first stop of each arc) === -->
+<div class="modal-backdrop" id="arc-intro-bd">
+  <div class="arc-intro-modal">
+    <div class="arc-intro-header">
+      <div class="arc-region" id="arc-region">BETHLEHEM</div>
+      <div class="arc-title" id="arc-title">The Story of Ruth</div>
+      <div class="arc-subtitle" id="arc-subtitle"></div>
+    </div>
+    <div class="arc-intro-body">
+      <div class="arc-context" id="arc-context"></div>
+      <a class="arc-video-btn" id="arc-video-link" target="_blank" rel="noopener">
+        <div class="arc-video-btn-icon">▶</div>
+        <div class="arc-video-btn-content">
+          <div class="arc-video-btn-title" id="arc-video-title">Ruth and Naomi</div>
+          <div class="arc-video-btn-meta">Tap to play in Gospel Library · watch as a class before opening the next stop</div>
+        </div>
+        <div class="arc-video-btn-duration" id="arc-video-duration">2:00</div>
+      </a>
+      <div class="arc-stops-preview" id="arc-stops-preview"></div>
+    </div>
+    <button class="arc-begin-btn" id="arc-begin-btn">Begin this story →</button>
+  </div>
+</div>
+
+
+<!-- === Instructions Modal — auto-shows once on first load; re-openable via "?" button === -->
+<div class="modal-backdrop" id="instructions-bd">
+  <div class="instructions-modal">
+    <div class="instructions-header">
+      <div class="instructions-eyebrow">SCRIPTURE TRAIL · HOW TO PLAY</div>
+      <div class="instructions-headline">A 30-minute trail through the lesson, together as two teams.</div>
+      <div class="instructions-tagline">Lesson 23 · Ruth & 1 Samuel 1–7 · 7 stops · 3 story arcs</div>
+    </div>
+    <div class="instructions-body">
+      <div class="instructions-step">
+        <div class="instructions-step-num">1</div>
+        <div class="instructions-step-content">
+          <div class="instructions-step-title">Pick teams and captains</div>
+          <div class="instructions-step-body">Name your two teams, pick a captain for each, and choose a champion character. The captain on duty leads their team's turn.</div>
+        </div>
+      </div>
+      <div class="instructions-step">
+        <div class="instructions-step-num">2</div>
+        <div class="instructions-step-content">
+          <div class="instructions-step-title">Watch each story arc together</div>
+          <div class="instructions-step-body">Before the first stop of each arc (Ruth, Hannah, Samuel), a 1–4 min Church video plays as the class watches together. It sets the context for the next 2–3 stops.</div>
+        </div>
+      </div>
+      <div class="instructions-step">
+        <div class="instructions-step-num">3</div>
+        <div class="instructions-step-content">
+          <div class="instructions-step-title">Take turns opening stops</div>
+          <div class="instructions-step-body">Teams alternate. The captain on duty picks a teammate to answer the multiple-choice question. Read the verse together, or scan the QR to open it in Gospel Library.</div>
+        </div>
+      </div>
+      <div class="instructions-step">
+        <div class="instructions-step-num">4</div>
+        <div class="instructions-step-content">
+          <div class="instructions-step-title">Discuss as a class</div>
+          <div class="instructions-step-body">After points are awarded, the discussion prompt opens it up to everyone — not just the team that answered. The Christ Connection ties the scripture to the Saviour.</div>
+        </div>
+      </div>
+      <div class="instructions-step">
+        <div class="instructions-step-num">↻</div>
+        <div class="instructions-step-content">
+          <div class="instructions-step-title">Go back if you need to</div>
+          <div class="instructions-step-body">Completed stops stay clickable — open one to re-read the verse with the class, or to fix a score if a team was awarded by mistake.</div>
+        </div>
+      </div>
+      <div class="instructions-req">
+        <div class="instructions-req-label">📱 WHAT YOU'LL NEED</div>
+        <ul>
+          <li>A screen the whole class can see — TV, projector, iPad, or large monitor</li>
+          <li>A phone with a QR scanner (any student's) to open verses in Gospel Library</li>
+          <li>About 30 minutes</li>
+        </ul>
+      </div>
+    </div>
+    <button class="instructions-got-it" id="instructions-got-it">Got it — let's play →</button>
+  </div>
+</div>
+
+
+<!-- === Scene 3: End === -->
+<section id="end-scene" class="scene">
+  <div class="end-trophy">🌾</div>
+  <div class="end-headline">Trail Complete</div>
+  <div class="end-subhead">From Moab to Mizpah — the Lord has been with you</div>
+  <div class="end-scores">
+    <div class="end-score-card" data-team="1" id="end-card-1">
+      <div class="end-team-name" id="end-name-1">The Faithful Gleaners</div>
+      <div class="end-team-pts" id="end-pts-1">0</div>
+    </div>
+    <div class="end-score-card" data-team="2" id="end-card-2">
+      <div class="end-team-name" id="end-name-2">The Ebenezer Crew</div>
+      <div class="end-team-pts" id="end-pts-2">0</div>
+    </div>
+  </div>
+  <div class="testimony-card">
+    <div class="testimony-label">✝ Closing Testimony Invitation</div>
+    <div class="testimony-prompt">
+      Like Samuel, the Lord is calling each of us by name. This week, find one quiet moment to say:
+      <em>"Speak, Lord; for thy servant heareth."</em> Write down what you feel — that is how we learn
+      to recognise His voice.
+    </div>
+  </div>
+  <button class="end-restart" onclick="location.reload()">↻ Play Again</button>
+</section>
+
+<div class="demo-hint">Press D to skip setup · Click the glowing stop to play</div>
+
+<script>
+const TRAIL_STOPS = [
+  { n:1, title:"Ruth Chooses Naomi", ref:"Ruth 1:4–18",
+    verse:"Whither thou goest, I will go; and where thou lodgest, I will lodge: thy people shall be my people, and thy God my God.",
+    verseRef:"Ruth 1:16 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/ruth/1?lang=eng&id=p16#p16",
+    arc:{ id:"ruth", region:"MOAB → BETHLEHEM", title:"The Story of Ruth", subtitle:"Loss, covenant, and the kinsman-redeemer",
+      context:"Three women in Moab have lost their husbands. Naomi tells her two daughters-in-law to go back to their own families — but Ruth refuses to leave her. Watch what happens next, then we'll open Stop 1 together.",
+      icon:"🌾", stopRange:"Stops 1 – 3",
+      video:{ title:"Ruth and Naomi", duration:"2:00", url:"https://www.churchofjesuschrist.org/study/manual/old-testament-stories-2022/ruth-and-naomi?lang=eng" } },
+    summary:"After losing her husband, Ruth — a Moabite — refuses to leave Naomi. She binds herself by covenant to Naomi's God and people, choosing faith over the familiar.",
+    objective:"When Naomi told Ruth to go back home to Moab, what did Ruth promise instead?",
+    choices:[
+      { text:"She'd come back every harvest season to visit", correct:false },
+      { text:"Where Naomi went, she would go — and Naomi's God would be her God", correct:true },
+      { text:"She'd send her sister Orpah back to look after Naomi", correct:false }
+    ],
+    answer:"In Ruth 1:16–17 Ruth makes four promises: she'll go where Naomi goes, lodge where Naomi lodges, take Naomi's people as her own, and worship Naomi's God.",
+    discussion:"Ruth gave up everything she knew to follow the Lord's people. What is one thing the Lord might be asking YOU to give up — or hold onto — that takes real faith?",
+    christ:"Ruth's covenant with Naomi mirrors our covenant with Christ: we choose Him, His people, and His path even when the road ahead is uncertain.",
+    points:20, x:230, y:760 },
+  { n:2, title:"Ruth Gleans in Boaz's Field", ref:"Ruth 2:1–12",
+    verse:"The Lord recompense thy work, and a full reward be given thee of the Lord God of Israel, under whose wings thou art come to trust.",
+    verseRef:"Ruth 2:12 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/ruth/2?lang=eng&id=p12#p12",
+    summary:"Ruth works in Boaz's barley field to feed Naomi. Boaz notices her loyalty and quietly arranges for her to be protected and provided for.",
+    objective:"How does Boaz protect and provide for Ruth in his field?",
+    choices:[
+      { text:"He gives her his own coat to wear", correct:false },
+      { text:"He sends her home with a full day's wages", correct:false },
+      { text:"He lets her glean and tells his workers not to bother her", correct:true }
+    ],
+    answer:"Boaz invites Ruth to glean among the sheaves, orders his young men not to touch her, and tells her to drink from the workers' water and share their bread.",
+    discussion:"How has the Lord cared for YOU through the kindness of someone else — sometimes a stranger?",
+    christ:"Boaz's protection of Ruth foreshadows Christ gathering us 'under His wings' — He uses ordinary people's kindness to deliver extraordinary care.",
+    points:15, x:570, y:820 },
+  { n:3, title:"Boaz Redeems Ruth", ref:"Ruth 4:4–10",
+    verse:"Moreover Ruth the Moabitess... have I purchased to be my wife, to raise up the name of the dead upon his inheritance.",
+    verseRef:"Ruth 4:10 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/ruth/4?lang=eng&id=p10#p10",
+    summary:"Boaz acts as a kinsman-redeemer, restoring Ruth's broken family line. From their marriage will come Obed, then Jesse, then King David — and eventually Jesus Christ.",
+    objective:"There's a special Old Testament title for what Boaz becomes when he marries Ruth. What is it?",
+    choices:[
+      { text:"High priest", correct:false },
+      { text:"King-elect", correct:false },
+      { text:"Kinsman-redeemer", correct:true }
+    ],
+    answer:"A kinsman-redeemer (Hebrew: go'el) was the closest relative who could buy back family land or marry a widow to keep the family line going. Boaz takes that role for Ruth.",
+    discussion:"A 'redeemer' pays a price to bring someone back. How has Jesus Christ been a redeemer in YOUR life this week?",
+    christ:"Boaz is one of the clearest types of Christ in the Old Testament — the kinsman-redeemer who pays the price to make us His own.",
+    points:25, x:740, y:560 },
+  { n:4, title:"Hannah Prays in Bitterness", ref:"1 Samuel 1:1–10",
+    verse:"And she was in bitterness of soul, and prayed unto the Lord, and wept sore.",
+    verseRef:"1 Samuel 1:10 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/1-sam/1?lang=eng&id=p10#p10",
+    arc:{ id:"hannah", region:"SHILOH", title:"Hannah's Prayer", subtitle:"How the prophet Samuel came to be",
+      context:"Hannah has waited years to bear a child. She travels to the temple at Shiloh and pours out her heart in silent prayer — so honestly that the priest Eli misjudges her. Watch what happens, then we'll open Stop 4.",
+      icon:"🙏", stopRange:"Stops 4 – 5",
+      video:{ title:"Hannah", duration:"1:15", url:"https://www.churchofjesuschrist.org/study/manual/old-testament-stories-2022/hannah?lang=eng" } },
+    summary:"Hannah cannot bear children and is mocked for it. She pours out her sorrow to the Lord at the temple in Shiloh — so deeply that Eli first mistakes her grief for drunkenness.",
+    objective:"Hannah's lips were moving but no sound came out. What did Eli the priest wrongly accuse her of?",
+    choices:[
+      { text:"Being deaf and unable to hear him", correct:false },
+      { text:"Being drunk", correct:true },
+      { text:"Being a Philistine spy", correct:false }
+    ],
+    answer:"Eli sees Hannah's lips moving without sound and assumes she's been drinking. Hannah explains she has 'poured out my soul before the Lord' — and Eli blesses her.",
+    discussion:"Hannah brought her honest hurt to God. What would it look like for YOU to pray that honestly this week?",
+    christ:"Jesus invites the heavy-laden to come to Him exactly as they are — Hannah models the kind of prayer the Saviour welcomes.",
+    points:15, x:1130, y:830 },
+  { n:5, title:"Hannah's Song of Praise", ref:"1 Samuel 2:1–10",
+    verse:"My heart rejoiceth in the Lord... there is none holy as the Lord: for there is none beside thee.",
+    verseRef:"1 Samuel 2:1–2 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/1-sam/2?lang=eng&id=p1#p1",
+    summary:"Hannah receives Samuel — and gives him back to the Lord at the temple. Her song of praise becomes a pattern echoed centuries later by Mary, mother of Jesus.",
+    objective:"After Samuel was born, what big-faith thing did Hannah do?",
+    choices:[
+      { text:"She hid him so Eli wouldn't take him away", correct:false },
+      { text:"She gave him back to the Lord to serve at the temple", correct:true },
+      { text:"She made him the next king of Israel", correct:false }
+    ],
+    answer:"Hannah keeps the promise she made in chapter 1: as soon as Samuel is weaned, she brings him to the temple and 'lends' him to the Lord for life.",
+    discussion:"Hannah praised God even as she walked away from her son. When has God answered one of YOUR prayers in a way that asked you to give something back?",
+    christ:"Hannah's song is the seed of Mary's Magnificat — both songs declare that God lifts the lowly and keeps His covenants.",
+    points:20, x:1320, y:710 },
+  { n:6, title:"Samuel Hears the Lord", ref:"1 Samuel 3:1–10",
+    verse:"Speak; for thy servant heareth.",
+    verseRef:"1 Samuel 3:10 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/1-sam/3?lang=eng&id=p10#p10",
+    arc:{ id:"samuel", region:"SHILOH → MIZPAH", title:"Speak, Lord — Thy Servant Heareth", subtitle:"The boy prophet learns to listen",
+      context:"Hannah keeps her promise and brings young Samuel to serve at the temple. One night the Lord begins to call him by name — but Samuel doesn't yet recognise the voice. Watch what Eli teaches him, then we'll open Stop 6.",
+      icon:"👂", stopRange:"Stops 6 – 7",
+      video:{ title:"Speak, Lord; for Thy Servant Heareth", duration:"4:32", url:"https://www.churchofjesuschrist.org/study/manual/old-testament-stories-2022/samuel-the-prophet?lang=eng" } },
+    summary:"Young Samuel hears the Lord calling him in the night. With Eli's guidance, he learns to recognise the voice and respond with willing ears.",
+    objective:"How many times did Samuel run to Eli before they realised it was the Lord calling him?",
+    choices:[
+      { text:"Three times", correct:true },
+      { text:"Just once", correct:false },
+      { text:"Seven times", correct:false }
+    ],
+    answer:"Three times the Lord calls Samuel, and three times he runs to Eli. The third time Eli realises it's the Lord and tells Samuel how to respond.",
+    discussion:"What is one practical thing YOU could try this week to make it easier to hear the Lord's voice?",
+    christ:"Christ is the Good Shepherd whose sheep hear His voice. Samuel models the response He's still waiting for from each of us.",
+    points:20, x:1500, y:830 },
+  { n:7, title:"Ebenezer — Hitherto Hath the Lord Helped Us", ref:"1 Samuel 7:5–12",
+    verse:"Then Samuel took a stone, and set it ... and called the name of it Ebenezer, saying, Hitherto hath the Lord helped us.",
+    verseRef:"1 Samuel 7:12 (KJV)",
+    url:"https://www.churchofjesuschrist.org/study/scriptures/ot/1-sam/7?lang=eng&id=p12#p12",
+    summary:"After Israel repents, Samuel sets up a memorial stone — Ebenezer, 'stone of help' — to remember that every step of the journey was God's doing.",
+    objective:"What does the name 'Ebenezer' actually mean?",
+    choices:[
+      { text:"Sword of the Lord", correct:false },
+      { text:"City of refuge", correct:false },
+      { text:"Stone of help", correct:true }
+    ],
+    answer:"Eben (stone) + ezer (help). Samuel names the stone after the words 'Hitherto hath the Lord helped us' — a memorial for the next generation.",
+    discussion:"What would be YOUR 'Ebenezer' this year — a moment you want to remember as proof that the Lord has helped you?",
+    christ:"Christ is our true stone of help. Every Sacrament is an Ebenezer — a weekly reminder of how far He has carried us.",
+    points:25, x:1860, y:550 }
+];
+
+// =============== Character pool (Gemini PNGs in assets/characters/) ===============
+const CHARACTERS = [
+  { id:'shepherd-boy',   name:'Shepherd Boy',   file:'01_Boy.png' },
+  { id:'gleaner-girl',   name:'Gleaner Girl',   file:'02_Gleaner_Girl.png' },
+  { id:'scribe-boy',     name:'Scribe Boy',     file:'03_Scribe_Boy.png' },
+  { id:'prophet-elder',  name:'Prophet Elder',  file:'04_Prophet_Elder.png' },
+  { id:'captain',        name:'Captain',        file:'05_Captain.png' },
+  { id:'judge',          name:'Judge',          file:'06_Judge.png' },
+  { id:'weaver',         name:'Weaver',         file:'07_Weaver.png' },
+  { id:'builder',        name:'Builder',        file:'08_Builder.png' },
+  { id:'singer-girl',    name:'Singer Girl',    file:'09_Singer_Girl.png' },
+  { id:'messenger-boy',  name:'Messenger Boy',  file:'10_Messenger_Boy.png' },
+  { id:'mother',         name:'Mother',         file:'11_Mother_Figure.png' },
+  { id:'father',         name:'Father',         file:'12_Father_Figure.png' },
+  { id:'priest',         name:'Priest',         file:'13_Priest.png' },
+  { id:'watchman',       name:'Watchman',       file:'14_Watchmen.png' },
+  { id:'servant-girl',   name:'Servant Girl',   file:'15_Servant_Girl.png' },
+  { id:'healer',         name:'Healer',         file:'16_Healer.png' },
+  { id:'pilgrim-boy',    name:'Pilgrim Boy',    file:'17_Pilgram_Boy.png' },
+  { id:'ploughman',      name:'Ploughman',      file:'18_ Ploughman_young_adult .png' },
+  { id:'king-david',     name:'King David',     file:'19_King_David_Type.png' },
+  { id:'elder-mother',   name:'Elder Mother',   file:'20_Elder Mother.png' },
+  { id:'soldier',        name:'Soldier',        file:'21_Soldier.png' },
+  { id:'bookworm',       name:'Bookworm',       file:'22_Book_Worm.png' },
+  { id:'shepherd-girl',  name:'Shepherd Girl',  file:'23_Shepard_Girl.png' },
+  { id:'eli',            name:'Eli',            file:'24_Eli_figure_elder_priest.png' }
+];
+const CHAR_BY_ID = Object.fromEntries(CHARACTERS.map(c => [c.id, c]));
+function charSrc(id) {
+  const c = CHAR_BY_ID[id]; if (!c) return '';
+  return 'assets/characters/' + encodeURIComponent(c.file);
+}
+
+const state = {
+  team1: { name:"The Faithful Gleaners", captain:"Eliza", char:"gleaner-girl",  points:0, position:0 },
+  team2: { name:"The Ebenezer Crew",      captain:"Caleb", char:"prophet-elder", points:0, position:0 },
+  currentTurn: 1,
+  completedStops: [],
+  stopResults: {},  // { [stopN]: teamN (1, 2, or null for "discuss only") } — used for backwards review/reassign
+  currentStopN: null,
+  reviewMode: false,
+  arcsShown: new Set(),
+  pendingStop: null
+};
+
+// =============== Instructions modal (auto-shows on first load) ===============
+const instructionsBd = document.getElementById('instructions-bd');
+document.getElementById('instructions-got-it').addEventListener('click', () => {
+  instructionsBd.classList.remove('open');
+});
+document.querySelectorAll('.help-btn').forEach(btn => {
+  btn.addEventListener('click', () => instructionsBd.classList.add('open'));
+});
+// Show automatically on first load
+instructionsBd.classList.add('open');
+
+// Render character tiles for both teams
+function renderCharacterGrids() {
+  document.querySelectorAll('.character-grid').forEach(grid => {
+    const team = grid.dataset.team;
+    const selectedId = state['team'+team].char;
+    grid.innerHTML = '';
+    CHARACTERS.forEach(c => {
+      const tile = document.createElement('div');
+      tile.className = 'character-tile' + (c.id === selectedId ? ' selected' : '');
+      tile.dataset.char = c.id;
+      tile.innerHTML = `<img src="${charSrc(c.id)}" alt="${c.name}" loading="lazy" /><div class="char-name">${c.name}</div>`;
+      tile.addEventListener('click', () => {
+        grid.querySelectorAll('.character-tile').forEach(t => t.classList.remove('selected'));
+        tile.classList.add('selected');
+        state['team'+team].char = c.id;
+      });
+      grid.appendChild(tile);
+    });
+  });
+}
+renderCharacterGrids();
+document.querySelectorAll('.team-name-input').forEach(inp => {
+  inp.addEventListener('input', () => { state['team'+inp.dataset.team].name = inp.value; });
+});
+document.querySelectorAll('.captain-input').forEach(inp => {
+  inp.addEventListener('input', () => { state['team'+inp.dataset.team].captain = inp.value; });
+});
+
+document.getElementById('start-btn').addEventListener('click', () => {
+  document.getElementById('score-name-1').textContent = state.team1.name;
+  document.getElementById('score-cap-1').textContent  = state.team1.captain;
+  document.getElementById('score-name-2').textContent = state.team2.name;
+  document.getElementById('score-cap-2').textContent  = state.team2.captain;
+  document.getElementById('score-img-1').src = charSrc(state.team1.char);
+  document.getElementById('score-img-2').src = charSrc(state.team2.char);
+  renderBoard();
+  showScene('board-scene');
+});
+
+function renderBoard() {
+  const stopsLayer = document.getElementById('stops-layer');
+  const tokensLayer = document.getElementById('tokens-layer');
+  stopsLayer.innerHTML = '';
+  tokensLayer.innerHTML = '';
+
+  TRAIL_STOPS.forEach((stop, idx) => {
+    const completed = state.completedStops.includes(stop.n);
+    const isNext = !completed && state.completedStops.length === idx;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('stop-node');
+    if (!completed && !isNext) g.classList.add('locked');
+    g.setAttribute('transform', `translate(${stop.x}, ${stop.y})`);
+    if (isNext) {
+      g.addEventListener('click', () => openStop(stop));
+      g.setAttribute('filter', 'url(#glow)');
+    } else if (completed) {
+      // Re-clickable: teacher can review the verse or reassign the score
+      g.addEventListener('click', () => openStop(stop));
+      g.classList.remove('locked');
+    }
+
+    const fill = completed ? '#4a7c59' : (isNext ? '#ffc857' : '#3a4858');
+    const stroke = isNext ? '#fff8c4' : '#0a1628';
+    const numColor = isNext ? '#0a1628' : '#f4ecd8';
+    const pulseRings = isNext ? `
+      <circle r="34" fill="none" stroke="#ffc857" stroke-width="3" opacity="0.7">
+        <animate attributeName="r" values="34;60;34" dur="1.8s" repeatCount="indefinite"/>
+        <animate attributeName="opacity" values="0.7;0;0.7" dur="1.8s" repeatCount="indefinite"/>
+      </circle>` : '';
+    const startBadge = isNext && state.completedStops.length === 0 ? `
+      <g transform="translate(0,-90)">
+        <rect x="-55" y="-18" width="110" height="30" rx="15" fill="#ffc857"/>
+        <text x="0" y="3" text-anchor="middle" fill="#0a1628" font-size="13" font-weight="800">START HERE</text>
+        <path d="M -8 14 L 0 26 L 8 14 Z" fill="#ffc857"/>
+      </g>` : '';
+    g.innerHTML = `
+      ${pulseRings}
+      <circle class="stop-circle" r="34" fill="${fill}" stroke="${stroke}" stroke-width="3"/>
+      <text x="0" y="8" text-anchor="middle" fill="${numColor}" font-size="24" font-weight="800" pointer-events="none">${completed ? '✓' : stop.n}</text>
+      <text class="stop-label" x="0" y="-48" text-anchor="middle" pointer-events="none">${stop.title}</text>
+      <text class="stop-ref" x="0" y="60" text-anchor="middle" pointer-events="none">${stop.ref}</text>
+      ${startBadge}
+    `;
+    stopsLayer.appendChild(g);
+  });
+
+  ['team1','team2'].forEach((tk, i) => {
+    const team = state[tk];
+    const stop = team.position === 0 ? null : TRAIL_STOPS.find(s => s.n === team.position);
+    const offsetX = i === 0 ? -36 : 36;
+    const offsetY = -44;
+    const baseX = stop ? stop.x + offsetX : 120 + offsetX;
+    const baseY = stop ? stop.y + offsetY : 820;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('transform', `translate(${baseX}, ${baseY})`);
+    const ringColor = i === 0 ? '#38d2ff' : '#ff6bd6';
+    const ringBg    = i === 0 ? '#0a3a4a' : '#3a0a30';
+    g.innerHTML = `
+      <circle r="34" fill="${ringBg}" stroke="${ringColor}" stroke-width="4"/>
+      <image href="${charSrc(team.char)}" x="-30" y="-30" width="60" height="60"
+        preserveAspectRatio="xMidYMin slice" clip-path="url(#token-clip)"/>
+      <circle r="34" fill="none" stroke="${ringColor}" stroke-width="4"/>
+    `;
+    tokensLayer.appendChild(g);
+  });
+
+  document.getElementById('stop-counter').textContent = state.completedStops.length;
+  const currentTeam = state['team'+state.currentTurn];
+  document.getElementById('turn-team-name').textContent = currentTeam.name;
+  document.getElementById('turn-cap').textContent = currentTeam.captain;
+  document.querySelectorAll('.score-card').forEach(c => c.classList.remove('active-turn'));
+  document.getElementById('score-'+state.currentTurn).classList.add('active-turn');
+}
+
+function openStop(stop) {
+  // Detect review mode: stop is already completed, so the teacher is re-opening
+  // it to review the verse or reassign the score.
+  const inReview = state.completedStops.includes(stop.n);
+  state.reviewMode = inReview;
+  const stopModal = document.getElementById('stop-modal');
+  stopModal.classList.toggle('review-mode', inReview);
+
+  // Arc gate — only fires when entering an arc the first time, not on review.
+  if (!inReview && stop.arc && !state.arcsShown.has(stop.arc.id)) {
+    state.pendingStop = stop;
+    openArcIntro(stop.arc);
+    return;
+  }
+
+  state.currentStopN = stop.n;
+  document.getElementById('modal-stop-num').textContent = stop.n;
+  document.getElementById('modal-title').textContent = stop.title;
+  document.getElementById('modal-ref').textContent = stop.ref;
+  document.getElementById('modal-verse').textContent = stop.verse;
+  document.getElementById('modal-verse-ref').textContent = stop.verseRef;
+  document.getElementById('modal-summary').textContent = stop.summary;
+  document.getElementById('modal-objective').textContent = stop.objective;
+  document.getElementById('modal-answer').textContent = stop.answer;
+  document.getElementById('modal-christ').textContent = stop.christ;
+  document.getElementById('modal-discussion').textContent = stop.discussion;
+  document.getElementById('modal-points').textContent = stop.points;
+
+  // QR code → Gospel Library scripture
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&margin=10&bgcolor=e8d8a8&color=2d2419&data=${encodeURIComponent(stop.url)}`;
+  document.getElementById('modal-qr').src = qrUrl;
+
+  // Render multiple-choice tiles
+  const grid = document.getElementById('choices-grid');
+  grid.innerHTML = '';
+  const letters = ['A', 'B', 'C', 'D'];
+  stop.choices.forEach((choice, i) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'choice-btn';
+    btn.innerHTML = `
+      <div class="choice-letter">${letters[i]}</div>
+      <div class="choice-text">${choice.text}</div>
+      <div class="choice-check"></div>
+    `;
+    btn.addEventListener('click', () => revealChoice(stop, i));
+    grid.appendChild(btn);
+  });
+  document.getElementById('answer-explain').style.display = 'none';
+
+  // Award buttons + review banner state
+  const award1 = document.getElementById('award-1');
+  const award2 = document.getElementById('award-2');
+  const skipBtn = document.getElementById('skip-btn');
+  const reviewBannerBody = document.getElementById('review-banner-body');
+
+  if (inReview) {
+    // Auto-reveal choices and answer explanation
+    revealChoice(stop, -1);
+    const heldBy = state.stopResults[stop.n]; // 1, 2, or null
+    const heldByName = heldBy === 1 ? state.team1.name : heldBy === 2 ? state.team2.name : 'neither team — discussed only';
+    reviewBannerBody.innerHTML = `Currently awarded to <b>${heldByName}</b>${heldBy ? ` (${stop.points} pts)` : ''}. Pick another button below to reassign, or just close to leave it as it is.`;
+    // Relabel buttons for reassignment
+    award1.textContent = (heldBy === 1 ? '✓ Held by ' : 'Reassign to ') + state.team1.name;
+    award2.textContent = (heldBy === 2 ? '✓ Held by ' : 'Reassign to ') + state.team2.name;
+    skipBtn.textContent = heldBy === null ? '✓ Discuss only (no points)' : 'Take points back (discuss only)';
+    award1.classList.toggle('current-holder', heldBy === 1);
+    award2.classList.toggle('current-holder', heldBy === 2);
+  } else {
+    award1.textContent = state.team1.name + ' got it';
+    award2.textContent = state.team2.name + ' got it';
+    skipBtn.textContent = 'Discuss only';
+    award1.classList.remove('current-holder');
+    award2.classList.remove('current-holder');
+  }
+
+  document.getElementById('stop-modal-bd').classList.add('open');
+}
+
+function revealChoice(stop, pickedIndex) {
+  const grid = document.getElementById('choices-grid');
+  if (grid.querySelector('.choice-btn.revealed')) return; // already revealed
+  Array.from(grid.children).forEach((btn, i) => {
+    const isCorrect = stop.choices[i].correct;
+    btn.classList.add('revealed');
+    btn.classList.add(isCorrect ? 'correct' : 'incorrect');
+    btn.querySelector('.choice-check').textContent = isCorrect ? '✓' : (i === pickedIndex ? '✗' : '');
+  });
+  document.getElementById('answer-explain').style.display = '';
+}
+
+function closeStop() {
+  document.getElementById('stop-modal-bd').classList.remove('open');
+}
+
+function openArcIntro(arc) {
+  document.getElementById('arc-region').textContent = arc.region;
+  document.getElementById('arc-title').textContent = arc.title;
+  document.getElementById('arc-subtitle').textContent = arc.subtitle || '';
+  document.getElementById('arc-context').textContent = arc.context;
+  document.getElementById('arc-video-title').textContent = arc.video.title;
+  document.getElementById('arc-video-duration').textContent = arc.video.duration;
+  document.getElementById('arc-video-link').href = arc.video.url;
+
+  // List of stops covered by this arc
+  const preview = document.getElementById('arc-stops-preview');
+  preview.innerHTML = '';
+  const arcStops = TRAIL_STOPS.filter(s => {
+    // any stop whose arc id is this arc, OR stops between this arc's first stop and the next arc's first stop
+    return belongsToArc(s, arc.id);
+  });
+  arcStops.forEach(s => {
+    const chip = document.createElement('div');
+    chip.className = 'arc-stop-chip';
+    chip.innerHTML = `<div class="arc-stop-chip-num">${s.n}</div><div>${s.title}</div>`;
+    preview.appendChild(chip);
+  });
+
+  document.getElementById('arc-intro-bd').classList.add('open');
+}
+
+// Determine which stops belong to a given arc id (arc lives on the first stop of the arc;
+// subsequent stops belong to that arc until the next stop with its own `arc` field).
+function belongsToArc(stop, arcId) {
+  const arcStartIdx = TRAIL_STOPS.findIndex(s => s.arc && s.arc.id === arcId);
+  if (arcStartIdx < 0) return false;
+  const nextArcStartIdx = TRAIL_STOPS.findIndex((s, i) => i > arcStartIdx && s.arc);
+  const arcEndIdx = nextArcStartIdx < 0 ? TRAIL_STOPS.length - 1 : nextArcStartIdx - 1;
+  const thisIdx = TRAIL_STOPS.indexOf(stop);
+  return thisIdx >= arcStartIdx && thisIdx <= arcEndIdx;
+}
+
+document.getElementById('arc-begin-btn').addEventListener('click', () => {
+  const stop = state.pendingStop;
+  if (!stop) return;
+  state.arcsShown.add(stop.arc.id);
+  state.pendingStop = null;
+  document.getElementById('arc-intro-bd').classList.remove('open');
+  openStop(stop);
+});
+
+document.getElementById('award-1').addEventListener('click', () => awardStop(1));
+document.getElementById('award-2').addEventListener('click', () => awardStop(2));
+document.getElementById('skip-btn').addEventListener('click', () => advanceStop(null));
+
+function awardStop(teamN) {
+  const stop = TRAIL_STOPS.find(s => s.n === state.currentStopN);
+  if (state.reviewMode) {
+    reassignPoints(stop, teamN);
+    return;
+  }
+  state['team'+teamN].points += stop.points;
+  state.stopResults[stop.n] = teamN;
+  document.getElementById('score-pts-'+teamN).textContent = state['team'+teamN].points;
+  advanceStop(teamN);
+}
+function advanceStop(teamN) {
+  const stopN = state.currentStopN;
+  if (state.reviewMode) {
+    // Reassign skip path: just record null and close without advancing
+    reassignPoints(TRAIL_STOPS.find(s => s.n === stopN), null);
+    return;
+  }
+  state.completedStops.push(stopN);
+  if (!(stopN in state.stopResults)) state.stopResults[stopN] = teamN; // null if skip
+  state.team1.position = stopN;
+  state.team2.position = stopN;
+  state.currentTurn = state.currentTurn === 1 ? 2 : 1;
+  closeStop();
+  renderBoard();
+  if (state.completedStops.length >= TRAIL_STOPS.length) {
+    setTimeout(showEndScene, 500);
+  }
+}
+
+// Move a stop's points from whoever currently holds them to `newTeamN` (1, 2, or null).
+function reassignPoints(stop, newTeamN) {
+  const prev = state.stopResults[stop.n];
+  if (prev === newTeamN) { closeStop(); return; }
+  if (prev === 1 || prev === 2) {
+    state['team'+prev].points -= stop.points;
+    document.getElementById('score-pts-'+prev).textContent = state['team'+prev].points;
+  }
+  if (newTeamN === 1 || newTeamN === 2) {
+    state['team'+newTeamN].points += stop.points;
+    document.getElementById('score-pts-'+newTeamN).textContent = state['team'+newTeamN].points;
+  }
+  state.stopResults[stop.n] = newTeamN;
+  closeStop();
+  renderBoard();
+}
+
+function showEndScene() {
+  document.getElementById('end-name-1').textContent = state.team1.name;
+  document.getElementById('end-name-2').textContent = state.team2.name;
+  document.getElementById('end-pts-1').textContent = state.team1.points;
+  document.getElementById('end-pts-2').textContent = state.team2.points;
+  if (state.team1.points > state.team2.points) document.getElementById('end-card-1').classList.add('winner');
+  else if (state.team2.points > state.team1.points) document.getElementById('end-card-2').classList.add('winner');
+  showScene('end-scene');
+}
+
+function showScene(id) {
+  document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'd' || e.key === 'D') && document.getElementById('setup-scene').classList.contains('active')) {
+    document.getElementById('start-btn').click();
+  }
+});
+
+// =============== Lesson data loader (P0) ===============
+// Priority: (1) lessonLibrary entry → (2) inline default (lesson 23) → (3) background pipeline trigger if missing
+const LESSON_23_ID = 'come-follow-me-for-home-and-church-old-testament-2026-23';
+
+function applyLessonData(data) {
+  if (!data || !Array.isArray(data.stops) || data.stops.length === 0) return false;
+  TRAIL_STOPS.length = 0;
+  data.stops.forEach(s => TRAIL_STOPS.push(s));
+  // If game hasn't started yet, the board will pick up new data on render.
+  // If user is already on the board, re-render to reflect changes.
+  if (document.getElementById('board-scene').classList.contains('active')) {
+    renderBoard();
+  }
+  return true;
+}
+
+(async function initLessonData() {
+  const lessonId   = window.__kindredLessonId  || LESSON_23_ID;
+  const lessonInfo = window.__kindredCurrentCfmLesson;
+  const badge = document.getElementById('back-nav-lesson');
+
+  if (lessonInfo) {
+    badge.textContent = lessonInfo.displayLabel || lessonInfo.title || 'Loading…';
+  } else {
+    badge.textContent = 'Lesson 23 · Ruth & Samuel';
+  }
+
+  if (window.loadScriptureTrailFromLibrary) {
+    try {
+      const libData = await window.loadScriptureTrailFromLibrary(lessonId);
+      if (libData) {
+        applyLessonData(libData);
+        return; // library hit — done
+      }
+    } catch (e) {
+      console.warn('Scripture Trail library read failed:', e);
+    }
+  }
+
+  // No library entry. If user asked for a non-lesson-23 lesson, the inline data is wrong —
+  // kick off a background pipeline generation so subsequent loads will hit the library.
+  if (lessonId !== LESSON_23_ID && lessonInfo?.url && window.triggerScriptureTrailPipeline) {
+    console.log('[scripture-trail] No library entry for', lessonId, '— triggering background pipeline');
+    badge.textContent = (badge.textContent || '') + ' · generating…';
+    window.triggerScriptureTrailPipeline(lessonInfo.url)
+      .then(result => {
+        const trail = result?.scriptureTrail || result;
+        if (applyLessonData(trail)) {
+          badge.textContent = lessonInfo.displayLabel || lessonInfo.title;
+        }
+      })
+      .catch(err => {
+        console.warn('[scripture-trail] Background pipeline failed:', err.message);
+        badge.textContent = (lessonInfo.displayLabel || 'Lesson') + ' · using demo content';
+      });
+  }
+})();
+</script>
+</body>
+</html>
