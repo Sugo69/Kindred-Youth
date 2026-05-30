@@ -541,7 +541,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, onSnapshot, setDoc, updateDoc, collection, addDoc, deleteDoc, query, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAllCfmLessons, getCurrentCfmLesson } from '../src/lib/cfm-schedule.js';
+        import { getAllCfmLessons, getCurrentCfmLesson, getCfmLessonByLessonId } from '../src/lib/cfm-schedule.js';
 
         // Populate the CFM dropdown in the Teacher Portal, marking the current week.
         (function populateCfmDropdown() {
@@ -1689,10 +1689,26 @@
             if (!lessonId) return;
             try {
                 const snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/${lessonId}`));
-                if (!snap.exists()) return;
-                const data = snap.data();
-                const cg = data.commonGround;
-                if (!cg?.rounds?.length) return;
+                const data = snap.exists() ? snap.data() : null;
+                const cg = data?.commonGround;
+                if (!cg?.rounds?.length) {
+                    // Lesson not pre-generated — clear any stale active game, then open Teacher Portal
+                    // with the lesson URL pre-filled so the teacher can generate it in one click.
+                    await setDoc(doc(db, `${basePath}/activeGame/current`), {
+                        gameId: null, name: null, rounds: null, generatedBy: 'cleared-by-lesson-param'
+                    }).catch(() => {});
+                    const lessonMeta = getCfmLessonByLessonId(lessonId);
+                    if (lessonMeta?.url) {
+                        setTimeout(() => {
+                            window.setView?.('teacher');
+                            window.openEditor?.('lesson');
+                            const li = document.getElementById('tp-lesson-url-input');
+                            if (li) li.value = lessonMeta.url;
+                            showTpStatus('📚 Lesson not pre-generated yet — click Generate to create it', 'info');
+                        }, 150);
+                    }
+                    return;
+                }
 
                 const activeRef = doc(db, `${basePath}/activeGame/current`);
                 const stateRef = doc(db, `${basePath}/feudSession/state`);

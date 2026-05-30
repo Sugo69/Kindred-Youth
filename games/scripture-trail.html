@@ -11,7 +11,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getCurrentCfmLesson, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
+  import { getCurrentCfmLesson, getCfmLessonByLessonId, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
   import { TRAIL_THEMES, resolveTrailTheme } from '../src/lib/trail-themes.js';
 
   const APP_ID = 'exodus-feud-final-v10';
@@ -25,7 +25,9 @@
     : `artifacts/${APP_ID}/public/data`;
   window.__kindredGlobalBasePath = `artifacts/${APP_ID}/public/data`;
   window.__kindredLessonId     = lessonIdParam || getCurrentCfmLesson().lessonId;
-  window.__kindredCurrentCfmLesson = getCurrentCfmLesson();
+  window.__kindredCurrentCfmLesson = lessonIdParam
+    ? (getCfmLessonByLessonId(lessonIdParam) || getCurrentCfmLesson())
+    : getCurrentCfmLesson();
   // Set JS-file default immediately so renderBoard() always has something
   const _trailThemeKey = resolveTrailTheme(window.__kindredLessonId);
   window.__kindredTrailTheme = TRAIL_THEMES[_trailThemeKey];

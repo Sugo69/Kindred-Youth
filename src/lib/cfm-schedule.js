@@ -129,6 +129,13 @@ export function isGeneratableLessonUrl(url) {
   }
 }
 
+export function getCfmLessonByLessonId(lessonId) {
+  for (const lesson of CFM_2026_OT) {
+    if (`${MANUAL_SLUG}-${lesson.slug}` === lessonId) return toResolvedLesson(lesson);
+  }
+  return null;
+}
+
 export function resolveLessonIdFromUrl(url) {
   try {
     const u = new URL(url);

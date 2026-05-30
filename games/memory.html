@@ -17,11 +17,18 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, doc, getDoc, getDocs, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getAllCfmLessons, getCurrentCfmLesson, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
+        import { getAllCfmLessons, getCurrentCfmLesson, getCfmLessonByLessonId, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
 
         // Expose the 2026 CFM Old Testament schedule to the Babel-compiled React tree.
         window.__kindredCfmLessons = getAllCfmLessons();
         window.__kindredCurrentCfmLesson = getCurrentCfmLesson();
+
+        // Resolve ?lesson= param so the React component can auto-load content.
+        const _lessonIdParam = new URLSearchParams(location.search).get('lesson');
+        window.__kindredLessonId = _lessonIdParam || null;
+        window.__kindredLessonMeta = _lessonIdParam
+            ? (getCfmLessonByLessonId(_lessonIdParam) || null)
+            : null;
         window.__kindredCfmLessonByUrl = function(url) {
             if (!url) return null;
             const lessonId = resolveLessonIdFromUrl(url);
@@ -210,6 +217,30 @@
             useEffect(() => {
                 const saved = localStorage.getItem('kindred_display_scale');
                 if (saved && !isNaN(parseFloat(saved))) setScale(parseFloat(saved) * 100);
+            }, []);
+
+            // Auto-load from library when ?lesson= param is set.
+            // If the lesson is pre-generated → load pairs immediately.
+            // If not yet generated → pre-fill the lesson URL so teacher can click Generate.
+            useEffect(() => {
+                const lessonId = window.__kindredLessonId;
+                if (!lessonId || !window.loadMemoryFromLibrary) return;
+                window.loadMemoryFromLibrary(lessonId).then(memData => {
+                    if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
+                    setPairsData(memData.pairs);
+                    setLessonTopic(memData.topic || 'Library Lesson');
+                    setGeneratedFromUrl(memData.sourceUrl || '');
+                    setGeneratedAt(memData.generatedAt ? new Date(memData.generatedAt) : new Date());
+                    setGeneratedMedia({ videoLinks: memData.videoLinks || [], talkLinks: memData.talkLinks || [] });
+                    setPortalStatus(`✓ Loaded from library — ${memData.pairs.length} pairs. Ready to play!`);
+                }).catch(() => {
+                    const meta = window.__kindredLessonMeta;
+                    if (meta?.url) {
+                        setLessonUrl(meta.url);
+                        setPortalView('lesson');
+                        setPortalStatus('📚 Lesson not pre-generated yet — click Generate to create it');
+                    }
+                });
             }, []);
 
             // Build a Gospel-Library URL with the blue verse-highlight bar.
