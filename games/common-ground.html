@@ -397,6 +397,16 @@
                             Review &amp; edit questions before activating
                         </label>
                     </div>
+                    <!-- Progress bar — shown during generation -->
+                    <div id="tll-progress-area" style="display:none; padding:4px 16px 16px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                            <span id="tll-progress-msg" style="color:var(--neon-cyan); font-family:'Rajdhani',sans-serif; font-size:0.8rem; letter-spacing:0.5px;"></span>
+                            <span id="tll-progress-pct" style="color:#00d4ff; font-family:'Orbitron',sans-serif; font-size:0.75rem; min-width:36px; text-align:right;"></span>
+                        </div>
+                        <div style="width:100%; height:8px; background:#0d0d1a; border-radius:4px; overflow:hidden; border:1px solid rgba(0,212,255,0.15);">
+                            <div id="tll-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg,#7c3aed,#00d4ff); box-shadow:0 0 8px rgba(0,212,255,0.4); transition:width 0.5s ease-out; border-radius:4px;"></div>
+                        </div>
+                    </div>
                     <div id="tll-status" style="display:none;" class="tp-status"></div>
                 </div>
 
@@ -1458,6 +1468,47 @@
         };
 
         // Route 1: generate for the lesson that was passed via ?lesson= and immediately activate.
+        let _tllProgressTimer = null;
+        const TLL_STAGE_MSGS = [
+            { at: 0,  msg: 'Fetching lesson from the Church website…' },
+            { at: 8,  msg: 'Extracting scriptures and discussion themes…' },
+            { at: 18, msg: 'Generating game questions with AI…' },
+            { at: 32, msg: 'Applying Youth Leader principles and safety review…' },
+            { at: 48, msg: 'Almost there — complex lessons take up to 60 seconds…' },
+        ];
+        function _tllSetProgress(pct, msg) {
+            const bar = document.getElementById('tll-progress-bar');
+            const msgEl = document.getElementById('tll-progress-msg');
+            const pctEl = document.getElementById('tll-progress-pct');
+            if (bar) bar.style.width = pct + '%';
+            if (msgEl && msg) msgEl.textContent = msg;
+            if (pctEl) pctEl.textContent = Math.round(pct) + '%';
+        }
+        function _tllStartProgress() {
+            const area = document.getElementById('tll-progress-area');
+            if (area) area.style.display = 'block';
+            let pct = 0, elapsed = 0;
+            if (_tllProgressTimer) clearInterval(_tllProgressTimer);
+            _tllSetProgress(0, TLL_STAGE_MSGS[0].msg);
+            _tllProgressTimer = setInterval(() => {
+                elapsed += 0.5;
+                pct += (90 - pct) * 0.035;
+                const stage = [...TLL_STAGE_MSGS].reverse().find(s => elapsed >= s.at);
+                _tllSetProgress(Math.min(pct, 89), stage?.msg);
+            }, 500);
+        }
+        function _tllStopProgress(success) {
+            if (_tllProgressTimer) { clearInterval(_tllProgressTimer); _tllProgressTimer = null; }
+            if (success) {
+                _tllSetProgress(100, '✓ Done!');
+                setTimeout(() => { const area = document.getElementById('tll-progress-area'); if (area) area.style.display = 'none'; }, 1500);
+            } else {
+                const area = document.getElementById('tll-progress-area');
+                if (area) area.style.display = 'none';
+                _tllSetProgress(0, '');
+            }
+        }
+
         window.generateAndPlay = async function() {
             const lessonMeta = window._pendingLessonMeta;
             if (!lessonMeta?.url) return;
@@ -1466,10 +1517,9 @@
             const reviewFirst = document.getElementById('tll-review-first')?.checked;
             btn.disabled = true;
             btn.textContent = '⏳ Generating…';
-            statusEl.className = 'tp-status loading';
-            statusEl.textContent = 'Running lesson pipeline — extracting scriptures, generating questions (30–45 seconds)…';
-            statusEl.style.display = 'block';
+            if (statusEl) statusEl.style.display = 'none';
             _clearLessonRetry();
+            _tllStartProgress();
             try {
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Sign in via the Kindred Hub first.');
@@ -1480,6 +1530,7 @@
                 });
                 const data = await resp.json();
                 if (!resp.ok) throw new Error(data.error || 'Lesson pipeline failed');
+                _tllStopProgress(true);
                 window.editorGame = {
                     name: data.topic || lessonMeta.title,
                     rounds: data.rounds || [],
@@ -1489,7 +1540,6 @@
                     _docId: null
                 };
                 if (reviewFirst) {
-                    // Show editor so teacher can review before activating
                     window.openEditor('lesson');
                     const li = document.getElementById('tp-lesson-url-input');
                     if (li) li.value = lessonMeta.url;
@@ -1498,7 +1548,6 @@
                     renderEditorRounds();
                     showTpStatus(`✓ ${data.rounds.length} questions generated — review below, then click Set Active to play.`, 'info');
                 } else {
-                    statusEl.textContent = 'Saving and activating…';
                     const saved = await window.saveCurrentGame();
                     if (saved) {
                         await activateGame(window.editorGame);
@@ -1509,15 +1558,15 @@
                 btn.disabled = false;
                 btn.textContent = '✨ Generate & Play';
             } catch (err) {
+                _tllStopProgress(false);
                 btn.disabled = false;
                 btn.textContent = '✨ Generate & Play';
                 let secs = 30;
-                statusEl.className = 'tp-status error';
-                statusEl.textContent = `⚠ ${err.message} — retrying in ${secs}s`;
+                if (statusEl) { statusEl.className = 'tp-status error'; statusEl.textContent = `⚠ ${err.message} — retrying in ${secs}s`; statusEl.style.display = 'block'; }
                 _lessonRetryTimer = setInterval(() => {
                     secs--;
                     if (secs <= 0) { _clearLessonRetry(); window.generateAndPlay(); }
-                    else { statusEl.textContent = `⚠ ${err.message} — retrying in ${secs}s`; }
+                    else if (statusEl) statusEl.textContent = `⚠ ${err.message} — retrying in ${secs}s`;
                 }, 1000);
             }
         };
@@ -1820,7 +1869,9 @@
             const lessonId = new URLSearchParams(location.search).get('lesson');
             if (!lessonId) return;
             try {
-                const snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/${lessonId}`));
+                // Admin saves entries with a 'cfm-' prefix; try both ID forms
+                let snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/${lessonId}`));
+                if (!snap.exists()) snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/cfm-${lessonId}`));
                 const data = snap.exists() ? snap.data() : null;
                 const cg = data?.commonGround;
                 if (!cg?.rounds?.length) {
