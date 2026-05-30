@@ -132,7 +132,12 @@ artifacts/exodus-feud-final-v10/public/data/
 │   ├── games/{gameId}                         # Classroom-scoped saved game sets (CG + Memory)
 │   └── trailLessons/{lessonId}                # Classroom-scoped Scripture Trail edits (NEW 2026-05-29)
 │       └── { stops[], topic, sourceUrl, editedBy, savedAt }
-├── teachers/{email}, classrooms/{id}, pendingTeachers/{id}  # Admin-managed identity collections
+├── teachers/{email}         # Teacher profile + disclaimer ack + notification acks
+│   ├── disclaimerAck: { version, ackedAt, platform }   # First-run acknowledgment (versioned)
+│   └── notifAcks: { [notifId]: { ackedAt } }           # Persistent notification read receipts
+├── systemNotifications/{id} # Admin-sent platform notifications
+│   └── { title, message, type: 'persistent'|'passive', active, createdAt, expiresAt }
+├── classrooms/{id}, pendingTeachers/{id}  # Admin-managed classroom/access collections
 ├── backlogItems/{docId}     # Backlog items (seqId, priority, description, batchIds, notes, createdAt)
 └── blGuides/{blDocId}       # AI-generated implementation guides per BL item
 ```
@@ -397,28 +402,28 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 - **`vercel.json`**: sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` for all paths — required for the Google sign-in popup flow not to warn/break in Chrome
 - **Non-affiliation disclaimer**: rendered in the landing hero footer, portal footer, and admin footer — cites no affiliation with The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc. (precaution, not legal opinion; see `legal-review-2026-04-22.md`)
 
-## Next actions (queued 2026-05-30 — end of session 3)
-Full handoff detail in `CHECKPOINT-2026-05-29-pm.md`. Priority order:
+## Next actions (refreshed 2026-05-30 — end of session 4)
 
-### Done in session 3 (2026-05-30)
-- ✅ Route 1 lesson routing fixed across all 3 games (`getCfmLessonByLessonId`, cfm- prefix fix, classroom game fallback)
-- ✅ Common Ground Route 1 launch view (lesson launch, progress bar + timer, review mode, Activate & Play)
-- ✅ Content safety P0: pipeline HARD_BLOCK_TERMS expanded + client-side Haiku moderation `/api/moderate`
-- ✅ Portal `✓ ready` badges on upcoming lesson cards with pre-generated content
-- ✅ By Heart US English (memorization, removed "cloze")
-- ✅ LED section hidden in Admin view
-- ✅ "Syncing session" message now hides on first Firestore snapshot
+### Done in session 4 (2026-05-30, continued)
+- ✅ Common Ground splash screen redesigned — cinematic sequential loading lines (Orbitron/cyan), START GAME fades in last, always → Monitor view
+- ✅ Common Ground Route 1 final UX: splash = hub; lesson badge + "Review" link when loaded; "Set Up Lesson" when not generated
+- ✅ First-run disclaimer modal (`DISCLAIMER_VERSION = '2026-05-30'`) — versioned, stored in `teachers/{email}.disclaimerAck`
+- ✅ Notification system — admin "📢 Announce" tab; persistent/passive types; 🔔 bell in portal topbar; profile modal Notifications section
+- ✅ GDPR data rights — "📥 Download My Data" + "🗑 Delete My Account" in Profile modal
+- ✅ Scripture Trail "👁 Reveal Answer" button — teacher-controlled, hides after reveal
+- ✅ Scripture Trail editor AI moderation — regex + Haiku before `saveTrailEditsToClassroom`
+- ✅ Scripture Match "Save Pairs" AI moderation — `handleSavePairs()` async handler
+- ✅ By Heart progress persistence — localStorage `kindred_byheart_learned`; ✓ on learned passages; counter + reset
+- ✅ Scripture Trail Monitor/Admin split — DEFERRED (narrative game, reveal toggle sufficient)
 
 ### Remaining
-1. **P1 — Scripture Trail Monitor view.** Single-page only; needs CG-style Monitor (TV) + Admin (phone) split.
-2. **P1 — By Heart progress persistence.** Nothing saves between sessions. `passagesLearned` per-user in Firestore.
-3. **P1 — Run "Generate Next 8 Weeks" in admin.** Current lessons (May 25 onward) are not pre-generated. Click the button in Admin → Library to fill ahead.
-4. **P1 — AI moderation on Scripture Match + Scripture Trail teacher edits.** Currently only Common Ground has the Haiku check. Scripture Match manual pairs and Scripture Trail editor stops need the same.
-5. **P2 — Lesson-type detector AI step in pipeline.** Replace hand-coded CFM `type` field with AI tag.
-6. **P2 — Curriculum picker in teacher profile.** CFM vs Seminary default tab.
-7. **P2 — Southern hemisphere Seminary support.** North-only (Aug→May); South needs Jan→Oct.
-8. **P3 — Delete hidden legacy `display:none` sections** in [index.html](index.html).
-9. **P3 — `mockups/` folder cleanup.** Still untracked at 198 MB.
+1. **P1 — Run "Generate Next 8 Weeks" in admin.** Current lessons (May 25 onward) not pre-generated. Click button in Admin → Library.
+2. **P2 — Student Roster per classroom.** Prerequisite for By Heart individual pass-off, badges, printable certificates, team name assignment. Added to backlog.
+3. **P2 — Lesson-type detector AI step in pipeline.** Replace hand-coded CFM `type` field with AI tag.
+4. **P2 — Curriculum picker in teacher profile.** CFM vs Seminary default tab.
+5. **P2 — Southern hemisphere Seminary support.** North-only (Aug→May); South needs Jan→Oct.
+6. **P3 — Delete hidden legacy `display:none` sections** in [index.html](index.html).
+7. **P3 — `mockups/` folder cleanup.** Still untracked at 198 MB.
 
 ## Key Constraints
 - Dev port **must be 5173** — the other project on this machine now uses 5174
