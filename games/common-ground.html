@@ -546,7 +546,7 @@ if (new URLSearchParams(location.search).get('lesson')) {
                     <div id="admin-ans-list"></div>
                 </div>
 
-                <div class="admin-box">
+                <div class="admin-box" id="led-section" style="display:none;">
                     <h3 style="color:#ff9900; margin:0;">5. LED Lighting</h3>
                     <div style="color:#555; font-size:0.72rem; text-transform:uppercase; letter-spacing:1px; margin:10px 0 4px 0;">USB serial (Chrome only)</div>
                     <div class="btn-grid" style="align-items:center;">
@@ -1837,14 +1837,41 @@ if (new URLSearchParams(location.search).get('lesson')) {
             if (!window.editorGame.rounds.length) { showTpStatus('Add at least one round.', 'error'); return false; }
             const hasEmpty = window.editorGame.rounds.some(r => !r.question.trim() || r.answers.some(a => !a.text.trim()));
             if (hasEmpty) { showTpStatus('Fill in all question and answer fields before saving.', 'error'); return false; }
-            const flagged = scanRoundsForFlaggedContent(window.editorGame.rounds);
-            if (flagged.length) {
-                showTpStatus(
-                    `⚠ Content flagged — fix before saving:\n• ${flagged.join('\n• ')}`,
-                    'error'
-                );
+            // Step 1 — instant regex pre-flight (catches obvious terms)
+            const regexFlags = scanRoundsForFlaggedContent(window.editorGame.rounds);
+            if (regexFlags.length) {
+                showTpStatus(`⚠ Content flagged — fix before saving:\n• ${regexFlags.join('\n• ')}`, 'error');
                 return false;
             }
+            // Step 2 — AI context check (Haiku, ~3-5s, catches what regex misses)
+            showTpStatus('Checking content for classroom safety…', 'loading');
+            try {
+                const moderateResp = await fetch(`${API_BASE}/api/moderate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rounds: window.editorGame.rounds }),
+                });
+                if (moderateResp.ok) {
+                    const { results = [], apiError } = await moderateResp.json();
+                    if (!apiError) {
+                        const aiFlags = results
+                            .filter(r => r.verdict === 'FLAG')
+                            .map(r => `Round ${r.i + 1}: ${r.reason || 'flagged by content review'}`);
+                        if (aiFlags.length) {
+                            showTpStatus(
+                                `⚠ Content review flagged items — edit or remove before saving:\n• ${aiFlags.join('\n• ')}`,
+                                'error'
+                            );
+                            return false;
+                        }
+                    }
+                    // apiError = true means the check failed — fail open so a network blip
+                    // doesn't permanently block saves (regex layer still ran above)
+                }
+            } catch (e) {
+                console.warn('[moderate] check skipped:', e.message);
+            }
+            hideTpStatus();
             const payload = {
                 name: window.editorGame.name,
                 rounds: window.editorGame.rounds,

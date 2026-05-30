@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import { resolve } from 'path'
 import { runLessonPipeline } from './api/_lib/pipeline.js'
+import { runModeration } from './api/_lib/moderate.js'
 import { applyCors } from './api/_lib/origin.js'
 import { requireAuth } from './api/_lib/auth.js'
 
@@ -271,6 +272,25 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                             } catch (err) {
                                 res.statusCode = 500
                                 res.end(JSON.stringify({ error: err.message }))
+                            }
+                        })
+                    })
+
+                    // Content moderation — quick Haiku pass on teacher-entered game content
+                    server.middlewares.use('/api/moderate', async (req, res) => {
+                        if (!applyCors(req, res)) return
+                        if (req.method !== 'POST') { res.statusCode = 405; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({error:'Method not allowed'})); return }
+                        let body = ''
+                        req.on('data', chunk => body += chunk)
+                        req.on('end', async () => {
+                            res.setHeader('Content-Type', 'application/json')
+                            let payload
+                            try { payload = JSON.parse(body) } catch { res.statusCode = 400; res.end(JSON.stringify({error:'Invalid JSON'})); return }
+                            try {
+                                const result = await runModeration({ rounds: payload.rounds, apiKey: env.ANTHROPIC_API_KEY })
+                                res.end(JSON.stringify(result))
+                            } catch (err) {
+                                res.statusCode = 500; res.end(JSON.stringify({error: err.message}))
                             }
                         })
                     })
