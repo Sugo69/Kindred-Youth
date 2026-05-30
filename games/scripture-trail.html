@@ -30,24 +30,6 @@
   const _trailThemeKey = resolveTrailTheme(window.__kindredLessonId);
   window.__kindredTrailTheme = TRAIL_THEMES[_trailThemeKey];
 
-  // Override with Firestore-calibrated positions if the admin saved them
-  _authReady.then(async () => {
-    try {
-      const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/trailThemes/${_trailThemeKey}`));
-      if (snap.exists()) {
-        const saved = snap.data();
-        if (saved.positions?.length) {
-          window.__kindredTrailTheme = { ...window.__kindredTrailTheme, ...saved };
-          // Re-render board if game has already started
-          if (document.getElementById('board-scene')?.classList.contains('active')) {
-            if (typeof applyBoardTheme === 'function') applyBoardTheme();
-            if (typeof renderBoard === 'function') renderBoard();
-          }
-        }
-      }
-    } catch(e) { /* fall back to JS file positions silently */ }
-  });
-
   const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -64,6 +46,22 @@
   const _authReady = auth.authStateReady().then(() => {
     if (!auth.currentUser) return signInAnonymously(auth);
   }).catch(e => console.warn('Anon auth failed:', e));
+
+  // Override JS-file trail theme with Firestore-calibrated positions if the admin saved them
+  _authReady.then(async () => {
+    try {
+      const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/trailThemes/${_trailThemeKey}`));
+      if (!snap.exists()) return;
+      const saved = snap.data();
+      if (saved.positions?.length) {
+        window.__kindredTrailTheme = { ...window.__kindredTrailTheme, ...saved };
+        if (document.getElementById('board-scene')?.classList.contains('active')) {
+          if (typeof window.applyBoardTheme === 'function') window.applyBoardTheme();
+          if (typeof window.renderBoard === 'function') window.renderBoard();
+        }
+      }
+    } catch(e) { console.warn('Trail theme override failed:', e.message); }
+  });
 
   window.__kindredGetIdToken = async function() {
     await _authReady;
