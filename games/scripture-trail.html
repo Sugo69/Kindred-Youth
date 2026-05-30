@@ -9,7 +9,7 @@
 <!-- Firebase module: anonymous auth + classroom-scoped lessonLibrary access -->
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
   import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
   import { getCurrentCfmLesson, resolveLessonIdFromUrl } from '../src/lib/cfm-schedule.js';
   import { TRAIL_THEMES, resolveTrailTheme } from '../src/lib/trail-themes.js';
@@ -74,19 +74,62 @@
     ? 'https://api.kindred-youth.org'
     : '';
 
-  // Try to load a pre-generated Scripture Trail from the library; resolves null when missing.
+  // Try to load Scripture Trail content for this lesson. Resolution order:
+  //   1. Classroom-scoped override: basePath/trailLessons/{lessonId}
+  //      (teacher edits via the Edit Stops editor land here; classroom-only)
+  //   2. Global pre-generated library: globalBasePath/lessonLibrary/{lessonId}
+  //   3. null (caller falls back to inline default)
   window.loadScriptureTrailFromLibrary = async function(lessonId) {
     await _authReady;
+    // Step 1: classroom override
+    if (classroomId) {
+      try {
+        const ovSnap = await getDoc(doc(db, `${window.__kindredBasePath}/trailLessons/${lessonId}`));
+        if (ovSnap.exists()) {
+          const ovData = ovSnap.data();
+          if (ovData?.stops?.length) {
+            window.__kindredTrailIsCustom = true;
+            return ovData;
+          }
+        }
+      } catch (e) { console.warn('Classroom override read failed:', e); }
+    }
+    // Step 2: global library
     try {
       const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/lessonLibrary/${lessonId}`));
       if (!snap.exists()) return null;
       const data = snap.data();
       if (!data.scriptureTrail?.stops?.length) return null;
+      window.__kindredTrailIsCustom = false;
       return data.scriptureTrail;
     } catch (e) {
       console.warn('Library read failed:', e);
       return null;
     }
+  };
+
+  // Save teacher edits to the classroom-scoped path. Requires ?room=classroomId.
+  window.saveTrailEditsToClassroom = async function(lessonId, trailData) {
+    await _authReady;
+    if (!classroomId) throw new Error('NO_CLASSROOM: open this game from your classroom portal');
+    if (!Array.isArray(trailData?.stops) || trailData.stops.length === 0) {
+      throw new Error('At least one stop is required');
+    }
+    await setDoc(doc(db, `${window.__kindredBasePath}/trailLessons/${lessonId}`), {
+      ...trailData,
+      savedAt: new Date().toISOString(),
+    });
+    window.__kindredTrailIsCustom = true;
+    return true;
+  };
+
+  // Wipe classroom override so the next load uses the global library default.
+  window.resetTrailEditsToLibrary = async function(lessonId) {
+    await _authReady;
+    if (!classroomId) throw new Error('NO_CLASSROOM');
+    await setDoc(doc(db, `${window.__kindredBasePath}/trailLessons/${lessonId}`), { stops: [], resetAt: new Date().toISOString() });
+    window.__kindredTrailIsCustom = false;
+    return true;
   };
 
   // Auto-trigger pipeline generation when library is empty for the chosen lesson.
@@ -313,6 +356,171 @@ body {
   transition: transform 0.15s;
 }
 .start-btn:hover { transform: translateY(-2px); }
+
+/* "Edit Stops" entry button on setup scene */
+.edit-stops-link {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin: 0 24px 14px; padding: 8px 14px;
+  background: transparent; border: 1px solid rgba(255,200,87,0.4);
+  color: var(--gold); border-radius: 8px;
+  font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase;
+  cursor: pointer; transition: all 0.15s; align-self: flex-start;
+}
+.edit-stops-link:hover { background: rgba(255,200,87,0.08); border-color: var(--gold); }
+.edit-stops-link .badge-custom {
+  background: var(--gold); color: var(--bg); border-radius: 8px;
+  padding: 1px 6px; font-size: 10px; margin-left: 4px; font-weight: 800;
+}
+
+/* === Editor scene === */
+#editor-scene.active { height: auto; overflow-y: auto; padding: 60px 16px 80px; min-height: 100vh; }
+.editor-wrap { max-width: 980px; margin: 0 auto; }
+.editor-header {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid var(--bg-3);
+  flex-wrap: wrap;
+}
+.editor-title { font-size: 22px; font-weight: 800; color: var(--gold);
+  letter-spacing: 0.04em; }
+.editor-sub { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+.editor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.editor-btn {
+  background: var(--bg-2); border: 1px solid var(--bg-3); color: var(--ink);
+  padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer;
+  transition: all 0.15s;
+}
+.editor-btn:hover { border-color: var(--ink-muted); }
+.editor-btn.primary { background: var(--gold); color: var(--bg); border-color: var(--gold); font-weight: 700; }
+.editor-btn.primary:hover { opacity: 0.9; }
+.editor-btn.danger { color: #f87171; border-color: #4a1c1c; }
+.editor-btn.danger:hover { background: rgba(248,113,113,0.08); border-color: #f87171; }
+.editor-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.editor-notice {
+  background: rgba(56,210,255,0.08); border-left: 3px solid var(--cyan);
+  padding: 10px 14px; border-radius: 6px; margin-bottom: 16px;
+  font-size: 13px; color: var(--ink-2); line-height: 1.5;
+}
+.editor-notice.warn { background: rgba(248,113,113,0.08); border-left-color: #f87171; }
+
+.editor-stop {
+  background: var(--bg-2); border: 1px solid var(--bg-3); border-radius: 12px;
+  margin-bottom: 10px; overflow: hidden;
+}
+.editor-stop.expanded { border-color: var(--gold); }
+.editor-stop-head {
+  display: flex; align-items: center; gap: 12px; padding: 12px 16px;
+  cursor: pointer; transition: background 0.15s;
+}
+.editor-stop-head:hover { background: var(--bg-3); }
+.editor-stop-num {
+  background: var(--gold); color: var(--bg); border-radius: 50%;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  font-weight: 800; flex-shrink: 0;
+}
+.editor-stop-summary {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.editor-stop-title { font-weight: 700; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.editor-stop-ref { font-size: 12px; color: var(--cyan); }
+.editor-stop-reorder { display: flex; gap: 4px; }
+.editor-stop-reorder button {
+  background: none; border: 1px solid var(--bg-3); color: var(--ink-muted);
+  width: 28px; height: 28px; border-radius: 6px; cursor: pointer; font-size: 14px;
+}
+.editor-stop-reorder button:hover:not(:disabled) { border-color: var(--ink-muted); color: var(--ink); }
+.editor-stop-reorder button:disabled { opacity: 0.3; cursor: not-allowed; }
+.editor-stop-chevron { color: var(--ink-muted); font-size: 12px; }
+
+.editor-stop-body {
+  display: none; padding: 0 16px 16px;
+  border-top: 1px solid var(--bg-3);
+}
+.editor-stop.expanded .editor-stop-body { display: block; }
+
+.editor-field-row { display: grid; gap: 12px; margin-top: 14px; }
+.editor-field-row.cols-2 { grid-template-columns: 1fr 1fr; }
+@media (max-width: 640px) { .editor-field-row.cols-2 { grid-template-columns: 1fr; } }
+.editor-field { display: flex; flex-direction: column; gap: 4px; }
+.editor-field label {
+  font-size: 11px; color: var(--ink-muted); text-transform: uppercase;
+  letter-spacing: 0.08em; font-weight: 600;
+}
+.editor-field input[type="text"],
+.editor-field input[type="number"],
+.editor-field textarea {
+  background: var(--bg); border: 1px solid var(--bg-3); border-radius: 6px;
+  padding: 8px 10px; color: var(--ink); font-family: inherit; font-size: 14px;
+  outline: none; transition: border-color 0.15s;
+  width: 100%;
+}
+.editor-field input:focus, .editor-field textarea:focus { border-color: var(--gold); }
+.editor-field textarea { resize: vertical; min-height: 56px; line-height: 1.5; }
+.editor-field-hint { font-size: 11px; color: var(--ink-muted); font-style: italic; margin-top: 2px; }
+
+.editor-section-label {
+  font-size: 11px; color: var(--gold); text-transform: uppercase;
+  letter-spacing: 0.1em; font-weight: 700; margin: 16px 0 4px;
+}
+
+.editor-choices { display: flex; flex-direction: column; gap: 6px; }
+.editor-choice-row { display: flex; gap: 8px; align-items: center; }
+.editor-choice-row input[type="text"] { flex: 1; }
+.editor-choice-row .correct-toggle {
+  background: var(--bg); border: 1px solid var(--bg-3); border-radius: 6px;
+  padding: 6px 12px; cursor: pointer; color: var(--ink-muted);
+  font-size: 12px; white-space: nowrap; transition: all 0.15s;
+}
+.editor-choice-row .correct-toggle.is-correct {
+  background: #1a3320; border-color: #4ade80; color: #4ade80;
+}
+
+.editor-stop-actions {
+  margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--bg-3);
+  display: flex; justify-content: space-between; gap: 8px;
+}
+
+.editor-add-row {
+  display: flex; justify-content: center; margin-top: 16px;
+}
+.editor-add-btn {
+  background: transparent; border: 2px dashed var(--gold); color: var(--gold);
+  padding: 12px 24px; border-radius: 10px; cursor: pointer;
+  font-size: 14px; font-weight: 700; letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+.editor-add-btn:hover { background: rgba(255,200,87,0.08); }
+
+.editor-empty {
+  text-align: center; padding: 40px 20px; color: var(--ink-muted);
+  background: var(--bg-2); border: 1px dashed var(--bg-3); border-radius: 12px;
+}
+
+.editor-arc-toggle {
+  display: flex; align-items: center; gap: 8px;
+  margin-top: 12px; padding: 8px 12px;
+  background: var(--bg); border: 1px solid var(--bg-3); border-radius: 8px;
+  cursor: pointer; user-select: none;
+}
+.editor-arc-toggle input { margin: 0; }
+.editor-arc-fields {
+  background: rgba(255,200,87,0.04); border: 1px solid rgba(255,200,87,0.2);
+  border-radius: 8px; padding: 12px; margin-top: 8px;
+}
+.editor-arc-fields.hidden { display: none; }
+
+.editor-toast {
+  position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--bg-2); border: 1px solid var(--gold); color: var(--ink);
+  padding: 12px 24px; border-radius: 10px; font-size: 14px;
+  z-index: 10000; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  opacity: 0; transition: opacity 0.2s;
+  pointer-events: none;
+}
+.editor-toast.show { opacity: 1; }
+.editor-toast.err { border-color: #f87171; color: #f87171; }
 
 /* === Board === */
 #board-scene .board-body {
@@ -847,7 +1055,40 @@ body {
     </div>
   </div>
 
+  <button class="edit-stops-link" id="open-editor-btn" type="button" onclick="window.openTrailEditor()">
+    ✏️ Edit Stops <span class="badge-custom" id="editor-custom-badge" style="display:none">CUSTOM</span>
+  </button>
+
   <button class="start-btn" id="start-btn" disabled>Both teams must pick a champion to begin</button>
+</section>
+
+
+<!-- === Scene 1b: Editor === -->
+<section id="editor-scene" class="scene">
+  <div class="editor-wrap">
+    <div class="editor-header">
+      <div>
+        <div class="editor-title">✏️ Edit Scripture Trail Stops</div>
+        <div class="editor-sub" id="editor-sub">Lesson</div>
+      </div>
+      <div class="editor-actions">
+        <button class="editor-btn" type="button" onclick="window.closeTrailEditor()">← Back</button>
+        <button class="editor-btn danger" type="button" id="editor-reset-btn" onclick="window.confirmResetEditor()">↺ Reset to library</button>
+        <button class="editor-btn primary" type="button" id="editor-save-btn" onclick="window.saveTrailEditor()">💾 Save</button>
+      </div>
+    </div>
+
+    <div class="editor-notice" id="editor-notice">
+      Changes are saved for <strong id="editor-classroom-name">this classroom only</strong>.
+      Other classrooms keep using the auto-generated version from the library.
+    </div>
+
+    <div id="editor-stops-list"></div>
+
+    <div class="editor-add-row">
+      <button class="editor-add-btn" type="button" onclick="window.addNewStop()">+ Add Stop</button>
+    </div>
+  </div>
 </section>
 
 
@@ -1759,6 +2000,445 @@ function applyLessonData(data) {
       });
   }
 })();
+
+// =====================================================================
+// === Trail editor (teacher add/edit/delete/reorder stops) ============
+// =====================================================================
+
+// Working copy of stops while editor is open. Cloned from TRAIL_STOPS on
+// open so changes can be cancelled without affecting the live game.
+let editorStops = null;
+let editorOpenStopIdx = null;  // which stop is currently expanded
+
+// Show the custom-content badge on setup scene if Firestore has classroom edits.
+(function watchCustomBadge() {
+  const badge = document.getElementById('editor-custom-badge');
+  if (!badge) return;
+  const check = () => { badge.style.display = window.__kindredTrailIsCustom ? '' : 'none'; };
+  check();
+  // Re-check periodically until lesson data is loaded (initLessonData is async)
+  let attempts = 0;
+  const interval = setInterval(() => {
+    check();
+    if (++attempts > 20) clearInterval(interval);
+  }, 500);
+})();
+
+window.openTrailEditor = function() {
+  // Deep-clone TRAIL_STOPS so changes don't take effect until Save.
+  editorStops = JSON.parse(JSON.stringify(TRAIL_STOPS || []));
+  editorOpenStopIdx = null;
+
+  // Header subtitle
+  const lessonInfo = window.__kindredCurrentCfmLesson;
+  const sub = document.getElementById('editor-sub');
+  if (sub && lessonInfo) {
+    sub.textContent = `${lessonInfo.displayLabel || ''}${lessonInfo.title ? ' · ' + lessonInfo.title : ''}`;
+  }
+
+  // Classroom-context notice
+  const noticeBox = document.getElementById('editor-notice');
+  const classroomEl = document.getElementById('editor-classroom-name');
+  if (window.__kindredClassroomId) {
+    noticeBox.classList.remove('warn');
+    if (classroomEl) classroomEl.textContent = 'this classroom only';
+    noticeBox.innerHTML = `Changes save to <strong>${escapeHtml(getClassroomName())}</strong> only. Other classrooms keep using the library version. Hit <strong>Reset to library</strong> to revert your custom edits.`;
+  } else {
+    noticeBox.classList.add('warn');
+    noticeBox.innerHTML = `⚠️ No classroom context. Open Scripture Trail from your classroom portal (the URL needs <code>?room=…</code>) to save edits.`;
+  }
+
+  showScene('editor-scene');
+  renderEditorList();
+  window.scrollTo(0, 0);
+};
+
+function getClassroomName() {
+  try {
+    return sessionStorage.getItem('kindred_classroom_name') || window.__kindredClassroomId || 'this classroom';
+  } catch { return 'this classroom'; }
+}
+
+window.closeTrailEditor = function() {
+  if (hasUnsavedEdits() && !confirm('Discard unsaved changes?')) return;
+  editorStops = null;
+  showScene('setup-scene');
+};
+
+function hasUnsavedEdits() {
+  if (!editorStops) return false;
+  try { return JSON.stringify(editorStops) !== JSON.stringify(TRAIL_STOPS); }
+  catch { return false; }
+}
+
+function renderEditorList() {
+  const list = document.getElementById('editor-stops-list');
+  if (!list) return;
+  if (!editorStops.length) {
+    list.innerHTML = '<div class="editor-empty">No stops yet. Click <strong>+ Add Stop</strong> below to create one.</div>';
+    return;
+  }
+  list.innerHTML = editorStops.map((s, i) => renderStopRow(s, i)).join('');
+}
+
+function renderStopRow(stop, idx) {
+  const expanded = editorOpenStopIdx === idx;
+  const choices = Array.isArray(stop.choices) && stop.choices.length === 3
+    ? stop.choices
+    : [{text:'',correct:true},{text:'',correct:false},{text:'',correct:false}];
+  const hasArc = !!(stop.arc && typeof stop.arc === 'object');
+  return `
+<div class="editor-stop${expanded ? ' expanded' : ''}" data-idx="${idx}">
+  <div class="editor-stop-head" onclick="window.toggleStopExpand(${idx})">
+    <div class="editor-stop-num">${idx + 1}</div>
+    <div class="editor-stop-summary">
+      <div class="editor-stop-title">${escapeHtml(stop.title || '(untitled stop)')}</div>
+      <div class="editor-stop-ref">${escapeHtml(stop.ref || '—')} · ${stop.points || 20} pts${hasArc ? ' · ⭐ ARC OPENER' : ''}</div>
+    </div>
+    <div class="editor-stop-reorder" onclick="event.stopPropagation()">
+      <button type="button" onclick="window.moveStop(${idx},-1)" ${idx === 0 ? 'disabled' : ''} title="Move up">▲</button>
+      <button type="button" onclick="window.moveStop(${idx},1)" ${idx === editorStops.length-1 ? 'disabled' : ''} title="Move down">▼</button>
+    </div>
+    <div class="editor-stop-chevron">${expanded ? '▾' : '▸'}</div>
+  </div>
+  ${expanded ? renderStopBody(stop, idx, choices, hasArc) : ''}
+</div>`;
+}
+
+function renderStopBody(stop, idx, choices, hasArc) {
+  return `
+<div class="editor-stop-body">
+  <div class="editor-section-label">Stop Info</div>
+  <div class="editor-field-row cols-2">
+    <div class="editor-field">
+      <label>Title</label>
+      <input type="text" value="${escapeAttr(stop.title || '')}" oninput="window.updateStopField(${idx},'title',this.value)"/>
+    </div>
+    <div class="editor-field">
+      <label>Points (15 / 20 / 25)</label>
+      <input type="number" min="0" max="99" value="${stop.points || 20}" oninput="window.updateStopField(${idx},'points',parseInt(this.value)||20)"/>
+    </div>
+  </div>
+  <div class="editor-field-row cols-2">
+    <div class="editor-field">
+      <label>Scripture ref</label>
+      <input type="text" value="${escapeAttr(stop.ref || '')}" placeholder="e.g. Ruth 1:4–18" oninput="window.updateStopField(${idx},'ref',this.value)"/>
+    </div>
+    <div class="editor-field">
+      <label>Verse reference (display)</label>
+      <input type="text" value="${escapeAttr(stop.verseRef || '')}" placeholder="e.g. Ruth 1:16 (KJV)" oninput="window.updateStopField(${idx},'verseRef',this.value)"/>
+    </div>
+  </div>
+  <div class="editor-field">
+    <label>Verse text (KJV, verbatim)</label>
+    <textarea rows="3" oninput="window.updateStopField(${idx},'verse',this.value)">${escapeHtml(stop.verse || '')}</textarea>
+  </div>
+  <div class="editor-field">
+    <label>Gospel Library URL</label>
+    <input type="text" value="${escapeAttr(stop.url || '')}" placeholder="https://www.churchofjesuschrist.org/study/scriptures/..." oninput="window.updateStopField(${idx},'url',this.value)"/>
+    <div class="editor-field-hint">Must be on churchofjesuschrist.org</div>
+  </div>
+  <div class="editor-field">
+    <label>Story summary</label>
+    <textarea rows="2" oninput="window.updateStopField(${idx},'summary',this.value)">${escapeHtml(stop.summary || '')}</textarea>
+  </div>
+
+  <div class="editor-section-label">Question</div>
+  <div class="editor-field">
+    <label>Objective question</label>
+    <input type="text" value="${escapeAttr(stop.objective || '')}" oninput="window.updateStopField(${idx},'objective',this.value)"/>
+  </div>
+  <div class="editor-field">
+    <label>Choices (mark the correct one)</label>
+    <div class="editor-choices">
+      ${[0,1,2].map(ci => `
+        <div class="editor-choice-row">
+          <input type="text" value="${escapeAttr(choices[ci].text || '')}" placeholder="Choice ${'ABC'[ci]}" oninput="window.updateChoiceText(${idx},${ci},this.value)"/>
+          <button type="button" class="correct-toggle${choices[ci].correct ? ' is-correct' : ''}" onclick="window.setCorrectChoice(${idx},${ci})">${choices[ci].correct ? '✓ Correct' : 'Mark correct'}</button>
+        </div>`).join('')}
+    </div>
+  </div>
+  <div class="editor-field">
+    <label>Why (revealed after answer)</label>
+    <textarea rows="2" oninput="window.updateStopField(${idx},'answer',this.value)">${escapeHtml(stop.answer || '')}</textarea>
+  </div>
+
+  <div class="editor-section-label">Discussion & Christ Connection</div>
+  <div class="editor-field">
+    <label>Discussion question (asked to whole class)</label>
+    <textarea rows="2" oninput="window.updateStopField(${idx},'discussion',this.value)">${escapeHtml(stop.discussion || '')}</textarea>
+  </div>
+  <div class="editor-field">
+    <label>Christ connection</label>
+    <textarea rows="2" oninput="window.updateStopField(${idx},'christ',this.value)">${escapeHtml(stop.christ || '')}</textarea>
+  </div>
+
+  <label class="editor-arc-toggle">
+    <input type="checkbox" ${hasArc ? 'checked' : ''} onchange="window.toggleArcOpener(${idx},this.checked)"/>
+    <span>This stop opens a new story arc (region change, character intro, video)</span>
+  </label>
+  <div class="editor-arc-fields${hasArc ? '' : ' hidden'}" id="arc-fields-${idx}">
+    ${renderArcFields(stop, idx)}
+  </div>
+
+  <div class="editor-stop-actions">
+    <button type="button" class="editor-btn danger" onclick="window.deleteStop(${idx})">🗑 Delete stop</button>
+    <button type="button" class="editor-btn" onclick="window.toggleStopExpand(${idx})">Collapse</button>
+  </div>
+</div>`;
+}
+
+function renderArcFields(stop, idx) {
+  const arc = stop.arc || {};
+  const video = arc.video || {};
+  return `
+  <div class="editor-field-row cols-2">
+    <div class="editor-field">
+      <label>Arc title</label>
+      <input type="text" value="${escapeAttr(arc.title || '')}" placeholder="e.g. The Story of Ruth" oninput="window.updateArcField(${idx},'title',this.value)"/>
+    </div>
+    <div class="editor-field">
+      <label>Region label</label>
+      <input type="text" value="${escapeAttr(arc.region || '')}" placeholder="e.g. MOAB → BETHLEHEM" oninput="window.updateArcField(${idx},'region',this.value)"/>
+    </div>
+  </div>
+  <div class="editor-field-row cols-2">
+    <div class="editor-field">
+      <label>Icon (emoji)</label>
+      <input type="text" value="${escapeAttr(arc.icon || '')}" placeholder="🌾" maxlength="4" oninput="window.updateArcField(${idx},'icon',this.value)"/>
+    </div>
+    <div class="editor-field">
+      <label>Stop range (display)</label>
+      <input type="text" value="${escapeAttr(arc.stopRange || '')}" placeholder="Stops 1–3" oninput="window.updateArcField(${idx},'stopRange',this.value)"/>
+    </div>
+  </div>
+  <div class="editor-field">
+    <label>Subtitle (one-line theme)</label>
+    <input type="text" value="${escapeAttr(arc.subtitle || '')}" oninput="window.updateArcField(${idx},'subtitle',this.value)"/>
+  </div>
+  <div class="editor-field">
+    <label>Context (teacher reads before opening this arc's first stop)</label>
+    <textarea rows="2" oninput="window.updateArcField(${idx},'context',this.value)">${escapeHtml(arc.context || '')}</textarea>
+  </div>
+  <div class="editor-field-row cols-2">
+    <div class="editor-field">
+      <label>Video title</label>
+      <input type="text" value="${escapeAttr(video.title || '')}" oninput="window.updateArcVideo(${idx},'title',this.value)"/>
+    </div>
+    <div class="editor-field">
+      <label>Duration (e.g. 2:00)</label>
+      <input type="text" value="${escapeAttr(video.duration || '')}" oninput="window.updateArcVideo(${idx},'duration',this.value)"/>
+    </div>
+  </div>
+  <div class="editor-field">
+    <label>Video URL (churchofjesuschrist.org only)</label>
+    <input type="text" value="${escapeAttr(video.url || '')}" placeholder="https://www.churchofjesuschrist.org/..." oninput="window.updateArcVideo(${idx},'url',this.value)"/>
+  </div>`;
+}
+
+window.toggleStopExpand = function(idx) {
+  editorOpenStopIdx = (editorOpenStopIdx === idx) ? null : idx;
+  renderEditorList();
+};
+
+window.updateStopField = function(idx, field, value) {
+  if (!editorStops[idx]) return;
+  editorStops[idx][field] = value;
+  // Update the head summary live for title/ref/points changes without re-rendering
+  // the entire row (would lose focus). Only re-render head text.
+  if (field === 'title' || field === 'ref' || field === 'points') {
+    const row = document.querySelector(`.editor-stop[data-idx="${idx}"] .editor-stop-summary`);
+    if (row) {
+      const s = editorStops[idx];
+      const hasArc = !!(s.arc && typeof s.arc === 'object');
+      row.innerHTML = `
+        <div class="editor-stop-title">${escapeHtml(s.title || '(untitled stop)')}</div>
+        <div class="editor-stop-ref">${escapeHtml(s.ref || '—')} · ${s.points || 20} pts${hasArc ? ' · ⭐ ARC OPENER' : ''}</div>`;
+    }
+  }
+};
+
+window.updateChoiceText = function(idx, ci, value) {
+  if (!editorStops[idx]) return;
+  if (!Array.isArray(editorStops[idx].choices) || editorStops[idx].choices.length !== 3) {
+    editorStops[idx].choices = [{text:'',correct:true},{text:'',correct:false},{text:'',correct:false}];
+  }
+  editorStops[idx].choices[ci].text = value;
+};
+
+window.setCorrectChoice = function(idx, ci) {
+  if (!editorStops[idx]) return;
+  if (!Array.isArray(editorStops[idx].choices)) return;
+  editorStops[idx].choices.forEach((c, i) => { c.correct = (i === ci); });
+  renderEditorList();
+};
+
+window.toggleArcOpener = function(idx, checked) {
+  if (!editorStops[idx]) return;
+  if (checked) {
+    editorStops[idx].arc = editorStops[idx].arc || {
+      id: 'arc-' + (idx + 1),
+      title: '', region: '', subtitle: '', context: '',
+      icon: '', stopRange: '',
+      video: { title: '', duration: '', url: '' }
+    };
+  } else {
+    delete editorStops[idx].arc;
+  }
+  renderEditorList();
+};
+
+window.updateArcField = function(idx, field, value) {
+  if (!editorStops[idx]?.arc) return;
+  editorStops[idx].arc[field] = value;
+};
+
+window.updateArcVideo = function(idx, field, value) {
+  if (!editorStops[idx]?.arc) return;
+  editorStops[idx].arc.video = editorStops[idx].arc.video || {};
+  editorStops[idx].arc.video[field] = value;
+};
+
+window.moveStop = function(idx, delta) {
+  const newIdx = idx + delta;
+  if (newIdx < 0 || newIdx >= editorStops.length) return;
+  const [item] = editorStops.splice(idx, 1);
+  editorStops.splice(newIdx, 0, item);
+  // Renumber `n` so the game logic stays consistent
+  editorStops.forEach((s, i) => { s.n = i + 1; });
+  if (editorOpenStopIdx === idx) editorOpenStopIdx = newIdx;
+  else if (editorOpenStopIdx === newIdx) editorOpenStopIdx = idx;
+  renderEditorList();
+};
+
+window.deleteStop = function(idx) {
+  if (!confirm(`Delete stop ${idx + 1} (${editorStops[idx]?.title || 'untitled'})?`)) return;
+  editorStops.splice(idx, 1);
+  editorStops.forEach((s, i) => { s.n = i + 1; });
+  if (editorOpenStopIdx === idx) editorOpenStopIdx = null;
+  renderEditorList();
+};
+
+window.addNewStop = function() {
+  const newIdx = editorStops.length;
+  editorStops.push({
+    n: newIdx + 1,
+    title: 'New Stop',
+    ref: '',
+    verse: '',
+    verseRef: '',
+    url: '',
+    summary: '',
+    objective: '',
+    choices: [
+      { text: '', correct: true },
+      { text: '', correct: false },
+      { text: '', correct: false },
+    ],
+    answer: '',
+    discussion: '',
+    christ: '',
+    points: 20,
+  });
+  editorOpenStopIdx = newIdx;
+  renderEditorList();
+  // Scroll the new stop into view
+  setTimeout(() => {
+    const el = document.querySelector(`.editor-stop[data-idx="${newIdx}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 50);
+};
+
+window.saveTrailEditor = async function() {
+  if (!editorStops || !editorStops.length) { toast('Add at least one stop before saving.', true); return; }
+
+  // Basic validation
+  const errors = validateStops(editorStops);
+  if (errors.length) {
+    toast(`Cannot save: ${errors[0]}`, true);
+    return;
+  }
+
+  const btn = document.getElementById('editor-save-btn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const lessonId = window.__kindredLessonId;
+    const payload = {
+      stops: editorStops,
+      topic: (window.__kindredCurrentCfmLesson?.title || 'Custom Scripture Trail'),
+      sourceUrl: window.__kindredCurrentCfmLesson?.url || null,
+      editedBy: 'teacher',
+    };
+    await window.saveTrailEditsToClassroom(lessonId, payload);
+    // Apply to the live game so the changes appear when the user starts
+    applyLessonData(payload);
+    document.getElementById('editor-custom-badge').style.display = '';
+    toast('✓ Saved. Your edits will apply when you start the game.');
+    setTimeout(() => { window.closeTrailEditor(); }, 800);
+  } catch (err) {
+    toast(`Save failed: ${err.message}`, true);
+  } finally {
+    btn.disabled = false; btn.textContent = '💾 Save';
+  }
+};
+
+function validateStops(stops) {
+  const errs = [];
+  stops.forEach((s, i) => {
+    if (!s.title?.trim()) errs.push(`Stop ${i+1}: title required`);
+    if (!s.objective?.trim()) errs.push(`Stop ${i+1}: question required`);
+    if (!Array.isArray(s.choices) || s.choices.length !== 3) errs.push(`Stop ${i+1}: must have 3 choices`);
+    else {
+      const correctCount = s.choices.filter(c => c.correct).length;
+      if (correctCount !== 1) errs.push(`Stop ${i+1}: must have exactly 1 correct choice`);
+      if (s.choices.some(c => !c.text?.trim())) errs.push(`Stop ${i+1}: all 3 choices must have text`);
+    }
+  });
+  return errs;
+}
+
+window.confirmResetEditor = async function() {
+  if (!confirm('Reset to the library default? Your classroom edits will be discarded.')) return;
+  try {
+    await window.resetTrailEditsToLibrary(window.__kindredLessonId);
+    // Reload library data
+    const libData = await window.loadScriptureTrailFromLibrary(window.__kindredLessonId);
+    if (libData) {
+      applyLessonData(libData);
+      editorStops = JSON.parse(JSON.stringify(TRAIL_STOPS));
+      editorOpenStopIdx = null;
+      renderEditorList();
+      toast('✓ Reset to library version.');
+    } else {
+      toast('Library default reapplied. No saved library entry found.', false);
+    }
+    document.getElementById('editor-custom-badge').style.display = 'none';
+  } catch (err) {
+    toast(`Reset failed: ${err.message}`, true);
+  }
+};
+
+// Helpers
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function escapeAttr(s) { return escapeHtml(s); }
+
+let toastTimer = null;
+function toast(msg, isErr = false) {
+  let t = document.getElementById('editor-toast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'editor-toast';
+    t.className = 'editor-toast';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.toggle('err', !!isErr);
+  t.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
 </script>
 </body>
 </html>
