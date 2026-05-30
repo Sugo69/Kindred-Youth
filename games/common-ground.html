@@ -104,6 +104,8 @@
         body.mode-admin .admin-only { display: block; width: 100%; max-width: 850px; margin: 0 auto; padding-bottom: 140px; padding-top: 20px; box-sizing: border-box; }
         body.mode-contestant .contestant-only { display: flex; flex-direction: column; align-items: center; width: 100%; }
         body.mode-contestant .bottom-hud { display: flex; }
+        /* Teachers arriving via ?lesson= skip the audio-unlock splash entirely */
+        body.mode-teacher #audio-unlock { display: none; }
         body.mode-teacher .teacher-only { display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; padding-bottom: 80px; box-sizing: border-box; }
 
         .back-to-portal { display: block; width: 100%; background: rgba(0,242,255,0.06); border-bottom: 1px solid rgba(0,242,255,0.15); padding: 8px 16px; box-sizing: border-box; }
@@ -2049,6 +2051,8 @@ if (new URLSearchParams(location.search).get('lesson')) {
                                 Object.assign(banner.style, { position:'fixed', bottom:'16px', left:'50%', transform:'translateX(-50%)', background:'#1a2a1a', border:'1px solid #4ade80', color:'#4ade80', padding:'8px 20px', borderRadius:'8px', fontSize:'13px', fontFamily:'sans-serif', zIndex:'9999', pointerEvents:'none' });
                                 document.body.appendChild(banner);
                                 setTimeout(() => banner.remove(), 4000);
+                                document.getElementById('audio-unlock').style.display = 'none';
+                                window.setView?.('admin');
                                 return;
                             }
                         } catch(e) { console.warn('[CG classroom-game lookup]', e.message); }
@@ -2104,6 +2108,8 @@ if (new URLSearchParams(location.search).get('lesson')) {
                 });
                 document.body.appendChild(banner);
                 setTimeout(() => banner.remove(), 4000);
+                document.getElementById('audio-unlock').style.display = 'none';
+                window.setView?.('admin');
             } catch(e) {
                 console.warn('[CG auto-load]', e.message);
             }
