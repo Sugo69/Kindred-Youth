@@ -29,26 +29,38 @@
 ```
 Kindred-Youth/                  # Repo: github.com/Sugo69/Kindred-Youth (renamed from FamilyFeud 2026-04-22)
 ├── CLAUDE.md
-├── index.html                  # Kindred portal — marketing landing (pre-auth) + game catalog (post-auth) + display scale gear menu
-├── admin.html                  # Admin portal — Google auth (lewiswf@gmail.com), teachers/classrooms/backlog
+├── CHECKPOINT-2026-05-29-pm.md # Latest session handoff — 17 commits, 4 games, full Seminary year
+├── CHECKPOINT-2026-05-29.md    # Earlier handoff (AM session — Scripture Trail P0)
+├── Seminary_Schedule.md        # Design notes — hemisphere differences, 36-week pacing
+├── index.html                  # Kindred portal — pre-auth landing + post-auth CFM/Seminary tabs with lesson-first recs
+├── admin.html                  # Admin portal — Google auth (lewiswf@gmail.com), 6 tabs: Overview/Teachers/Classrooms/Library/Backlog/Calibrate
 ├── package.json                # name: kindred-youth
 ├── vercel.json                 # COOP header (same-origin-allow-popups) for Google sign-in popup on prod
-├── vite.config.js              # MPA build config (4 pages) + ALL dev middleware
+├── vite.config.js              # MPA build config (6 pages) + ALL dev middleware
 ├── public/
-│   └── favicon.svg             # Kindred "K" logo — dark navy + neon cyan glow
+│   ├── favicon.svg             # Kindred "K" logo — dark navy + neon cyan glow
+│   └── games/assets/
+│       ├── scripture-trail-board-{ot,nt,bom,dc,moses,abraham}.png  # 6 painted boards, 2000×1116
+│       └── characters/01–24*.png                                    # 24 Gemini character portraits
 ├── games/
-│   ├── common-ground.html      # Common Ground game — Monitor + Admin + Teacher Portal
-│   └── memory.html             # Scripture Match game — React 18, memory matching
+│   ├── common-ground.html      # Common Ground — Monitor + Admin + Teacher Portal (cyan, doctrinal-best)
+│   ├── memory.html             # Scripture Match — React 18, memory matching (green, scripture-best)
+│   ├── scripture-trail.html    # Scripture Trail — board + setup + Edit Stops editor (gold, narrative-best)
+│   └── by-heart.html           # By Heart — Doctrinal Mastery cloze memorisation (purple, 5 levels)
 ├── api/
 │   ├── generate.js             # Vercel serverless — AI backlog story generator
 │   ├── fetch-content.js        # Vercel serverless — URL proxy/scraper for Teacher Portal
 │   ├── generate-questions.js   # Vercel serverless — question generator (3 types)
-│   ├── lesson-pipeline.js      # Thin Vercel wrapper around _lib/pipeline.js
+│   ├── lesson-pipeline.js      # Thin Vercel wrapper around _lib/pipeline.js (supports CG/Memory/Trail)
 │   └── _lib/
-│       └── pipeline.js         # Shared pipeline v3 — dev + prod use the same module
+│       └── pipeline.js         # Shared pipeline v3 — dev + prod use the same module; 3 game types
 ├── src/
 │   └── lib/
-│       └── cfm-schedule.js     # Come Follow Me 2026 OT week → Gospel Library URL map
+│       ├── cfm-schedule.js               # CFM 2026 OT — 52 weeks, type-tagged + recommendation engine
+│       ├── seminary-schedule.js          # Seminary NT 2026-27 — 160 daily lessons, on-demand gen, 60-day cache
+│       ├── doctrinal-mastery-nt.js       # 25 NT DM passages — full KJV text, keyPhrase, theme, dmId
+│       ├── trail-themes.js               # Per-curriculum registry + resolveTrailTheme + getPositionsForCount
+│       └── trail-positions-{ot,nt,bom,dc,moses,abraham}.js  # 10 stop positions + 4 regions per curriculum
 ├── .claude/
 │   ├── settings.json           # Project-level Claude Code permissions (committed)
 │   ├── settings.local.json     # Machine-local permissions (gitignored)
@@ -107,21 +119,33 @@ artifacts/exodus-feud-final-v10/public/data/
 ├── games/{gameId}                             # Global saved game sets
 ├── lessonLibrary/{lessonId}                   # Admin pre-generated lessons (always global)
 │   ├── name, url, createdAt
-│   ├── commonGround: { topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[] }
-│   └── memory:       { topic, pairs[], sourceUrl, generatedAt, videoLinks[], talkLinks[] }
+│   ├── commonGround:   { topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], complianceReport }
+│   ├── memory:         { topic, pairs[],  sourceUrl, generatedAt, videoLinks[], talkLinks[], complianceReport }
+│   └── scriptureTrail: { topic, stops[],  sourceUrl, generatedAt, videoLinks[], talkLinks[], complianceReport }
+├── trailThemes/{key}                          # Admin-calibrated board positions (global, ot/nt/bom/dc/moses/abraham)
+│   └── { positions[10], regions[4], savedAt } # set by admin "🗺 Calibrate" tab
 ├── classrooms/{classroomId}/
 │   ├── feudSession/state                      # Classroom-scoped game state
 │   ├── activeGame/current                     # Classroom-scoped active game
-│   └── games/{gameId}                         # Classroom-scoped saved game sets
+│   ├── games/{gameId}                         # Classroom-scoped saved game sets (CG + Memory)
+│   └── trailLessons/{lessonId}                # Classroom-scoped Scripture Trail edits (NEW 2026-05-29)
+│       └── { stops[], topic, sourceUrl, editedBy, savedAt }
+├── teachers/{email}, classrooms/{id}, pendingTeachers/{id}  # Admin-managed identity collections
 ├── backlogItems/{docId}     # Backlog items (seqId, priority, description, batchIds, notes, createdAt)
 └── blGuides/{blDocId}       # AI-generated implementation guides per BL item
 ```
+
+**Game content lookup order:**
+- Common Ground / Scripture Match: `activeGame/current` (set by teacher) → `lessonLibrary/{lessonId}` (auto-load on `?lesson=`)
+- Scripture Trail: `classrooms/{room}/trailLessons/{lessonId}` (teacher edits) → `lessonLibrary/{lessonId}.scriptureTrail` → inline lesson-23 default
+- Trail board positions: `trailThemes/{key}` (admin calibrated) → `src/lib/trail-positions-{key}.js` (JS file default)
+- By Heart: client-side only — no Firestore reads/writes
 
 ## Dev Commands
 ```bash
 npm install
 npm run dev        # starts at http://localhost:5173 — all AI endpoints live
-npm run build      # production build → dist/ (4 pages: index, admin, common-ground, memory)
+npm run build      # production build → dist/ (6 pages: index, admin, common-ground, memory, scripture-trail, by-heart)
 npm run preview    # preview production build
 ```
 
@@ -129,7 +153,7 @@ npm run preview    # preview production build
 > `ANTHROPIC_API_KEY` must be in `.env` (no VITE_ prefix).
 
 ## Vite MPA Build Config
-`vite.config.js` uses `rollupOptions.input` to build all four pages:
+`vite.config.js` uses `rollupOptions.input` to build all six pages:
 ```js
 build: {
     rollupOptions: {
@@ -138,17 +162,19 @@ build: {
             admin: resolve(__dirname, 'admin.html'),
             commonGround: resolve(__dirname, 'games/common-ground.html'),
             memory: resolve(__dirname, 'games/memory.html'),
+            scriptureTrail: resolve(__dirname, 'games/scripture-trail.html'),
+            byHeart: resolve(__dirname, 'games/by-heart.html'),
         }
     }
 }
 ```
 
-## Lesson Pipeline (`/api/lesson-pipeline`) — v3 (shared core + compliance)
-Two-step Claude pipeline used by both games' Teacher Portal "From Lesson" mode. Mirrors the CLI skills chain (`extract-lesson` → `youth-leader`/`gamemaster`) but runs entirely server-side.
+## Lesson Pipeline (`/api/lesson-pipeline`) — v3 (shared core + compliance, now supports 3 games)
+Two-step Claude pipeline for all three content-generating games (Common Ground, Scripture Match, Scripture Trail). By Heart doesn't use the pipeline — its content is the hand-coded DM library plus user-pasted text.
 
-**Shared-module architecture (v3):** Both `api/lesson-pipeline.js` (Vercel handler) and the Vite dev middleware in `vite.config.js` are thin HTTP wrappers around `runLessonPipeline()` exported from [api/_lib/pipeline.js](api/_lib/pipeline.js). Dev and prod execute identical code — no more silent drift.
+**Shared-module architecture (v3):** Both `api/lesson-pipeline.js` (Vercel handler) and the Vite dev middleware in `vite.config.js` are thin HTTP wrappers around `runLessonPipeline()` exported from [api/_lib/pipeline.js](api/_lib/pipeline.js). Dev and prod execute identical code.
 
-- **Input**: `{ url, gameType: 'common-ground' | 'memory', questionType: 'mixed' | 'scripture_based' | 'scripture_application' | 'family_feud' }`
+- **Input**: `{ url, gameType: 'common-ground' | 'memory' | 'scripture-trail', questionType: 'mixed' | 'scripture_based' | 'scripture_application' | 'family_feud' }` (questionType ignored for memory and scripture-trail)
 - **Source URL allowlist**: hosts `churchofjesuschrist.org` (+ subdomains); path prefixes `/study/manual/`, `/study/general-conference/`, `/study/scriptures/`, `/study/ensign/`, `/study/liahona/`, `/study/new-era/`. Anything else → 400.
 - **Output URL allowlist**: every `url` field emitted must be on `churchofjesuschrist.org`, `media.churchofjesuschrist.org`, `abn.churchofjesuschrist.org`, or `speeches.byu.edu`. Non-matching URLs are stripped and flagged.
 - **Step 1 — Extraction**: Claude fetches and parses the lesson page, extracting `{ title, weekLabel, scriptureRefs[{ref, verseText, url, section}], videoLinks[], talkLinks[], discussionQuestions[], keyThemes[] }`. Claude supplies `verseText` from its training knowledge of the KJV/standard works.
@@ -157,6 +183,7 @@ Two-step Claude pipeline used by both games' Teacher Portal "From Lesson" mode. 
 - **Step 4 — AI safety review** (gated by `ENABLE_SAFETY_REVIEW`, default on): a second Claude pass tags each item `pass | rewrite | block`, rewrites fields in place, and removes blocked items.
 - **Common Ground output**: `{ topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
 - **Scripture Match output**: `{ topic, pairs[{cardA, cardB, icon, iconLabel, scene, verse, question, christConnection, url, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
+- **Scripture Trail output**: `{ topic, stops[{n, title, ref, verse, verseRef, url, arc?, summary, objective, choices[{text,correct}×3], answer, discussion, christ, points, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }` — 7 stops in 2-3 arcs; first stop of each arc carries the `arc` object
 - **`complianceReport` shape**: `{ version: 'v3', policyRefs: ['Handbook §13', 'Handbook §37.8', "Teaching in the Savior's Way"], structural: {...}, safety: {...}, passCount, reviewCount, rewrittenCount, blockedCount, overall: 'PASS' | 'PASS_WITH_REWRITES' | 'REVIEW_REQUIRED' }`
 - **Server-side retry**: if Claude API returns 500/503/529 or timeout/overload error, waits 5s and retries once
 - **Client-side retry**: on any error, shows 30-second countdown in status bar and auto-retries; clicking Generate again cancels the countdown and retries immediately
