@@ -448,6 +448,27 @@
                 }
             };
 
+            // Content moderation before committing manual pairs
+            const CLIENT_BLOCK_TERMS_MEM = [/\bsh[i!1]t\b/i,/\bf+u+c+k+(?:ing|er|ed|s)?\b/i,/\bcunt\b/i,/\basshole\b/i,/\bbullsh[i!1]t\b/i,/\bm[o0]th[e3]rfuck/i,/\bbitch(?:es)?\b/i,/\bc[o0]ck\b(?!atrice|roach)/i,/\bpussy\b(?!\s*willow)/i,/\bmeth(?:amphetamine)?\b/i];
+            const handleSavePairs = async () => {
+                setPortalLoading(true); setPortalStatus('Checking content…');
+                const allText = manualPairs.map(p => `${p.cardA||''} ${p.cardB||''} ${p.question||''}`).join(' ');
+                const hit = CLIENT_BLOCK_TERMS_MEM.find(r => r.test(allText));
+                if (hit) { setPortalStatus('⚠ Content blocked — flagged word found. Please revise before saving.'); setPortalLoading(false); return; }
+                setPortalStatus('Moderating…');
+                try {
+                    const rounds = manualPairs.map((p, i) => ({ n: i + 1, question: p.question || '', answers: [p.cardA || '', p.cardB || ''] }));
+                    const apiBase = window.__kindredApiBase || '';
+                    const res = await fetch(`${apiBase}/api/moderate`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rounds }) });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const flagged = (data.results || []).filter(r => r.verdict === 'FLAG');
+                        if (flagged.length) { setPortalStatus(`⚠ Pair ${flagged[0].i + 1} flagged: ${flagged[0].reason || 'inappropriate content'}. Please revise.`); setPortalLoading(false); return; }
+                    }
+                } catch(e) { /* fail open */ }
+                setPairsData(manualPairs); setPortalView('home'); setPortalLoading(false); setPortalStatus(`✓ ${manualPairs.length} pairs saved.`);
+            };
+
             // --- PORTAL VIEW ---
             if (gameState === 'portal') return (
                 <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 md:p-8" style={{ transform: `scale(${scale/100})`, transformOrigin: 'top center' }}>
@@ -692,7 +713,7 @@
                                         ))}
                                     </div>
                                     <div className="flex gap-3">
-                                        <button onClick={()=>{setPairsData(manualPairs);setPortalView('home');setPortalStatus(`✓ ${manualPairs.length} pairs saved.`);}}
+                                        <button onClick={handleSavePairs}
                                             className="flex-1 py-2.5 bg-cyan-600 text-black font-black text-xs tracking-widest uppercase rounded-lg hover:bg-cyan-500"
                                             style={{fontFamily:'Orbitron,sans-serif'}}>✓ Save Pairs</button>
                                         <button onClick={()=>setPortalView('home')}

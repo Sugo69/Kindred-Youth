@@ -175,6 +175,10 @@
   <div class="setup-header">
     <div class="setup-title">BY HEART</div>
     <div class="setup-subtitle">Doctrinal Mastery · Memorization</div>
+    <div style="margin-top:8px; display:flex; align-items:center; justify-content:center; gap:12px; flex-wrap:wrap;">
+      <span id="bh-learned-count" style="color:var(--green); font-size:0.8rem; font-family:'Orbitron',sans-serif; letter-spacing:1px;"></span>
+      <button onclick="window.resetByHeartProgress()" style="display:none; background:transparent; border:none; color:#444; font-size:0.72rem; cursor:pointer; font-family:'Orbitron',sans-serif; letter-spacing:1px; text-decoration:underline;" id="bh-reset-btn">↺ Reset</button>
+    </div>
   </div>
 
   <div class="setup-card">
@@ -266,6 +270,33 @@ const LEVELS = [
 let selectedPassage = null; // { ref, text, keyPhrase, theme, dmId? }
 let activeTab = 'week';
 let currentLevel = 1;
+
+// ── Progress persistence (localStorage, per device) ─────────────────
+const BH_KEY = 'kindred_byheart_learned';
+function getLearnedRefs() {
+  try { return new Set(JSON.parse(localStorage.getItem(BH_KEY) || '[]')); }
+  catch(e) { return new Set(); }
+}
+function markLearned(ref) {
+  try {
+    const s = getLearnedRefs(); s.add(ref);
+    localStorage.setItem(BH_KEY, JSON.stringify([...s]));
+  } catch(e) {}
+}
+window.resetByHeartProgress = function() {
+  if (!confirm('Clear all By Heart progress for this device?')) return;
+  localStorage.removeItem(BH_KEY);
+  if (activeTab === 'week') renderWeekPanel();
+  if (activeTab === 'browse') renderBrowsePanel();
+  updateLearnedCounter();
+};
+function updateLearnedCounter() {
+  const el = document.getElementById('bh-learned-count');
+  const resetBtn = document.getElementById('bh-reset-btn');
+  const count = getLearnedRefs().size;
+  if (el) el.textContent = count > 0 ? `${count} passage${count !== 1 ? 's' : ''} learned` : '';
+  if (resetBtn) resetBtn.style.display = count > 0 ? 'inline' : 'none';
+}
 let blankIndices = new Set();   // which token indices are blanked at this level
 let revealedIndices = new Set(); // which blanks the class has tapped open
 
@@ -296,26 +327,38 @@ function renderWeekPanel() {
   }
   const lesson = today ? `<div class="dm-week-label" style="margin-bottom:12px;">
     ${today.displayDate || ''} · ${today.title || ''}</div>` : '';
-  container.innerHTML = lesson + passages.map((p, i) => `
-    <div class="dm-passage-preview${selectedPassage?.ref === p.ref ? ' selected' : ''}"
+  const learned = getLearnedRefs();
+  container.innerHTML = lesson + passages.map((p, i) => {
+    const done = learned.has(p.ref);
+    return `<div class="dm-passage-preview${selectedPassage?.ref === p.ref ? ' selected' : ''}"
          onclick="selectPassage(${JSON.stringify(p).split('"').join('&quot;')})">
-      <div class="dm-ref">${p.ref}</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${done ? '<span style="color:var(--green);font-size:0.85rem;">✓</span>' : ''}
+        <div class="dm-ref" style="${done ? 'opacity:0.6;' : ''}">${p.ref}</div>
+      </div>
       <div class="dm-key-phrase">"${p.keyPhrase}"</div>
       <div class="dm-theme">${p.theme}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderBrowsePanel() {
   const passages = window.__dmPassages || [];
   const themes = [...new Set(passages.map(p => p.theme))];
+  const learned = getLearnedRefs();
   const container = document.getElementById('browse-list');
   container.innerHTML = themes.map(theme => {
-    const rows = passages.filter(p => p.theme === theme).map(p => `
-      <div class="browse-passage-row${selectedPassage?.ref === p.ref ? ' selected' : ''}"
+    const rows = passages.filter(p => p.theme === theme).map(p => {
+      const done = learned.has(p.ref);
+      return `<div class="browse-passage-row${selectedPassage?.ref === p.ref ? ' selected' : ''}"
            onclick="selectPassage(${JSON.stringify(p).split('"').join('&quot;')})">
-        <div class="browse-ref">${p.ref}</div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          ${done ? '<span style="color:var(--green);font-size:0.8rem;">✓</span>' : ''}
+          <div class="browse-ref" style="${done ? 'opacity:0.6;' : ''}">${p.ref}</div>
+        </div>
         <div class="browse-phrase">"${p.keyPhrase}"</div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
     return `<div class="browse-theme-group">
       <div class="browse-theme-label">${theme}</div>
       ${rows}
@@ -484,18 +527,22 @@ window.nextLevel = function() {
 
 window.showComplete = function() {
   const p = selectedPassage;
+  markLearned(p.ref);
+  updateLearnedCounter();
   document.getElementById('verse-text').style.display = 'none';
   document.getElementById('action-row').innerHTML = '';
   document.getElementById('level-instruction').style.display = 'none';
   const inner = document.querySelector('.practice-inner');
   const card = document.createElement('div');
   card.className = 'complete-card';
+  const learnedCount = getLearnedRefs().size;
   card.innerHTML = `
     <div class="complete-icon">🏆</div>
     <div class="complete-title">By Heart!</div>
     <div class="complete-sub">${p.ref}</div>
     <div class="complete-key">"${p.keyPhrase}"</div>
     <div class="complete-sub" style="margin-top:8px; font-size:0.9rem; color:#555">${p.theme || ''}</div>
+    <div style="margin-top:12px; color:var(--green); font-size:0.8rem; font-family:'Orbitron',sans-serif; letter-spacing:1px;">✓ Progress saved · ${learnedCount} passage${learnedCount !== 1 ? 's' : ''} learned</div>
     <div style="display:flex;gap:10px;justify-content:center;margin-top:24px;flex-wrap:wrap;">
       <button class="action-btn secondary" onclick="practiceAgain()">↺ Practice Again</button>
       <button class="action-btn primary" onclick="backToSetup()">Pick Another →</button>
@@ -530,10 +577,13 @@ function escHtml(s) {
 // ── Init ─────────────────────────────────────────────────────────────
 // Wait for module script to set window.__dmPassages
 window.addEventListener('load', () => {
-  // Give module script a tick to resolve
   setTimeout(() => {
     renderWeekPanel();
     renderBrowsePanel();
+    updateLearnedCounter();
+    // Show reset button only when there's saved progress
+    const resetBtn = document.getElementById('bh-reset-btn');
+    if (resetBtn && getLearnedRefs().size > 0) resetBtn.style.display = 'inline';
   }, 50);
 });
 </script>
