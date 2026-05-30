@@ -377,6 +377,29 @@
                     </div>
                 </div>
 
+                <!-- Route 1: lesson launch view — shown when ?lesson= set but not pre-generated -->
+                <div id="tp-lesson-launch-view" style="display:none;">
+                    <div class="admin-box">
+                        <div class="tp-topbar" style="margin-bottom:16px;">
+                            <button class="admin-btn" style="min-width:auto; padding:10px 16px; font-size:0.75rem;" onclick="window.closeLessonLaunch()">← Back</button>
+                            <span style="flex:1;"></span>
+                        </div>
+                        <div style="text-align:center; padding:0 8px 20px;">
+                            <div id="tll-date-range" style="color:#fbbf24; font-family:'Rajdhani',sans-serif; font-size:0.8rem; text-transform:uppercase; letter-spacing:2px; margin-bottom:6px;"></div>
+                            <div id="tll-title" style="color:white; font-size:1.4rem; font-weight:700; font-family:'Rajdhani',sans-serif; margin-bottom:10px;"></div>
+                            <div style="color:#555; font-family:'Rajdhani',sans-serif; font-size:0.9rem;">No Common Ground game generated for this lesson yet.</div>
+                        </div>
+                        <button id="tll-generate-btn" class="ai-generate-btn" style="margin:0 0 16px 0; font-size:1.05rem;" onclick="window.generateAndPlay()">
+                            ✨ Generate &amp; Play
+                        </button>
+                        <label style="display:flex; align-items:center; gap:8px; color:#666; font-family:'Rajdhani',sans-serif; font-size:0.85rem; cursor:pointer; justify-content:center;">
+                            <input type="checkbox" id="tll-review-first" style="cursor:pointer;">
+                            Review &amp; edit questions before activating
+                        </label>
+                    </div>
+                    <div id="tll-status" style="display:none;" class="tp-status"></div>
+                </div>
+
                 <!-- Editor sub-view -->
                 <div id="tp-editor-view" style="display:none">
                     <div class="admin-box">
@@ -1314,6 +1337,13 @@
             renderGameLibrary();
         };
 
+        window.closeLessonLaunch = function() {
+            _clearLessonRetry();
+            document.getElementById('tp-lesson-launch-view').style.display = 'none';
+            document.getElementById('tp-library-view').style.display = 'block';
+            renderGameLibrary();
+        };
+
         window.showLibraryView = function() {
             document.getElementById('tp-library-view').style.display = 'none';
             document.getElementById('tp-lessonlibrary-view').style.display = 'block';
@@ -1328,7 +1358,21 @@
         function showEditorView() {
             document.getElementById('tp-library-view').style.display = 'none';
             document.getElementById('tp-lessonlibrary-view').style.display = 'none';
+            document.getElementById('tp-lesson-launch-view').style.display = 'none';
             document.getElementById('tp-editor-view').style.display = 'block';
+        }
+
+        function showLessonLaunchView(lessonMeta) {
+            document.getElementById('tp-library-view').style.display = 'none';
+            document.getElementById('tp-lessonlibrary-view').style.display = 'none';
+            document.getElementById('tp-editor-view').style.display = 'none';
+            document.getElementById('tll-date-range').textContent = lessonMeta.dateRange || '';
+            document.getElementById('tll-title').textContent = lessonMeta.title || '';
+            const btn = document.getElementById('tll-generate-btn');
+            if (btn) { btn.disabled = false; btn.textContent = '✨ Generate & Play'; }
+            const statusEl = document.getElementById('tll-status');
+            if (statusEl) statusEl.style.display = 'none';
+            document.getElementById('tp-lesson-launch-view').style.display = 'block';
         }
 
         window.generateFromUrl = async function() {
@@ -1409,6 +1453,70 @@
                     } else {
                         showTpStatus(`⚠ ${err.message} — retrying in ${secs}s (or click Generate again to retry now)`, 'error');
                     }
+                }, 1000);
+            }
+        };
+
+        // Route 1: generate for the lesson that was passed via ?lesson= and immediately activate.
+        window.generateAndPlay = async function() {
+            const lessonMeta = window._pendingLessonMeta;
+            if (!lessonMeta?.url) return;
+            const btn = document.getElementById('tll-generate-btn');
+            const statusEl = document.getElementById('tll-status');
+            const reviewFirst = document.getElementById('tll-review-first')?.checked;
+            btn.disabled = true;
+            btn.textContent = '⏳ Generating…';
+            statusEl.className = 'tp-status loading';
+            statusEl.textContent = 'Running lesson pipeline — extracting scriptures, generating questions (30–45 seconds)…';
+            statusEl.style.display = 'block';
+            _clearLessonRetry();
+            try {
+                const token = await auth.currentUser?.getIdToken();
+                if (!token) throw new Error('Sign in via the Kindred Hub first.');
+                const resp = await fetch(`${API_BASE}/api/lesson-pipeline`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ url: lessonMeta.url, gameType: 'common-ground', questionType: 'mixed' })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error || 'Lesson pipeline failed');
+                window.editorGame = {
+                    name: data.topic || lessonMeta.title,
+                    rounds: data.rounds || [],
+                    sourceUrl: lessonMeta.url,
+                    generatedBy: 'lesson-pipeline',
+                    _docId: null
+                };
+                if (reviewFirst) {
+                    // Show editor so teacher can review before activating
+                    window.openEditor('lesson');
+                    const li = document.getElementById('tp-lesson-url-input');
+                    if (li) li.value = lessonMeta.url;
+                    const gn = document.getElementById('tp-game-name');
+                    if (gn) { gn.value = window.editorGame.name; }
+                    renderEditorRounds();
+                    showTpStatus(`✓ ${data.rounds.length} questions generated — review below, then click Set Active to play.`, 'info');
+                } else {
+                    statusEl.textContent = 'Saving and activating…';
+                    const saved = await window.saveCurrentGame();
+                    if (saved) {
+                        await activateGame(window.editorGame);
+                        window.setView('admin');
+                        document.getElementById('tp-lesson-launch-view').style.display = 'none';
+                    }
+                }
+                btn.disabled = false;
+                btn.textContent = '✨ Generate & Play';
+            } catch (err) {
+                btn.disabled = false;
+                btn.textContent = '✨ Generate & Play';
+                let secs = 30;
+                statusEl.className = 'tp-status error';
+                statusEl.textContent = `⚠ ${err.message} — retrying in ${secs}s`;
+                _lessonRetryTimer = setInterval(() => {
+                    secs--;
+                    if (secs <= 0) { _clearLessonRetry(); window.generateAndPlay(); }
+                    else { statusEl.textContent = `⚠ ${err.message} — retrying in ${secs}s`; }
                 }, 1000);
             }
         };
@@ -1721,33 +1829,23 @@
                     }).catch(() => {});
                     const lessonMeta = getCfmLessonByLessonId(lessonId);
                     if (lessonMeta?.url) {
-                        // Stash URL + label so the library ← Back route can also show the callout
                         window._pendingLessonMeta = lessonMeta;
+                        // "Generate this lesson →" button on the library ← Back view
                         window._openEditorForPendingLesson = () => {
-                            window.openEditor?.('lesson');
-                            const li = document.getElementById('tp-lesson-url-input');
-                            if (li) li.value = lessonMeta.url;
-                            const gn = document.getElementById('tp-game-name');
-                            if (gn) { gn.value = lessonMeta.title; if (window.editorGame) window.editorGame.name = lessonMeta.title; }
-                            const banner = document.getElementById('tp-lesson-context-banner');
-                            const bannerLabel = document.getElementById('tp-lesson-context-label');
-                            if (banner && bannerLabel) {
-                                bannerLabel.textContent = `📅 ${lessonMeta.dateRange} · ${lessonMeta.title}`;
-                                banner.style.display = 'block';
-                            }
-                            showTpStatus('Click Generate to create game content for this lesson', 'info');
+                            window.setView?.('teacher');
+                            showLessonLaunchView(lessonMeta);
                         };
                         setTimeout(() => {
                             window.setView?.('teacher');
-                            // Show the pending callout on the library view first
+                            // Populate the library-view callout for when teacher clicks ← Back
                             const pl = document.getElementById('tp-pending-lesson');
                             const pll = document.getElementById('tp-pending-lesson-label');
                             if (pl && pll) {
                                 pll.textContent = `📅 ${lessonMeta.dateRange} · ${lessonMeta.title} — not yet generated`;
                                 pl.style.display = 'flex';
                             }
-                            // Auto-open the editor for immediate generation
-                            window._openEditorForPendingLesson?.();
+                            // Go straight to the focused lesson launch view
+                            showLessonLaunchView(lessonMeta);
                         }, 150);
                     }
                     return;
