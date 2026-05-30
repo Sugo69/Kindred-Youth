@@ -10,7 +10,7 @@
 - `games/common-ground.html` — **Common Ground** (survey/Family Feud-style; best fit: doctrinal lessons)
 - `games/memory.html` — **Scripture Match** (memory matching pairs, React 18 + Babel CDN; best fit: scripture-heavy lessons)
 - `games/scripture-trail.html` — **Scripture Trail** (sequential story walkthrough with 6 painted curriculum boards; best fit: narrative lessons)
-- `games/by-heart.html` — **By Heart** (Doctrinal Mastery cloze-deletion memorisation, 5 progressive levels: Read → Echo → Recall → Speak → Heart-Set)
+- `games/by-heart.html` — **By Heart** (Doctrinal Mastery step-by-step memorization, 5 progressive levels: Read → Echo → Recall → Speak → Heart-Set)
 
 **Game views vary:**
 - **Common Ground / Scripture Match** — Monitor View (TV display) + Admin View (phone controller) + Teacher Portal (📚 Library, 🔗 lesson URL pipeline, ✏️ manual editor)
@@ -52,11 +52,13 @@ Kindred-Youth/                  # Repo: github.com/Sugo69/Kindred-Youth (renamed
 │   ├── fetch-content.js        # Vercel serverless — URL proxy/scraper for Teacher Portal
 │   ├── generate-questions.js   # Vercel serverless — question generator (3 types)
 │   ├── lesson-pipeline.js      # Thin Vercel wrapper around _lib/pipeline.js (supports CG/Memory/Trail)
+│   ├── moderate.js             # Thin Vercel wrapper around _lib/moderate.js — teacher-input AI moderation
 │   └── _lib/
-│       └── pipeline.js         # Shared pipeline v3 — dev + prod use the same module; 3 game types
+│       ├── pipeline.js         # Shared pipeline v3 — dev + prod use the same module; 3 game types
+│       └── moderate.js         # Shared runModeration() — Haiku context check on teacher-entered content
 ├── src/
 │   └── lib/
-│       ├── cfm-schedule.js               # CFM 2026 OT — 52 weeks, type-tagged + recommendation engine
+│       ├── cfm-schedule.js               # CFM 2026 OT — 52 weeks, type-tagged + recommendation engine; getCfmLessonByLessonId()
 │       ├── seminary-schedule.js          # Seminary NT 2026-27 — 160 daily lessons, on-demand gen, 60-day cache
 │       ├── doctrinal-mastery-nt.js       # 25 NT DM passages — full KJV text, keyPhrase, theme, dmId
 │       ├── trail-themes.js               # Per-curriculum registry + resolveTrailTheme + getPositionsForCount
@@ -395,26 +397,42 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 - **`vercel.json`**: sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` for all paths — required for the Google sign-in popup flow not to warn/break in Chrome
 - **Non-affiliation disclaimer**: rendered in the landing hero footer, portal footer, and admin footer — cites no affiliation with The Church of Jesus Christ of Latter-day Saints or Intellectual Reserve, Inc. (precaution, not legal opinion; see `legal-review-2026-04-22.md`)
 
-## Next actions (queued 2026-05-29 PM — refreshed end of session 2)
+## Next actions (queued 2026-05-30 — end of session 3)
 Full handoff detail in `CHECKPOINT-2026-05-29-pm.md`. Priority order:
 
-### Done in PM session
-- ✅ Scripture Trail pipeline (no longer 501 — `buildTrailGenerationPrompt` ships 7 stops in 2-3 arcs)
-- ✅ NT Seminary schedule (160 lessons, Aug 17 2026 → Apr 28 2027)
-- ✅ By Heart game Phase A (cloze 5 levels, 3 picker modes)
-- ✅ NT DM 25-passage library (`src/lib/doctrinal-mastery-nt.js`)
-- ✅ Per-curriculum trail boards (OT/NT/BOM/DC/Moses/Abraham) + admin calibration tab
-- ✅ Scripture Trail teacher editor (classroom-scoped add/edit/delete/reorder)
+### Done in session 3 (2026-05-30)
+- ✅ Route 1 lesson routing fixed across all 3 games (`getCfmLessonByLessonId`, cfm- prefix fix, classroom game fallback)
+- ✅ Common Ground Route 1 launch view (lesson launch, progress bar + timer, review mode, Activate & Play)
+- ✅ Content safety P0: pipeline HARD_BLOCK_TERMS expanded + client-side Haiku moderation `/api/moderate`
+- ✅ Portal `✓ ready` badges on upcoming lesson cards with pre-generated content
+- ✅ By Heart US English (memorization, removed "cloze")
+- ✅ LED section hidden in Admin view
+- ✅ "Syncing session" message now hides on first Firestore snapshot
 
 ### Remaining
-1. **P1 — Scripture Trail Monitor view.** Today single-page only; would benefit from CG-style Monitor (TV) + Admin (phone) split for classroom play.
-2. **P1 — By Heart progress persistence.** Nothing saves between sessions. A `passagesLearned` per-user field in Firestore would let teachers see student mastery.
-3. **P1 — Live-test NT/BOM/DC/Moses/Abraham calibrations.** Only OT has run a real game on its calibrated dots. Other 5 have saved positions but never been exercised by a real lesson.
-4. **P2 — Lesson-type detector AI step in pipeline.** Replace hand-coded CFM `type` field with an AI tag step during extraction. Scales to NT 2027 + future manuals without manual tagging.
-5. **P2 — Curriculum picker in teacher profile.** "Primary curriculum: CFM / Seminary / Both" — default tab + pipeline batch-generate horizon respect it.
-6. **P2 — Southern hemisphere Seminary support.** Current schedule is North-only (Aug→May). South needs Jan→Oct. Consider a week-picker UI ("which Seminary week are you on?") instead of date-driven.
-7. **P3 — Delete hidden legacy `display:none` sections** in [index.html](index.html). Nothing references them.
-8. **P3 — `mockups/` folder cleanup.** Still untracked at 198 MB. Either commit as design history, gitignore explicitly, or delete.
+1. **P1 — Scripture Trail Monitor view.** Single-page only; needs CG-style Monitor (TV) + Admin (phone) split.
+2. **P1 — By Heart progress persistence.** Nothing saves between sessions. `passagesLearned` per-user in Firestore.
+3. **P1 — Run "Generate Next 8 Weeks" in admin.** Current lessons (May 25 onward) are not pre-generated. Click the button in Admin → Library to fill ahead.
+4. **P1 — AI moderation on Scripture Match + Scripture Trail teacher edits.** Currently only Common Ground has the Haiku check. Scripture Match manual pairs and Scripture Trail editor stops need the same.
+5. **P2 — Lesson-type detector AI step in pipeline.** Replace hand-coded CFM `type` field with AI tag.
+6. **P2 — Curriculum picker in teacher profile.** CFM vs Seminary default tab.
+7. **P2 — Southern hemisphere Seminary support.** North-only (Aug→May); South needs Jan→Oct.
+8. **P3 — Delete hidden legacy `display:none` sections** in [index.html](index.html).
+9. **P3 — `mockups/` folder cleanup.** Still untracked at 198 MB.
+
+## Key Constraints
+- Dev port **must be 5173** — the other project on this machine now uses 5174
+- Firebase anonymous auth — game players use anonymous auth; teachers sign in via Google (index.html + admin.html)
+- **Portal + Admin use Google auth** — `lewiswf@gmail.com` is admin; other Google accounts are teachers
+- `ANTHROPIC_API_KEY` must never have `VITE_` prefix
+- **`api/_lib/moderate.js` uses raw `fetch` — NOT `@anthropic-ai/sdk`** (package not installed; pipeline.js does the same)
+- **lessonLibrary doc IDs use `cfm-` prefix** (e.g. `cfm-come-follow-me-...-22`); portal passes bare `lessonId`. Always try both when looking up. See `autoLoadFromLesson()`.
+- `getGameRounds()` must always be used instead of direct `gameData[]` access in Common Ground
+- `appId = 'exodus-feud-final-v10'` is intentionally kept — changing it would orphan all Firestore data
+- **Classroom isolation**: `?room={classroomId}` gates both games to classroom-scoped Firestore
+- **`lessonLibrary` is always global** — admin populates; teachers read regardless of `?room=`
+- **Scripture Match Firebase**: module script must call `signInAnonymously` before any Firestore read; Babel script cannot use ES module `import`
+- `sessionStorage` keys: `kindred_classroom_id`, `kindred_classroom_name` — cleared on sign-out
 
 ## Key Constraints
 - Dev port **must be 5173** — flipped from 5174 on 2026-05-29 (the other project on this machine now uses 5174)
