@@ -710,6 +710,13 @@
         .upcoming-game-chip.pink  { color: var(--neon-pink); }
         .upcoming-game-chip.green { color: #4ade80; }
         .upcoming-game-chip.gold  { color: #ffc857; }
+        .ready-pill {
+            display: inline-block; padding: 1px 6px; border-radius: 10px;
+            font-size: 0.55rem; font-family: 'Orbitron', sans-serif; letter-spacing: 1px;
+            text-transform: uppercase; color: #4ade80;
+            border: 1px solid rgba(74,222,128,0.4); background: rgba(74,222,128,0.08);
+            vertical-align: middle; margin-left: 6px;
+        }
 
         /* ── Footer ── */
         .portal-footer {
@@ -1848,8 +1855,8 @@
                 <a href="games/by-heart.html" class="game-card" style="border-color:#7c3aed;">
                     <div class="game-card-icon">💜</div>
                     <h3 class="game-card-name" style="color:#a78bfa;">By Heart</h3>
-                    <p class="game-card-desc">Progressive cloze memorisation · Doctrinal Mastery passages · any verse.</p>
-                    <span class="game-card-tag" style="background:rgba(124,58,237,0.1);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);">Memorisation · 5 Levels</span>
+                    <p class="game-card-desc">Step-by-step scripture memorization · Doctrinal Mastery passages · any verse.</p>
+                    <span class="game-card-tag" style="background:rgba(124,58,237,0.1);color:#a78bfa;border:1px solid rgba(124,58,237,0.3);">Memorization · 5 Levels</span>
                     <div class="game-card-play">Practice →</div>
                 </a>
             </div>
@@ -2282,6 +2289,27 @@
 
             // Render the lesson-first portal sections (This Week + Upcoming)
             renderLessonPortal(classroomId, suffix);
+            // After cards render, async-inject ✓ ready badges on pre-generated lessons
+            const _basePath = `artifacts/${APP_ID}/public/data`;
+            getDocs(collection(db, `${_basePath}/lessonLibrary`)).then(snap => {
+                const generatedIds = new Set();
+                snap.forEach(d => {
+                    const data = d.data();
+                    if (data.commonGround?.rounds?.length || data.memory?.pairs?.length || data.scriptureTrail?.stops?.length) {
+                        if (data.lessonId) generatedIds.add(data.lessonId);
+                        if (d.id.startsWith('cfm-')) generatedIds.add(d.id.slice(4));
+                        generatedIds.add(d.id);
+                    }
+                });
+                document.querySelectorAll('.upcoming-card[data-lesson-id]').forEach(card => {
+                    if (generatedIds.has(card.dataset.lessonId)) {
+                        const dateEl = card.querySelector('.upcoming-date');
+                        if (dateEl && !dateEl.querySelector('.ready-pill')) {
+                            dateEl.insertAdjacentHTML('beforeend', '<span class="ready-pill">✓ ready</span>');
+                        }
+                    }
+                });
+            }).catch(() => {});
 
             // Top bar
             const badge = document.getElementById('classroom-badge');
@@ -2400,7 +2428,7 @@
                     .map(r => `<a class="upcoming-game-chip ${r.color} ${r.fit==='best'?'best':''}" href="${lessonLink(lesson, r.href)}">${r.icon} ${r.name}</a>`)
                     .join('');
                 return `
-                    <div class="upcoming-card">
+                    <div class="upcoming-card" data-lesson-id="${lesson.lessonId}">
                         <div class="upcoming-date">${S.formatLessonDateRange(lesson)}</div>
                         <div class="upcoming-title">${lesson.title}</div>
                         <div class="upcoming-games">${chips}</div>
@@ -2491,7 +2519,7 @@
                     .map(r => `<a class="upcoming-game-chip ${r.color} ${r.fit==='best'?'best':''}" href="${lessonLink(lesson, r.href)}">${r.icon} ${r.name}</a>`)
                     .join('');
                 return `
-                    <div class="upcoming-card">
+                    <div class="upcoming-card" data-lesson-id="${lesson.lessonId || ''}">
                         <div class="upcoming-date">${lesson.displayDate}${dmHint}</div>
                         <div class="upcoming-title">${lesson.title}</div>
                         <div class="upcoming-games">${chips}</div>
