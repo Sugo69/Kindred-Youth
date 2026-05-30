@@ -279,6 +279,13 @@
     </style>
 </head>
 <body class="mode-contestant">
+<script>
+// If the teacher arrived via ?lesson=, go straight to Teacher Portal
+// before any module scripts run so the Monitor splash never flashes.
+if (new URLSearchParams(location.search).get('lesson')) {
+    document.body.className = 'mode-teacher';
+}
+</script>
 
     <div class="back-to-portal"><a href="../index.html">← Kindred Hub</a></div>
 
@@ -1641,9 +1648,15 @@
         };
 
         function showTpStatus(msg, type) {
+            // Support multi-line messages (newline → <br>)
+            const isMulti = msg.includes('\n');
             const el = document.getElementById('tp-status');
             if (!el) return;
-            el.textContent = msg;
+            if (isMulti) {
+                el.innerHTML = msg.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+            } else {
+                el.textContent = msg;
+            }
             el.className = `tp-status ${type}`;
             el.style.display = 'block';
         }
@@ -1777,6 +1790,45 @@
             document.getElementById('tp-questions-list').lastElementChild?.scrollIntoView({ behavior: 'smooth' });
         };
 
+        // Client-side content filter — modern profanity with no KJV/biblical usage.
+        // Biblical words (ass, hell, naked, harlot, bastard, whore, etc.) are intentionally
+        // NOT listed — they appear in KJV scripture and may appear in game content legitimately.
+        const CLIENT_BLOCK_TERMS = [
+            { rx: /\bshit\b/i,            label: 'shit' },
+            { rx: /\bf+u+c+k+(?:ing|ed|er|ers|face)?\b/i, label: 'fuck' },
+            { rx: /\bcunt\b/i,            label: 'cunt' },
+            { rx: /\basshole\b/i,         label: 'asshole' },
+            { rx: /\bbullshit\b/i,        label: 'bullshit' },
+            { rx: /\bmotherfuck/i,        label: 'motherfucker' },
+            { rx: /\bbitch(?:es)?\b/i,    label: 'bitch' },
+            { rx: /\bcock\b(?!atrice|roach)/i, label: 'cock (slang)' },
+            { rx: /\bpussy\b(?!\s*willow)/i,   label: 'pussy (slang)' },
+            { rx: /\bporn(?:ography)?\b/i, label: 'pornography' },
+            { rx: /\bcannabis\b/i,        label: 'cannabis' },
+            { rx: /\bmarijuana\b/i,       label: 'marijuana' },
+            { rx: /\bheroin\b/i,          label: 'heroin' },
+            { rx: /\bcocaine\b/i,         label: 'cocaine' },
+            { rx: /\bmeth(?:amphetamine)?\b/i, label: 'meth' },
+            { rx: /\bvap(?:e|ing)\b/i,    label: 'vaping' },
+        ];
+
+        function scanRoundsForFlaggedContent(rounds) {
+            const hits = [];
+            rounds.forEach((round, ri) => {
+                CLIENT_BLOCK_TERMS.forEach(({ rx, label }) => {
+                    if (rx.test(round.question || '')) {
+                        hits.push(`Round ${ri + 1} question contains "${label}"`);
+                    }
+                    (round.answers || []).forEach((ans, ai) => {
+                        if (rx.test(ans.text || '')) {
+                            hits.push(`Round ${ri + 1}, answer ${ai + 1} contains "${label}"`);
+                        }
+                    });
+                });
+            });
+            return hits;
+        }
+
         window.saveCurrentGame = async function() {
             if (!window.editorGame) return false;
             const name = document.getElementById('tp-game-name')?.value?.trim();
@@ -1785,6 +1837,14 @@
             if (!window.editorGame.rounds.length) { showTpStatus('Add at least one round.', 'error'); return false; }
             const hasEmpty = window.editorGame.rounds.some(r => !r.question.trim() || r.answers.some(a => !a.text.trim()));
             if (hasEmpty) { showTpStatus('Fill in all question and answer fields before saving.', 'error'); return false; }
+            const flagged = scanRoundsForFlaggedContent(window.editorGame.rounds);
+            if (flagged.length) {
+                showTpStatus(
+                    `⚠ Content flagged — fix before saving:\n• ${flagged.join('\n• ')}`,
+                    'error'
+                );
+                return false;
+            }
             const payload = {
                 name: window.editorGame.name,
                 rounds: window.editorGame.rounds,

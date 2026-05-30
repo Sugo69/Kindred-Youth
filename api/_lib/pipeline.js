@@ -24,11 +24,22 @@ const ALLOWED_OUTPUT_HOSTS = new Set([
     'speeches.byu.edu',
 ])
 const HARD_BLOCK_TERMS = [
+    // Sexual / explicit content
     /\bporn/i, /\bnudity\b/i, /\bsexual\b/i, /\bsexually\b/i,
     /\brape\b/i, /\babus(?:e|ed|er|ive)\b/i,
+    // Modern profanity — no KJV/biblical usage; safe to hard-block
+    // (biblical words like ass/hell/naked/harlot/whore/bastard are intentionally NOT listed)
+    /\bshit\b/i, /\bf+u+c+k+(?:ing|ed|er|ers)?\b/i, /\bcunt\b/i,
+    /\basshole\b/i, /\bbullshit\b/i, /\bmotherfuck/i, /\bbitch(?:es)?\b/i,
+    /\bcock\b(?!atrice|roach)/i,  // block cock (slang) but not cockatrice/cockroach
+    /\bpussy\b(?!\s*willow)/i,     // block pussy (slang) but not pussy willow
+    // Mental health / self-harm
     /\bsuicid/i, /\bself[-\s]?harm\b/i,
-    /\bmurder\b/i, /\bcannabis\b/i, /\bmarijuana\b/i, /\bheroin\b/i, /\bcocaine\b/i,
-    /\bvap(?:e|ing)\b/i,
+    // Violence beyond scripture narrative
+    /\bmurder(?:er|ers|ous)\b/i,  // allow 'murder' as commandment topic; block murderer/murderous
+    // Substances
+    /\bcannabis\b/i, /\bmarijuana\b/i, /\bheroin\b/i, /\bcocaine\b/i,
+    /\bvap(?:e|ing)\b/i, /\bcrack\s+cocaine\b/i, /\bmeth(?:amphetamine)?\b/i,
 ]
 
 // ── Public entrypoint ────────────────────────────────────────────────────────
