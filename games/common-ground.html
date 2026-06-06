@@ -112,7 +112,6 @@
         body.mode-contestant .contestant-only { display: flex; flex-direction: column; align-items: center; width: 100%; }
         body.mode-contestant .bottom-hud { display: flex; }
         body.mode-teacher .teacher-only { display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; padding-bottom: 80px; box-sizing: border-box; }
-        body.mode-admin #monitor-qr-block, body.mode-teacher #monitor-qr-block { display: none !important; }
 
         .back-to-portal { display: block; width: 100%; background: rgba(0,242,255,0.06); border-bottom: 1px solid rgba(0,242,255,0.15); padding: 8px 16px; box-sizing: border-box; }
         .back-to-portal a { color: var(--neon-cyan); font-family: 'Orbitron', sans-serif; font-size: 0.65rem; text-decoration: none; text-transform: uppercase; letter-spacing: 2px; opacity: 0.7; }
@@ -351,8 +350,17 @@
                 <div id="tv-scripture" style="display:none; max-width:92%; margin:0 auto 12px; padding:14px 22px; font-family:'Rajdhani',sans-serif; font-size:1.3rem; line-height:1.45; text-align:center; color:#f5f5f5; background:linear-gradient(180deg, rgba(0,242,255,0.08), rgba(0,242,255,0.02)); border:1px solid rgba(0,242,255,0.35); border-radius:12px; box-shadow:0 0 18px rgba(0,242,255,0.15);">
                     <span id="tv-scripture-text" style="font-style:italic;"></span>
                 </div>
-                <div class="question-box tv-q" id="q-txt">Connecting to Temple...</div>
-                <div class="board tv-board" id="game-board"></div>
+                <!-- QR sits to the right of question+answers, vertically centered on that block -->
+                <div style="position:relative; width:100%; padding-right:162px; box-sizing:border-box;">
+                    <div class="question-box tv-q" id="q-txt">Connecting to Temple...</div>
+                    <div class="board tv-board" id="game-board"></div>
+                    <div id="monitor-qr-block" style="display:none; position:absolute; right:0; top:50%; transform:translateY(-50%); flex-direction:column; align-items:center; gap:6px;">
+                        <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
+                            <canvas id="cg-qr-canvas" width="130" height="130" style="display:block; border-radius:4px;"></canvas>
+                        </a>
+                        <span style="font-family:'Orbitron',sans-serif; font-size:0.48rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Scan to read along</span>
+                    </div>
+                </div>
             </div>
 
 
@@ -572,14 +580,6 @@
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- QR code — fixed top-right, monitor view only, only for AI-generated games -->
-        <div id="monitor-qr-block" style="display:none; position:fixed; top:1.2rem; left:50%; transform:translateX(-50%); z-index:200; flex-direction:column; align-items:center; gap:6px;">
-            <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
-                <canvas id="cg-qr-canvas" width="130" height="130" style="display:block; border-radius:4px;"></canvas>
-            </a>
-            <span style="font-family:'Orbitron',sans-serif; font-size:0.48rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Scan to read along</span>
         </div>
 
         <!-- HUD (Monitor Only) -->
