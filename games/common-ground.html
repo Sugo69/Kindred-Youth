@@ -350,17 +350,8 @@
                 <div id="tv-scripture" style="display:none; max-width:92%; margin:0 auto 12px; padding:14px 22px; font-family:'Rajdhani',sans-serif; font-size:1.3rem; line-height:1.45; text-align:center; color:#f5f5f5; background:linear-gradient(180deg, rgba(0,242,255,0.08), rgba(0,242,255,0.02)); border:1px solid rgba(0,242,255,0.35); border-radius:12px; box-shadow:0 0 18px rgba(0,242,255,0.15);">
                     <span id="tv-scripture-text" style="font-style:italic;"></span>
                 </div>
-                <!-- QR sits to the right of question+answers, vertically centered on that block -->
-                <div style="position:relative; width:100%; padding-right:162px; box-sizing:border-box;">
-                    <div class="question-box tv-q" id="q-txt">Connecting to Temple...</div>
-                    <div class="board tv-board" id="game-board"></div>
-                    <div id="monitor-qr-block" style="display:none; position:absolute; right:0; top:50%; transform:translateY(-50%); flex-direction:column; align-items:center; gap:6px;">
-                        <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
-                            <canvas id="cg-qr-canvas" width="130" height="130" style="display:block; border-radius:4px;"></canvas>
-                        </a>
-                        <span style="font-family:'Orbitron',sans-serif; font-size:0.48rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Scan to read along</span>
-                    </div>
-                </div>
+                <div class="question-box tv-q" id="q-txt">Connecting to Temple...</div>
+                <div class="board tv-board" id="game-board"></div>
             </div>
 
 
@@ -582,6 +573,14 @@
             </div>
         </div>
 
+        <!-- QR code — position set by positionQrCode() to sit right of the question box -->
+        <div id="monitor-qr-block" style="display:none; position:fixed; transform:translateY(-50%); flex-direction:column; align-items:center; gap:6px; z-index:200;">
+            <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
+                <canvas id="cg-qr-canvas" width="130" height="130" style="display:block; border-radius:4px;"></canvas>
+            </a>
+            <span style="font-family:'Orbitron',sans-serif; font-size:0.48rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Scan to read along</span>
+        </div>
+
         <!-- HUD (Monitor Only) -->
         <div class="bottom-hud">
             <div class="score-side" id="h-side-1">
@@ -749,7 +748,7 @@
             document.getElementById('tv-fo-icon').style.display = 'inline-block';
             document.getElementById('tv-fo-icon-2').style.display = 'inline-block';
 
-            // QR code — top-right fixed, only for AI-generated games with a sourceUrl
+            // QR code — positioned to the right of the question box, vertically centred on it
             const qrBlock = document.getElementById('monitor-qr-block');
             if (currentGameSourceUrl && currentGameGeneratedBy) {
                 qrBlock.style.display = 'flex';
@@ -757,6 +756,7 @@
                 const link = document.getElementById('cg-qr-link');
                 if (link) link.href = currentGameSourceUrl;
                 if (canvas && window.QRious) new window.QRious({ element: canvas, value: currentGameSourceUrl, size: 130, background: 'white', foreground: '#0a0a20' });
+                window.positionQrCode();
             } else {
                 qrBlock.style.display = 'none';
             }
@@ -836,6 +836,16 @@
             if (revList.length > lastRevCount) { lastRevCount = revList.length; if(isMon && sharedState.winTime <= lastWin) playHappyReveal(); }
             if (sharedState.gameOverTime > lastGameOver && sharedState.gameOverTime !== 0) { lastGameOver = sharedState.gameOverTime; if(isMon) doGameOver(); }
         }
+
+        window.positionQrCode = () => {
+            const qrBlock = document.getElementById('monitor-qr-block');
+            const qBox = document.getElementById('q-txt');
+            if (!qrBlock || !qBox || qrBlock.style.display === 'none') return;
+            const rect = qBox.getBoundingClientRect();
+            qrBlock.style.left = (rect.right + 14) + 'px';
+            qrBlock.style.top = (rect.top + rect.height / 2) + 'px';
+        };
+        window.addEventListener('resize', window.positionQrCode);
 
         window.toggleScripture = () => {
             const next = sharedState.showScripture === false ? true : false;
