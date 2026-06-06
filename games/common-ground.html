@@ -575,7 +575,7 @@
         </div>
 
         <!-- QR code — fixed top-right, monitor view only, only for AI-generated games -->
-        <div id="monitor-qr-block" style="display:none; position:fixed; top:1.2rem; right:1.5rem; z-index:200; flex-direction:column; align-items:center; gap:6px;">
+        <div id="monitor-qr-block" style="display:none; position:fixed; top:1.2rem; left:50%; transform:translateX(-50%); z-index:200; flex-direction:column; align-items:center; gap:6px;">
             <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
                 <canvas id="cg-qr-canvas" width="130" height="130" style="display:block; border-radius:4px;"></canvas>
             </a>
