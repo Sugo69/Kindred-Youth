@@ -203,7 +203,11 @@
       <div class="custom-inputs">
         <div>
           <div class="custom-label">SCRIPTURE REFERENCE</div>
-          <input class="custom-ref-input" id="custom-ref" placeholder="e.g. John 3:16" oninput="onCustomInput()"/>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input class="custom-ref-input" id="custom-ref" placeholder="e.g. John 3:16" oninput="onCustomInput()" style="flex:1;"/>
+            <button id="lookup-btn" onclick="lookupVerse()" style="flex-shrink:0;padding:8px 14px;background:var(--purple,#7c3aed);color:#fff;border:none;border-radius:8px;font-size:0.8rem;font-weight:700;letter-spacing:0.05em;cursor:pointer;white-space:nowrap;">🔍 Look up</button>
+          </div>
+          <div id="lookup-status" style="font-size:0.75rem;margin-top:4px;min-height:1em;color:#aaa;"></div>
         </div>
         <div>
           <div class="custom-label">VERSE TEXT (KJV or your translation)</div>
@@ -383,6 +387,35 @@ window.onCustomInput = function() {
     if (activeTab === 'custom') selectedPassage = null;
   }
   updateStartBtn();
+};
+
+window.lookupVerse = async function() {
+  const refInput = document.getElementById('custom-ref');
+  const textArea = document.getElementById('custom-text');
+  const status   = document.getElementById('lookup-status');
+  const btn      = document.getElementById('lookup-btn');
+  const ref = refInput.value.trim();
+  if (!ref) { status.textContent = 'Enter a scripture reference first.'; return; }
+  btn.disabled = true;
+  status.style.color = '#aaa';
+  status.textContent = 'Looking up…';
+  try {
+    const encoded = encodeURIComponent(ref);
+    const res = await fetch(`https://bible-api.com/${encoded}?translation=kjv`);
+    if (!res.ok) throw new Error('Not found');
+    const data = await res.json();
+    if (!data.text) throw new Error('No text');
+    const cleaned = data.text.trim().replace(/\s+/g, ' ');
+    textArea.value = cleaned;
+    status.style.color = 'var(--green,#4ade80)';
+    status.textContent = `✓ ${data.reference || ref} loaded`;
+    window.onCustomInput();
+  } catch(e) {
+    status.style.color = '#f87171';
+    status.textContent = 'Verse not found — try a different reference or paste the text manually.';
+  } finally {
+    btn.disabled = false;
+  }
 };
 
 function updateStartBtn() {
