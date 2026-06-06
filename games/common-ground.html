@@ -750,7 +750,7 @@
 
             // QR code — positioned to the right of the question box, vertically centred on it
             const qrBlock = document.getElementById('monitor-qr-block');
-            if (currentGameSourceUrl && currentGameGeneratedBy) {
+            if (currentGameSourceUrl && currentGameGeneratedBy && document.body.classList.contains('mode-contestant')) {
                 qrBlock.style.display = 'flex';
                 const canvas = document.getElementById('cg-qr-canvas');
                 const link = document.getElementById('cg-qr-link');
