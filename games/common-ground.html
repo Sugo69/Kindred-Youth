@@ -1034,6 +1034,8 @@
             document.getElementById('btn-con').classList.toggle('active', m === 'contestant');
             document.getElementById('btn-adm').classList.toggle('active', m === 'admin');
             document.getElementById('btn-teacher').classList.toggle('active', m === 'teacher');
+            if (m !== 'contestant') document.getElementById('monitor-qr-block').style.display = 'none';
+            if (m === 'contestant') window.positionQrCode();
             if (m === 'teacher') window.initTeacherPortal();
             toggleSwitcher();
         };
