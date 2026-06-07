@@ -765,7 +765,6 @@
             if (sharedState.strikeTime === 0) { document.getElementById('strike-pop').style.display = 'none'; lastStrike = 0; }
 
             document.getElementById('q-txt').innerText = data.question;
-            autoSizeQuestion();
             document.getElementById('round-label').innerText = data.level || `Round ${(sharedState.currentRound || 0) + 1}`;
             document.getElementById('s1-txt').innerText = sharedState.t1Score || 0;
             document.getElementById('s2-txt').innerText = sharedState.t2Score || 0;
@@ -839,7 +838,7 @@
                 tvScripture.style.marginBottom = '0';
                 tvScripture.style.boxShadow = 'none';
             }
-            autoSizeQuestion();
+            scheduleMonitorRelayout();
             document.getElementById('admin-scripture-toggle').textContent = showScripture ? 'Hide on Monitor' : 'Show on Monitor';
             const adminRow = document.getElementById('admin-scripture-row');
             if (hasVerse) {
@@ -882,20 +881,69 @@
             if (sharedState.gameOverTime > lastGameOver && sharedState.gameOverTime !== 0) { lastGameOver = sharedState.gameOverTime; if(isMon) doGameOver(); }
         }
 
+        // Binary-search the largest font (em) at which the text fits its box.
+        // The box is flex-centred, so overflow that spills ABOVE centre is not
+        // reported by scrollHeight — we temporarily top-anchor the content while
+        // measuring so the fit test is honest, then restore centring.
+        function fitTextToBox(el, loEm, hiEm) {
+            if (!el) return;
+            if (el.clientHeight < 20 || el.clientWidth < 20) return; // not laid out yet
+            const prevAlign = el.style.alignItems;
+            el.style.alignItems = 'flex-start';
+            let lo = loEm, hi = hiEm, best = loEm;
+            for (let i = 0; i < 14; i++) {
+                const mid = (lo + hi) / 2;
+                el.style.fontSize = mid + 'em';
+                if (el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth) { best = mid; lo = mid; }
+                else { hi = mid; }
+            }
+            el.style.fontSize = best + 'em';
+            el.style.alignItems = prevAlign || '';
+        }
+
         function autoSizeQuestion() {
             const el = document.getElementById('q-txt');
-            if (!el) return;
-            // Step down from max until text no longer overflows the max-height constraint
-            const sizes = [3.8, 3.2, 2.7, 2.2, 1.9, 1.65];
-            for (const s of sizes) {
-                el.style.fontSize = s + 'em';
-                if (el.scrollHeight <= el.clientHeight + 4) break;
-            }
+            if (!el || !document.body.classList.contains('mode-contestant')) return;
+            fitTextToBox(el, 1.0, 3.8);
         }
-        window.addEventListener('resize', autoSizeQuestion);
-        // Re-fit once the scripture strip finishes its slide so the question box
-        // settles to the final available space (it animates over 0.35s).
-        (function () { const s = document.getElementById('tv-scripture'); if (s) s.addEventListener('transitionend', autoSizeQuestion); })();
+
+        // Revealed answers vary wildly in length; shrink each answer's text so it
+        // never clips its slot. Wraps to multiple lines, then steps the font down.
+        function fitAnswerSlots() {
+            document.querySelectorAll('#game-board .answer-slot .back').forEach((back) => {
+                const span = back.querySelector('span'); // first span = answer text
+                if (!span) return;
+                span.style.whiteSpace = 'normal';
+                span.style.lineHeight = '1.05';
+                span.style.minWidth = '0';
+                const avail = back.clientHeight - 4;
+                if (avail < 10) return; // not laid out yet
+                let fs = 1.8;
+                back.style.fontSize = fs + 'em';
+                let guard = 0;
+                // span.scrollHeight is honest (the span is normal-flow); .back is
+                // flex-centred so its own scrollHeight would under-report overflow.
+                while (span.scrollHeight > avail && fs > 0.6 && guard < 24) {
+                    fs -= 0.08; back.style.fontSize = fs + 'em'; guard++;
+                }
+            });
+        }
+
+        // Run both fits after layout has flushed (double rAF) so measurements are
+        // taken against the final flex sizes — not mid-render or mid-animation.
+        let _relayoutPending = false;
+        function scheduleMonitorRelayout() {
+            if (_relayoutPending) return;
+            _relayoutPending = true;
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                _relayoutPending = false;
+                autoSizeQuestion();
+                fitAnswerSlots();
+            }));
+        }
+        window.addEventListener('resize', scheduleMonitorRelayout);
+        // Re-fit once the scripture strip finishes its slide (animates over 0.35s).
+        (function () { const s = document.getElementById('tv-scripture'); if (s) s.addEventListener('transitionend', scheduleMonitorRelayout); })();
 
         // QR placement — fixed, draggable, and persisted. Independent of the
         // question box so it never drifts onto the text as the question resizes.
