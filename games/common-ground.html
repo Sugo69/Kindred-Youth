@@ -353,7 +353,7 @@
                     <div class="strike-x" id="sx-2">X</div>
                     <div class="strike-x" id="sx-3">X</div>
                 </div>
-                <div id="tv-scripture" style="display:none; max-width:92%; margin:0 auto 12px; padding:14px 22px; font-family:'Rajdhani',sans-serif; font-size:1.3rem; line-height:1.45; text-align:center; color:#f5f5f5; background:linear-gradient(180deg, rgba(0,242,255,0.08), rgba(0,242,255,0.02)); border:1px solid rgba(0,242,255,0.35); border-radius:12px; box-shadow:0 0 18px rgba(0,242,255,0.15);">
+                <div id="tv-scripture" style="max-width:92%; margin:0 auto; overflow:hidden; max-height:0; opacity:0; padding:0 22px; font-family:'Rajdhani',sans-serif; font-size:1.3rem; line-height:1.45; text-align:center; color:#f5f5f5; background:linear-gradient(180deg, rgba(0,242,255,0.08), rgba(0,242,255,0.02)); border-radius:12px; transition:max-height 0.35s ease, opacity 0.25s ease, padding 0.35s ease, margin-bottom 0.35s ease, box-shadow 0.35s ease;">
                     <span id="tv-scripture-text" style="font-style:italic;"></span>
                 </div>
                 <div class="question-box tv-q" id="q-txt">Connecting to Temple...</div>
@@ -812,10 +812,19 @@
             const tvScriptureText = document.getElementById('tv-scripture-text');
             if (hasVerse && showScripture) {
                 tvScriptureText.textContent = `"${data.verseText.trim()}"`;
-                tvScripture.style.display = 'block';
+                tvScripture.style.maxHeight = '160px';
+                tvScripture.style.opacity = '1';
+                tvScripture.style.padding = '14px 22px';
+                tvScripture.style.marginBottom = '12px';
+                tvScripture.style.boxShadow = '0 0 18px rgba(0,242,255,0.15)';
             } else {
-                tvScripture.style.display = 'none';
+                tvScripture.style.maxHeight = '0';
+                tvScripture.style.opacity = '0';
+                tvScripture.style.padding = '0 22px';
+                tvScripture.style.marginBottom = '0';
+                tvScripture.style.boxShadow = 'none';
             }
+            autoSizeQuestion();
             const adminRow = document.getElementById('admin-scripture-row');
             if (hasVerse) {
                 adminRow.style.display = 'block';
