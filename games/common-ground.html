@@ -126,7 +126,10 @@
         body.mode-contestant .contestant-only > .strike-tracker,
         body.mode-contestant .contestant-only > #tv-scripture,
         body.mode-contestant .contestant-only > .board { flex: 0 0 auto; }
-        body.mode-contestant .contestant-only > .question-box { flex: 1 1 0; min-height: 0; max-height: none; width: 100%; box-sizing: border-box; }
+        /* No font-size transition: auto-fit sets the size synchronously and must
+           measure the final value, not an in-flight animated one (caused the
+           "dancing"/flashing text). */
+        body.mode-contestant .contestant-only > .question-box { flex: 1 1 0; min-height: 0; max-height: none; width: 100%; box-sizing: border-box; transition: none; }
         body.mode-contestant .bottom-hud { flex: 0 0 auto; margin-top: 0; }
         body.mode-teacher .teacher-only { display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; padding-bottom: 80px; box-sizing: border-box; }
 
