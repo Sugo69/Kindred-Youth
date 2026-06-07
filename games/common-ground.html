@@ -764,7 +764,19 @@
             if (sharedState.gameOverTime === 0) { document.getElementById('game-over-pop').style.display = 'none'; lastGameOver = 0; }
             if (sharedState.strikeTime === 0) { document.getElementById('strike-pop').style.display = 'none'; lastStrike = 0; }
 
-            document.getElementById('q-txt').innerText = data.question;
+            // Question text lives in an inner span so autoSizeQuestion can measure
+            // it honestly (the box itself is flex-centred, which makes its own
+            // scrollHeight unreliable).
+            (function () {
+                const qbox = document.getElementById('q-txt');
+                let qinner = document.getElementById('q-txt-inner');
+                if (!qinner) {
+                    qinner = document.createElement('span'); qinner.id = 'q-txt-inner';
+                    qinner.style.display = 'block'; qinner.style.width = '100%'; qinner.style.textAlign = 'center';
+                    qbox.innerHTML = ''; qbox.appendChild(qinner);
+                }
+                qinner.textContent = data.question;
+            })();
             document.getElementById('round-label').innerText = data.level || `Round ${(sharedState.currentRound || 0) + 1}`;
             document.getElementById('s1-txt').innerText = sharedState.t1Score || 0;
             document.getElementById('s2-txt').innerText = sharedState.t2Score || 0;
@@ -881,31 +893,41 @@
             if (sharedState.gameOverTime > lastGameOver && sharedState.gameOverTime !== 0) { lastGameOver = sharedState.gameOverTime; if(isMon) doGameOver(); }
         }
 
-        // Binary-search the largest font (em) at which the text fits its box.
-        // The box is flex-centred, so overflow that spills ABOVE centre is not
-        // reported by scrollHeight — we temporarily top-anchor the content while
-        // measuring so the fit test is honest, then restore centring.
-        function fitTextToBox(el, loEm, hiEm) {
-            if (!el) return;
-            if (el.clientHeight < 20 || el.clientWidth < 20) return; // not laid out yet
-            const prevAlign = el.style.alignItems;
-            el.style.alignItems = 'flex-start';
-            let lo = loEm, hi = hiEm, best = loEm;
-            for (let i = 0; i < 14; i++) {
+        // Fit the question text to its box. The box is flex-centred and its height
+        // animates while the scripture strip slides, so measuring the box's own
+        // scrollHeight is unreliable. Instead we measure the INNER span (honest,
+        // normal-flow) against the box's content area, and binary-search the largest
+        // em that fits both height and width. Padding is em-based so the available
+        // area is recomputed for each trial font size.
+        function autoSizeQuestion() {
+            const box = document.getElementById('q-txt');
+            const inner = document.getElementById('q-txt-inner');
+            if (!box || !inner || !document.body.classList.contains('mode-contestant')) return;
+            if (box.clientHeight < 20 || box.clientWidth < 20) return; // not laid out yet
+            let lo = 1.0, hi = 5.0, best = lo;
+            for (let i = 0; i < 16; i++) {
                 const mid = (lo + hi) / 2;
-                el.style.fontSize = mid + 'em';
-                if (el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth) { best = mid; lo = mid; }
+                box.style.fontSize = mid + 'em';
+                const cs = getComputedStyle(box);
+                const availH = box.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+                const availW = box.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+                if (inner.scrollHeight <= availH + 0.5 && inner.scrollWidth <= availW + 0.5) { best = mid; lo = mid; }
                 else { hi = mid; }
             }
-            el.style.fontSize = best + 'em';
-            el.style.alignItems = prevAlign || '';
+            box.style.fontSize = best + 'em';
         }
 
-        function autoSizeQuestion() {
+        // The question box height animates while the scripture strip slides in/out
+        // (0.35s), so timing a single measurement is fragile. A ResizeObserver
+        // re-fits on every real size change of the box — animation frames, display-
+        // scale changes, and window resize alike. We observe the BORDER box (fixed
+        // by the flex layout) so our own font/padding tweaks never re-trigger it.
+        (function observeQuestionBox() {
             const el = document.getElementById('q-txt');
-            if (!el || !document.body.classList.contains('mode-contestant')) return;
-            fitTextToBox(el, 1.0, 3.8);
-        }
+            if (!el || !window.ResizeObserver) return;
+            const ro = new ResizeObserver(() => autoSizeQuestion());
+            try { ro.observe(el, { box: 'border-box' }); } catch (e) { ro.observe(el); }
+        })();
 
         // Revealed answers vary wildly in length; shrink each answer's text so it
         // never clips its slot. Wraps to multiple lines, then steps the font down.
