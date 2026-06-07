@@ -748,14 +748,15 @@
             document.getElementById('tv-fo-icon').style.display = 'inline-block';
             document.getElementById('tv-fo-icon-2').style.display = 'inline-block';
 
-            // QR code — positioned to the right of the question box, vertically centred on it
+            // QR code — use per-round scripture URL; fall back to lesson URL for family_feud rounds
             const qrBlock = document.getElementById('monitor-qr-block');
-            if (currentGameSourceUrl && currentGameGeneratedBy && document.body.classList.contains('mode-contestant')) {
+            const qrUrl = data.url || currentGameSourceUrl;
+            if (qrUrl && currentGameGeneratedBy && document.body.classList.contains('mode-contestant')) {
                 qrBlock.style.display = 'flex';
                 const canvas = document.getElementById('cg-qr-canvas');
                 const link = document.getElementById('cg-qr-link');
-                if (link) link.href = currentGameSourceUrl;
-                if (canvas && window.QRious) new window.QRious({ element: canvas, value: currentGameSourceUrl, size: 130, background: 'white', foreground: '#0a0a20' });
+                if (link) link.href = qrUrl;
+                if (canvas && window.QRious) new window.QRious({ element: canvas, value: qrUrl, size: 130, background: 'white', foreground: '#0a0a20' });
                 window.positionQrCode();
             } else {
                 qrBlock.style.display = 'none';
