@@ -112,6 +112,22 @@
         body.mode-contestant { height: 100vh; overflow: hidden; }
         body.mode-contestant .contestant-only { display: flex; flex-direction: column; align-items: center; width: 100%; }
         body.mode-contestant .bottom-hud { display: flex; }
+
+        /* Monitor full-height flex skeleton: the answer board and score HUD are
+           always on screen; the question box (flex:1) absorbs all leftover space
+           and autoSizeQuestion() shrinks its text to fit that real space. Showing
+           the scripture strip trades space away from the question, so the board
+           and score never move. Scoped to mode-contestant — admin/teacher scroll. */
+        body.mode-contestant #scale-root { flex: 1 1 auto; min-height: 0; }
+        body.mode-contestant .container { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; margin-top: 0; }
+        body.mode-contestant .contestant-only { flex: 1 1 auto; min-height: 0; }
+        body.mode-contestant .contestant-only > h1.tv-title,
+        body.mode-contestant .contestant-only > .subtitle,
+        body.mode-contestant .contestant-only > .strike-tracker,
+        body.mode-contestant .contestant-only > #tv-scripture,
+        body.mode-contestant .contestant-only > .board { flex: 0 0 auto; }
+        body.mode-contestant .contestant-only > .question-box { flex: 1 1 0; min-height: 0; max-height: none; }
+        body.mode-contestant .bottom-hud { flex: 0 0 auto; margin-top: 0; }
         body.mode-teacher .teacher-only { display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; padding-bottom: 80px; box-sizing: border-box; }
 
         .back-to-portal { display: block; width: 100%; background: rgba(0,242,255,0.06); border-bottom: 1px solid rgba(0,242,255,0.15); padding: 8px 16px; box-sizing: border-box; }
@@ -588,7 +604,7 @@
         </div>
 
         <!-- QR code — position set by positionQrCode() to sit right of the question box -->
-        <div id="monitor-qr-block" style="display:none; position:fixed; transform:translateY(-50%); flex-direction:column; align-items:center; gap:6px; z-index:200;">
+        <div id="monitor-qr-block" style="display:none; position:fixed; flex-direction:column; align-items:center; gap:6px; z-index:200; touch-action:none; user-select:none;" title="Drag to reposition">
             <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
                 <canvas id="cg-qr-canvas" width="150" height="150" style="display:block; border-radius:4px;"></canvas>
             </a>
@@ -877,16 +893,70 @@
             }
         }
         window.addEventListener('resize', autoSizeQuestion);
+        // Re-fit once the scripture strip finishes its slide so the question box
+        // settles to the final available space (it animates over 0.35s).
+        (function () { const s = document.getElementById('tv-scripture'); if (s) s.addEventListener('transitionend', autoSizeQuestion); })();
 
+        // QR placement — fixed, draggable, and persisted. Independent of the
+        // question box so it never drifts onto the text as the question resizes.
+        const QR_POS_KEY = 'kindred_cg_qr_pos';
+        function clampQrToViewport(left, top) {
+            const qr = document.getElementById('monitor-qr-block');
+            const w = qr.offsetWidth || 170, h = qr.offsetHeight || 200;
+            const maxL = Math.max(8, window.innerWidth - w - 8);
+            const maxT = Math.max(8, window.innerHeight - h - 8);
+            return { left: Math.min(Math.max(8, left), maxL), top: Math.min(Math.max(8, top), maxT) };
+        }
         window.positionQrCode = () => {
             const qrBlock = document.getElementById('monitor-qr-block');
-            const qBox = document.getElementById('q-txt');
-            if (!qrBlock || !qBox || qrBlock.style.display === 'none') return;
-            const rect = qBox.getBoundingClientRect();
-            qrBlock.style.left = (rect.right + 14) + 'px';
-            qrBlock.style.top = (rect.top + rect.height / 2) + 'px';
+            if (!qrBlock || qrBlock.style.display === 'none') return;
+            qrBlock.style.transform = 'none';
+            let pos = null;
+            try { pos = JSON.parse(localStorage.getItem(QR_POS_KEY)); } catch (e) { pos = null; }
+            if (!pos || typeof pos.left !== 'number') {
+                // Default: top-right, beside the (narrow, centred) round + strikes.
+                pos = { left: window.innerWidth - (qrBlock.offsetWidth || 170) - 24, top: 80 };
+            }
+            const c = clampQrToViewport(pos.left, pos.top);
+            qrBlock.style.left = c.left + 'px';
+            qrBlock.style.top = c.top + 'px';
         };
         window.addEventListener('resize', window.positionQrCode);
+
+        // Drag-to-reposition (pointer events — mouse + touch). Persists to
+        // localStorage; suppresses the QR link click if the user was dragging.
+        (function makeQrDraggable() {
+            const qr = document.getElementById('monitor-qr-block');
+            const link = document.getElementById('cg-qr-link');
+            if (!qr) return;
+            let dragging = false, moved = false, sx = 0, sy = 0, ox = 0, oy = 0;
+            qr.addEventListener('pointerdown', (e) => {
+                dragging = true; moved = false; sx = e.clientX; sy = e.clientY;
+                const r = qr.getBoundingClientRect(); ox = r.left; oy = r.top;
+                try { qr.setPointerCapture(e.pointerId); } catch (err) {}
+                qr.style.cursor = 'grabbing';
+            });
+            qr.addEventListener('pointermove', (e) => {
+                if (!dragging) return;
+                const dx = e.clientX - sx, dy = e.clientY - sy;
+                if (Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+                const c = clampQrToViewport(ox + dx, oy + dy);
+                qr.style.transform = 'none';
+                qr.style.left = c.left + 'px'; qr.style.top = c.top + 'px';
+            });
+            const end = () => {
+                if (!dragging) return;
+                dragging = false; qr.style.cursor = 'grab';
+                if (moved) {
+                    const r = qr.getBoundingClientRect();
+                    localStorage.setItem(QR_POS_KEY, JSON.stringify({ left: r.left, top: r.top }));
+                }
+            };
+            qr.addEventListener('pointerup', end);
+            qr.addEventListener('pointercancel', end);
+            if (link) link.addEventListener('click', (e) => { if (moved) { e.preventDefault(); moved = false; } });
+            qr.style.cursor = 'grab';
+        })();
 
         window.toggleScripture = () => {
             const next = sharedState.showScripture === false ? true : false;
