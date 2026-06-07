@@ -126,7 +126,7 @@
         body.mode-contestant .contestant-only > .strike-tracker,
         body.mode-contestant .contestant-only > #tv-scripture,
         body.mode-contestant .contestant-only > .board { flex: 0 0 auto; }
-        body.mode-contestant .contestant-only > .question-box { flex: 1 1 0; min-height: 0; max-height: none; }
+        body.mode-contestant .contestant-only > .question-box { flex: 1 1 0; min-height: 0; max-height: none; width: 100%; box-sizing: border-box; }
         body.mode-contestant .bottom-hud { flex: 0 0 auto; margin-top: 0; }
         body.mode-teacher .teacher-only { display: block; width: 100%; max-width: 900px; margin: 0 auto; padding: 20px; padding-bottom: 80px; box-sizing: border-box; }
 
@@ -922,10 +922,20 @@
         // re-fits on every real size change of the box — animation frames, display-
         // scale changes, and window resize alike. We observe the BORDER box (fixed
         // by the flex layout) so our own font/padding tweaks never re-trigger it.
+        let _lastQH = -1, _lastQW = -1;
         (function observeQuestionBox() {
             const el = document.getElementById('q-txt');
             if (!el || !window.ResizeObserver) return;
-            const ro = new ResizeObserver(() => autoSizeQuestion());
+            const ro = new ResizeObserver(() => {
+                // Only re-fit on a genuine box-size change. The box width is pinned
+                // (width:100%) and height is flex-governed, so font/padding tweaks
+                // from autoSizeQuestion don't change the border box — this guard
+                // stops any residual feedback loop (the "flashing" bug).
+                const r = el.getBoundingClientRect();
+                if (Math.abs(r.height - _lastQH) < 1 && Math.abs(r.width - _lastQW) < 1) return;
+                _lastQH = r.height; _lastQW = r.width;
+                autoSizeQuestion();
+            });
             try { ro.observe(el, { box: 'border-box' }); } catch (e) { ro.observe(el); }
         })();
 
