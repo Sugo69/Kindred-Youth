@@ -762,9 +762,10 @@
             document.getElementById('tv-fo-icon-2').style.display = 'inline-block';
 
             // QR code — use per-round scripture URL; fall back to lesson URL for family_feud rounds
+            // Note: show even when scripture text is hidden — QR is how students find the verse themselves
             const qrBlock = document.getElementById('monitor-qr-block');
             const qrUrl = data.url || currentGameSourceUrl;
-            if (qrUrl && currentGameGeneratedBy && document.body.classList.contains('mode-contestant')) {
+            if (qrUrl && document.body.classList.contains('mode-contestant')) {
                 qrBlock.style.display = 'flex';
                 const canvas = document.getElementById('cg-qr-canvas');
                 const link = document.getElementById('cg-qr-link');
