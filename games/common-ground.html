@@ -418,6 +418,10 @@
                             <input type="checkbox" id="tll-review-first" style="cursor:pointer;">
                             Review &amp; edit questions before activating
                         </label>
+                        <label style="display:flex; align-items:center; gap:8px; color:#666; font-family:'Rajdhani',sans-serif; font-size:0.85rem; cursor:pointer; justify-content:center; margin-top:8px;">
+                            <input type="checkbox" id="tll-hide-scripture" style="cursor:pointer;" onchange="localStorage.setItem('kindred_cg_hide_scripture', this.checked)">
+                            Hide scripture on monitor — students scan QR to look it up
+                        </label>
                     </div>
                     <!-- Progress bar — shown during generation -->
                     <div id="tll-progress-area" style="display:none; padding:4px 16px 16px;">
@@ -580,7 +584,7 @@
         <!-- QR code — position set by positionQrCode() to sit right of the question box -->
         <div id="monitor-qr-block" style="display:none; position:fixed; transform:translateY(-50%); flex-direction:column; align-items:center; gap:6px; z-index:200;">
             <a id="cg-qr-link" href="#" target="_blank" rel="noopener noreferrer" style="display:block; line-height:0; border-radius:8px; padding:8px; background:#080812; border:2px solid rgba(0,242,255,0.6); box-shadow:0 0 18px rgba(0,242,255,0.25); cursor:pointer;">
-                <canvas id="cg-qr-canvas" width="130" height="130" style="display:block; border-radius:4px;"></canvas>
+                <canvas id="cg-qr-canvas" width="150" height="150" style="display:block; border-radius:4px;"></canvas>
             </a>
             <span style="font-family:'Orbitron',sans-serif; font-size:0.48rem; color:var(--neon-cyan); text-transform:uppercase; letter-spacing:0.1em; opacity:0.8;">Scan to read along</span>
         </div>
@@ -760,7 +764,7 @@
                 const canvas = document.getElementById('cg-qr-canvas');
                 const link = document.getElementById('cg-qr-link');
                 if (link) link.href = qrUrl;
-                if (canvas && window.QRious) new window.QRious({ element: canvas, value: qrUrl, size: 130, background: 'white', foreground: '#0a0a20' });
+                if (canvas && window.QRious) new window.QRious({ element: canvas, value: qrUrl, size: 150, background: 'white', foreground: '#0a0a20' });
                 window.positionQrCode();
             } else {
                 qrBlock.style.display = 'none';
@@ -1511,7 +1515,13 @@
             if (btn) { btn.disabled = false; btn.textContent = '✨ Generate & Play'; }
             const statusEl = document.getElementById('tll-status');
             if (statusEl) statusEl.style.display = 'none';
+            const hideChk = document.getElementById('tll-hide-scripture');
+            if (hideChk) hideChk.checked = localStorage.getItem('kindred_cg_hide_scripture') === 'true';
             document.getElementById('tp-lesson-launch-view').style.display = 'block';
+        }
+
+        function getShowScriptureDefault() {
+            return localStorage.getItem('kindred_cg_hide_scripture') !== 'true';
         }
 
         window.generateFromUrl = async function() {
@@ -1985,7 +1995,8 @@
                 currentRound: 0, revealed: [], strikes: 0, activeTeam: 0, originalTeamId: 0,
                 winTime: 0, strikeTime: 0, gameOverTime: 0, switchPlayTime: 0,
                 winningTeamId: 0, lastWinnerId: 0, consecutiveWins: 0, lastWinWasFaceOff: false,
-                activeGameId: g._docId
+                activeGameId: g._docId,
+                showScripture: getShowScriptureDefault()
             });
             currentActiveGameId = g._docId;
             renderGameLibrary();
