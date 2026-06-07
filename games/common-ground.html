@@ -130,8 +130,9 @@
         .question-box.tv-q {
             background: rgba(20, 20, 50, 0.95); border: 0.15em solid var(--neon-cyan);
             padding: 1em 1.5em; margin-bottom: 1em; font-size: 3.8em;
-            line-height: 1.15; min-height: 4.5em; display: flex; align-items: center;
+            line-height: 1.15; min-height: 2em; max-height: 42vh; overflow: hidden; display: flex; align-items: center;
             justify-content: center; box-shadow: var(--border-glow); clip-path: polygon(2% 0, 100% 0, 98% 100%, 0 100%);
+            transition: font-size 0.2s ease;
         }
 
         .board.tv-board { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8em; margin-bottom: 2em; perspective: 2000px; width: 100%; }
@@ -748,6 +749,7 @@
             if (sharedState.strikeTime === 0) { document.getElementById('strike-pop').style.display = 'none'; lastStrike = 0; }
 
             document.getElementById('q-txt').innerText = data.question;
+            autoSizeQuestion();
             document.getElementById('round-label').innerText = data.level || `Round ${(sharedState.currentRound || 0) + 1}`;
             document.getElementById('s1-txt').innerText = sharedState.t1Score || 0;
             document.getElementById('s2-txt').innerText = sharedState.t2Score || 0;
@@ -854,6 +856,18 @@
             if (revList.length > lastRevCount) { lastRevCount = revList.length; if(isMon && sharedState.winTime <= lastWin) playHappyReveal(); }
             if (sharedState.gameOverTime > lastGameOver && sharedState.gameOverTime !== 0) { lastGameOver = sharedState.gameOverTime; if(isMon) doGameOver(); }
         }
+
+        function autoSizeQuestion() {
+            const el = document.getElementById('q-txt');
+            if (!el) return;
+            // Step down from max until text no longer overflows the max-height constraint
+            const sizes = [3.8, 3.2, 2.7, 2.2, 1.9, 1.65];
+            for (const s of sizes) {
+                el.style.fontSize = s + 'em';
+                if (el.scrollHeight <= el.clientHeight + 4) break;
+            }
+        }
+        window.addEventListener('resize', autoSizeQuestion);
 
         window.positionQrCode = () => {
             const qrBlock = document.getElementById('monitor-qr-block');
