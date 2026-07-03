@@ -1,0 +1,29 @@
+# Memory Index — Kindred Youth Platform
+
+- [Project Overview](project_overview.md) — Kindred portal + 4 games (Common Ground, Scripture Match, Scripture Trail, By Heart); lesson-first recommendations; classroom-scoped trail editor
+- [User Profile](user_profile.md) — LDS teacher/developer building a reusable church youth game platform
+- [Tech Decisions](tech_decisions.md) — Vite MPA (6 pages), port 5173, Firebase Firestore, lesson-pipeline v3 supports CG/Memory/Trail, retry logic, Vercel deployment
+- [Trail Architecture](trail_architecture.md) — 6 curriculum boards (OT/NT/BOM/DC/Moses/Abraham), admin calibration in Firestore, classroom-scoped teacher editor
+- [By Heart + DM](by_heart_dm.md) — 4th game (step-by-step memorization, 5 levels) + 25 NT DM passages library + any-verse mode
+- [Seminary Curriculum](seminary_curriculum.md) — 160 NT lessons Aug 2026–Apr 2027 (North-only), intro-type lessons, on-demand generation with 60-day cache
+- [Backlog & Features](backlog_features.md) — 6 seeded backlog items + Opus47_Backlog.md (scale/compliance/Gemini parity) in admin.html
+- [Claude Code Skills](skills_overview.md) — extract-lesson / youth-leader / gamemaster; compliance-metadata contracts; lesson-reviewer + content-safety subagents
+- [Compliance System](compliance_system.md) — lesson-pipeline v3 + teacher-input AI moderation (Haiku); biblical words allowed; modern profanity blocked; /api/moderate endpoint
+- [LED Integration](wled_integration.md) — ESP8266 9×7 matrix; USB serial only (Chrome Web Serial); LED section hidden in Admin UI but hardware preserved
+- [Classroom & Library](classroom_library.md) — Route 1 launch view; cfm- prefix bug fixed; classroom game fallback; ?lesson= routing across all 3 games; ✓ ready badges
+- [Cloudflare API bypass](cloudflare_api_bypass.md) — /api/* goes direct to Vercel via api.kindred-youth.org (DNS-only) to dodge CF's 100s edge timeout
+- [Testing Constraints](testing_constraints.md) — user has only ONE Gmail account; never propose "sign in as second teacher" — use admin-disable toggle or Firestore hand-edits
+- [Model Strategy](model_strategy.md) — Sonnet 4.6 for pipeline; Haiku for /api/moderate (speed); Haiku hallucinated cross-manual refs in pipeline tests
+- [CFM 2027 NT Transition](cfm_2027_new_testament.md) — 2027 moves OT→NT; cfm-schedule.js needs rewrite when manual publishes (~Nov 2026); hard deadline first 2027 Sunday
+- [Production Hosting](production_hosting.md) — repo Sugo69/Kindred-Youth; kindred-youth.org on Vercel via Cloudflare; .com redirects to .org; vercel.json COOP header
+- [Legal Review 2026-04-22](legal_review_snapshot.md) — trademark/copyright/privacy posture review; drove rebrand to kindred-youth + non-affiliation disclaimer
+- [Scripture Scout trademark](trademark_scripture_scout.md) — "Scripture Scout" is a third-party TM; game is Scripture Match — never use Scout
+- [Auto-push after commit](feedback_auto_push.md) — auto `git push` after every commit on this solo project; still confirm before destructive pushes / merges / PRs
+- [API budget tolerance](feedback_api_budget.md) — small Anthropic/Vercel spend on testing & investigation is fine; flag transparently after; ask first only above ~$5
+- [Responsive design](feedback_responsive_design.md) — every Kindred surface must flex phone → tablet → HD → 4K; prefer auto-fill grids and clamp() over fixed pixels
+- [Backup before destructive ops](feedback_backup_before_destructive.md) — always copy original-fidelity source assets to `c:/Users/lewis/Documents/Kindred-asset-originals/{date}-{slug}/` before resize/compress/re-encode
+- [Disclaimer, Notifications & GDPR](disclaimer_notifications.md) — versioned first-run disclaimer, admin announce tab, teacher bell + profile notifications, download/delete data rights
+- [Session 2026-05-30](session_2026_05_30.md) — Route 1 routing fix, CG portal UX, content safety, portal badges + all P1 items: disclaimer, notifications, GDPR, Trail reveal, SM moderation, By Heart persistence
+- [CG Monitor Layout](cg_monitor_layout.md) — flex skeleton (board+score always visible), deterministic text auto-fit via inner span + ResizeObserver, draggable QR; the 3 gotchas (flex-centre measure, font transition, RO loop) that caused flashing
+- [Session 2026-06-07](session_2026_06_07.md) — CG monitor/admin UX polish (QR, auto-sizing, scripture toggle, buttons, By Heart lookup); CONTINUATION: monitor-layout REWRITE (flex skeleton + inner-span auto-fit), P1 trail cache, repo scrub
+- [Well of Words (game #5 plan)](well_of_words_game5.md) — letter-wheel word game, decisions locked 2026-07-03; spec + build prompt in well-of-words-design.md at repo root; teens-first v1, pink slot, whitelist words, not yet built
