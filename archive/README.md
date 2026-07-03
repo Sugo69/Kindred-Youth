@@ -12,7 +12,7 @@ imports, script tags, or Vite inputs pointing here.
 - `app.js.legacy` — original pre-Vite prototype. Rolled into the current
   `games/common-ground.html` and `admin.html` during the 2026 Kindred rebuild.
 - `Exodus Matching Game/` — the standalone Exodus HTML memory-match game.
-  Reference implementation for Scripture Scout (`games/memory.html`).
+  Reference implementation for Scripture Match (`games/memory.html`).
   The `.mp3` assets are the ones the Gemini version used; sourcing /
   provenance is **undocumented** and they must NOT be migrated into
   `public/audio/` until each file has a receipt, license, or replacement

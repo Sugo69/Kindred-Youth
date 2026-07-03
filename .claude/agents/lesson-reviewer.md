@@ -1,6 +1,6 @@
 ---
 name: lesson-reviewer
-description: Reviews Come Follow Me lesson content (JSON extractions, generated game questions, Scripture Scout pairs) against LDS Church policy before it reaches a classroom. Use this agent PROACTIVELY whenever a lesson extraction, game JSON, or lesson-pipeline change is produced. It returns a PASS / REWRITE / BLOCK verdict per item and a single overall rating. Do not claim a lesson is "ready for teachers" without this agent signing off.
+description: Reviews Come Follow Me lesson content (JSON extractions, generated game questions, Scripture Match pairs) against LDS Church policy before it reaches a classroom. Use this agent PROACTIVELY whenever a lesson extraction, game JSON, or lesson-pipeline change is produced. It returns a PASS / REWRITE / BLOCK verdict per item and a single overall rating. Do not claim a lesson is "ready for teachers" without this agent signing off.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -41,7 +41,7 @@ For every `round` or `pair`, assign one of:
 - Scripture questions missing `verseText`
 - Family-feud answers that are only idealized church answers and no realistic youth behaviors (adds false-pious pressure)
 - Teacher-testimony-required answers on L1/L2 factual questions
-- Pair `verse` or `scene` missing on Scripture Scout pairs
+- Pair `verse` or `scene` missing on Scripture Match pairs
 
 ## Output format
 Return Markdown with three sections:

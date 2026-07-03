@@ -4,7 +4,7 @@
 ## Executive summary
 
 1. **The product reproduces Church scripture text and lesson-page structure, at scale, on a commercial hosting plan, and reproduces Church policy-document names directly in the UI.** The Church's IP Office (https://www.churchofjesuschrist.org/legal/intellectual-property) grants only limited, personal, non-commercial use; the product's current distribution model (Vercel, public self-serve target) is unlikely to fall inside that grant. This is the single biggest issue to resolve before broadening access.
-2. **"Kindred" is a heavily-occupied trademark in education and software classes** and will need a real clearance search before any brand spend, domain purchase, or logo investment. "Common Ground" and "Scripture Scout" are similarly generic and each need clearance in Class 9 / Class 41.
+2. **"Kindred" is a heavily-occupied trademark in education and software classes** and will need a real clearance search before any brand spend, domain purchase, or logo investment. "Common Ground" and "Scripture Match" are similarly generic and each need clearance in Class 9 / Class 41.
 3. **Family Feud residue is still in the production codebase, not just the archive.** `api/generate-questions.js` line 57 literally tells the LLM "You are a Family Feud question writer," and `api/_lib/pipeline.js` line 627 includes the signature phrase "We surveyed 100 LDS youth…". Renaming the surface UI was not enough; Fremantle could cite the prompt strings and generated output as trade-dress copying.
 4. **The product has no privacy policy, no terms of use, no cookie notice, no data-processing disclosure, and no account/age disclosures anywhere.** Firestore collects teacher email, name, calling, country, and ward — i.e., enough to trigger GDPR (UK, EU) and CCPA/CPRA (California) duties the moment a non-US teacher signs up. The signup form already offers UK, AU, NZ, Brazil, Mexico, Philippines as country choices.
 5. **The "✓ Compliant — Handbook §13 / §37.8 / Teaching in the Savior's Way / For the Strength of Youth" badge and the footer tag "LDS Youth Platform" together create a material false-association / implied-endorsement risk under Lanham §43(a).** The Church has not reviewed or approved anything, yet the landing page displays policy references as if they had. This is independent of the trademark analysis below and is the single risk most likely to produce a cease-and-desist from the Church's IP office.
@@ -26,11 +26,11 @@
 - **What to ask an attorney**: "Is 'Common Ground' clear for use as a game-product title in Class 9 / Class 41 in our target jurisdictions, and do we have any residual dress/look-and-feel exposure from Fremantle given the rules mirror Family Feud (two teams, strikes, steal, scoring pyramid 40/30/20/10)?"
 - **Related trade-dress point**: the pipeline prompt at `api/_lib/pipeline.js:627` and `api/generate-questions.js:57–69` still embeds the iconic Fremantle survey-format language ("Family Feud question writer", "We surveyed 100 LDS youth…"). Fremantle enforces aggressively against Family Feud clones; these strings would be the first exhibit in any complaint. They need to be removed from the code, not only the UI.
 
-### 1.3 "Scripture Scout"
+### 1.3 "Scripture Match"
 - **Issue**: Unknown clearance status.
 - **Severity**: Medium
-- **Rationale**: "Scripture Scout" is not famous but is not unique — there are Scripture-themed apps, children's characters, and YouTube channels using that phrase or minor variants. There is also the separate question of whether "Scout" brings any Boy Scouts of America / Scouting Ireland / World Scout Bureau association, since BSA holds strong rights in the word "Scout" in youth-education contexts. The product is LDS-adjacent, which is historically linked with scouting in the US; that proximity may raise BSA's temperature.
-- **What to ask an attorney**: "Clear 'Scripture Scout' in Class 9 / Class 41. Separately, does our use of 'Scout' in a youth-education/LDS context create any Boy Scouts of America mark concerns — BSA has asserted 'Scout' rights broadly?"
+- **Rationale**: "Scripture Match" is not famous but is not unique — there are Scripture-themed apps, children's characters, and YouTube channels using that phrase or minor variants. There is also the separate question of whether "Scout" brings any Boy Scouts of America / Scouting Ireland / World Scout Bureau association, since BSA holds strong rights in the word "Scout" in youth-education contexts. The product is LDS-adjacent, which is historically linked with scouting in the US; that proximity may raise BSA's temperature.
+- **What to ask an attorney**: "Clear 'Scripture Match' in Class 9 / Class 41. Separately, does our use of 'Scout' in a youth-education/LDS context create any Boy Scouts of America mark concerns — BSA has asserted 'Scout' rights broadly?"
 
 ### 1.4 Church of Jesus Christ of Latter-day Saints marks used literally in the product
 - **Issue**: The product places Church-owned trademarks directly in UI text, compliance badges, and marketing copy without any endorsement, license, or disclaimer.
@@ -55,7 +55,7 @@
 - **What to ask an attorney**: "Does the current landing page create an implied-endorsement risk sufficient for the Church IP office to demand a name change or takedown, and what rewrite of the trust section (currently `index.html:1164–1194`) would eliminate that risk while keeping the useful signal to teachers?"
 
 ### 1.6 Family Feud trade-dress residue
-- **Issue**: The visible renames (Common Ground / Scripture Scout) are correct, but trade-dress elements remain in code and mechanics.
+- **Issue**: The visible renames (Common Ground / Scripture Match) are correct, but trade-dress elements remain in code and mechanics.
 - **Severity**: Medium
 - **Rationale**: Fremantle's enforcement posture against Family Feud clones is aggressive. The production pipeline code still (a) instructs the LLM to write as a "Family Feud question writer" (`api/generate-questions.js:57`), (b) generates output with the signature "We surveyed 100 LDS youth…" phrasing (`api/_lib/pipeline.js:627`, `api/generate-questions.js:69`), (c) uses the 40/30/20/10 and 38/22/14/10/9/7 Family Feud point pyramids, and (d) uses "strike / steal / switch-play" terminology lifted verbatim from the show. Internally the repo is still named `FamilyFeud` and the user-agent string sent to churchofjesuschrist.org is `Mozilla/5.0 (FamilyFeudApp/1.0)` (`api/fetch-content.js:20`, `vite.config.js:115`) — an external observer, including a Church server log, can trivially identify the clone origin.
 - **What to ask an attorney**: "Beyond the name change, what specific Fremantle trade-dress elements (visual, mechanical, verbal) do we need to change to reduce the Family Feud claim surface, and is rewording 'We surveyed 100 LDS youth' and removing 'Family Feud question writer' from server prompts sufficient?"
@@ -166,7 +166,7 @@
 - **What to ask an attorney**: "We collect teachers' religious calling and ward/branch name. Under GDPR Art. 9 and equivalent laws, that is special-category data (religious belief). What explicit-consent UI do we need at signup, and should we make those fields optional with a 'prefer not to say' default?"
 
 ### 3.5 QR codes linking students to churchofjesuschrist.org
-- **Issue**: The Scripture Scout match modal renders a QR code to the scripture's Gospel Library URL. Students scan with personal phones.
+- **Issue**: The Scripture Match match modal renders a QR code to the scripture's Gospel Library URL. Students scan with personal phones.
 - **Severity**: Low
 - **Rationale**:
   - Kindred does not capture the scan, does not know who scanned, does not instrument the destination. A QR code is a printed URL — no data leaves the classroom toward Kindred.
@@ -238,7 +238,7 @@ Prioritized checklist — highest urgency first.
 6. **Delete the Church `.mp4` files from `archive/Exodus Matching Game/`** or replace them with a `README` pointer to the `media.churchofjesuschrist.org` URLs. Do NOT push these files to a public repo.
 7. **Write a one-paragraph provenance note for each `.mp3` in the archive.** If provenance cannot be documented, earmark them for replacement in OPUS-017 rather than migration.
 8. **Reach out to the Church IP Office** at **ip@ChurchofJesusChrist.org** (per https://www.churchofjesuschrist.org/legal/intellectual-property-policy). Short, factual intro: "I'm a volunteer LDS Sunday School teacher building a free tool that turns Come Follow Me URLs into classroom games. We fetch lesson pages server-side and want to confirm this is permissible. If a written permission or limited license is required for us to move past invite-only distribution, please advise on the process." Get this in flight now — their response time is slow.
-9. **Run a basic USPTO TESS search on "Kindred," "Common Ground," "Scripture Scout"** (https://tmsearch.uspto.gov) and EUIPO on the same terms. Record the top 10 conflicts per mark. Attorney will then do the thorough version — having a starter list shortens their meter.
+9. **Run a basic USPTO TESS search on "Kindred," "Common Ground," "Scripture Match"** (https://tmsearch.uspto.gov) and EUIPO on the same terms. Record the top 10 conflicts per mark. Attorney will then do the thorough version — having a starter list shortens their meter.
 
 **Before self-serve / broader rollout:**
 

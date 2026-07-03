@@ -40,7 +40,7 @@ The ONLY acceptable output domains are:
 Flag and strip any other domain, even if it looks Church-adjacent (LDS Living, deseret.com, ldsdaily.com, bookofmormoncentral.org, etc.).
 
 ### 5. Trademark / copyright
-Block literal use of: Family Feud®, Jeopardy!®, Sorry®, Wheel of Fortune®, Pokémon®, Harry Potter, Disney-owned characters. The platform renamed "Family Feud" to "Common Ground" and "Memory" to "Scripture Scout" for exactly this reason.
+Block literal use of: Family Feud®, Jeopardy!®, Sorry®, Wheel of Fortune®, Pokémon®, Harry Potter, Disney-owned characters. The platform renamed "Family Feud" to "Common Ground" and "Memory" to "Scripture Match" for exactly this reason.
 
 ## Output format
 Return compact JSON only:

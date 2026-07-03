@@ -378,9 +378,9 @@ Output the full JSON array ready to paste into the Teacher Portal:
 
 ---
 
-### ARTIFACT 6: Scripture Scout Cards (Match Modal — Print-Ready)
+### ARTIFACT 6: Scripture Match Cards (Match Modal — Print-Ready)
 
-Generate one card per scripture pair. Each card maps directly to the Scripture Scout match modal layout shown below. All content must come from extract-lesson `allScriptureRefs[]` (verse text, reference, url) and youth-leader discussion questions.
+Generate one card per scripture pair. Each card maps directly to the Scripture Match match modal layout shown below. All content must come from extract-lesson `allScriptureRefs[]` (verse text, reference, url) and youth-leader discussion questions.
 
 **Card layout (two-panel):**
 
@@ -499,13 +499,13 @@ Append to the existing lesson mindmap file (`lesson-database/<lessonId>-mindmap.
 👥 Roles: <N> students assigned, no spectators
 📖 Scripture Anchors: <N> verses woven in
 ❓ Questions: <N> total (<N> scripture_based, <N> application, <N> family_feud)
-🧩 Scripture Scout cards: <N> cards (icon · scene · verse · discussion)
+🧩 Scripture Match cards: <N> cards (icon · scene · verse · discussion)
 🗺  Mindmap updated: lesson-database/<lessonId>-mindmap.md
 
 Print checklist:
 □ Question cards (<N> cards)
 □ Sabotage card deck (<N> cards)
-□ Scripture Scout match cards (<N> cards — icon + scene + verse + discussion)
+□ Scripture Match match cards (<N> cards — icon + scene + verse + discussion)
 □ Score sheet (team names, <N> rounds)
 □ Role cards (optional — helps students know their job)
 
@@ -580,4 +580,4 @@ The game questions JSON you emit for the Teacher Portal MUST include a top-level
 ## What this skill must NOT do
 - Do not write a game that collects, stores, or transmits youth responses to Firestore beyond anonymous team scores.
 - Do not design a round where a youth must publicly disclose family situation, mental health, doubt, testimony level, or sin.
-- Do not use copyrighted game names literally; the platform uses "Common Ground" and "Scripture Scout".
+- Do not use copyrighted game names literally; the platform uses "Common Ground" and "Scripture Match".
