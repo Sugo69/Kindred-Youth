@@ -649,3 +649,13 @@ When comparing against the existing 6-item backlog in `admin.html` / Firestore, 
 - Items from this review that are genuinely new: OPUS-002 (tenancy), OPUS-007/008 (compliance runtime), OPUS-018/019 (image + ordered video).
 
 The intent is additive: run the Opus review alongside the existing backlog and pick the joint top 10 for the next cycle.
+
+---
+
+### OPUS-061 · Rename local working folder FamilyFeud → Kindred-Youth
+**Problem:** The GitHub repo (`Sugo69/Kindred-Youth`) and `package.json` (`kindred-youth`) are renamed, but the local checkout folder is still `…/GitHub/FamilyFeud`. Cosmetic only — no build/deploy/git impact — but confusing and keeps the old name visible in every path.
+**Solution:** Close the editor, rename the folder to `Kindred-Youth`, reopen. Git remote is unaffected. Afterwards, refresh the Claude Code project/scratchpad paths that reference the old folder name.
+**Acceptance:**
+- Local folder is `…/GitHub/Kindred-Youth`
+- Repo still pushes to `Sugo69/Kindred-Youth`; build + dev server unaffected
+**Effort:** S

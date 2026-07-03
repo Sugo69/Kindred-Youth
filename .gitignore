@@ -9,3 +9,5 @@ dist/
 .claude/scheduled_tasks.lock
 GeminiMCP/
 mockups/
+
+lesson-database/opus-test/
