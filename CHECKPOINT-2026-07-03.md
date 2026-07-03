@@ -1,4 +1,8 @@
-# Checkpoint — 2026-06-07
+# Checkpoint — 2026-07-03
+
+> **Date note:** this session happened on **2026-07-03**. Some git commits are
+> stamped `2026-06-07` because the machine clock was wrong at commit time; it was
+> corrected to 2026-07-03 mid-session. Trust this date, not the older commit dates.
 
 Polish session — 12 commits. All work is UX/stability improvements to the Common Ground monitor and admin views, plus a By Heart utility feature. No new games, no schema changes, no pipeline changes.
 
