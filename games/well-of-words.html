@@ -473,7 +473,8 @@
     <div class="helper-note">Answers stay masked until you peek. 💬 meaning · 📖 verse · 🖼 picture ·
       🔤+ reveals one more letter each tap (your discretion) · 👁 first tap peeks the answer on this
       device only, tapping “sure?” reveals it to the class (no points) — peeks auto-hide after 8s,
-      or tap 🙈 / the word to hide sooner · 🚫 hides the current hint from the screen.</div>
+      or tap 🙈 / the word to hide sooner. Tap a lit hint button again to clear it from the screen.
+      Puzzle changes take two taps (‹ PREV / NEXT › then “sure?”).</div>
   </div>
 </div>
 
@@ -1830,15 +1831,12 @@ function renderHelper(state) {
                 (disabled ? 'opacity:0.3;' : '');
             const prevDis = state.puzzleIdx <= 0;
             const nextDis = state.puzzleIdx >= state.totalPuzzles - 1;
-            return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
-             <div style="display:flex;gap:8px;align-items:center;">
-               <button class="modal-btn ghost" style="${btnStyle(helperJumpArmed === -1, prevDis)}" ${prevDis ? 'disabled' : ''}
-                 onclick="window.helperJump(-1)">${helperJumpArmed === -1 ? '‹ SURE?' : '‹ PREV'}</button>
-               <span style="font-size:0.7rem;color:var(--ink-muted);font-family:'Orbitron',sans-serif;">${state.puzzleIdx + 1}/${state.totalPuzzles}</span>
-               <button class="modal-btn ghost" style="${btnStyle(helperJumpArmed === 1, nextDis)}" ${nextDis ? 'disabled' : ''}
-                 onclick="window.helperJump(1)">${helperJumpArmed === 1 ? 'SURE? ›' : 'NEXT ›'}</button>
-             </div>
-             <button class="modal-btn ghost" style="padding:8px 14px;font-size:0.65rem;" onclick="window.helperSend('hide')">🚫 HIDE CURRENT HINT</button>
+            return `<div style="display:flex;justify-content:center;align-items:center;gap:16px;margin-top:12px;">
+               <button class="modal-btn ghost" style="${btnStyle(helperJumpArmed === -1, prevDis)}flex:1;max-width:220px;" ${prevDis ? 'disabled' : ''}
+                 onclick="window.helperJump(-1)">${helperJumpArmed === -1 ? '‹ SURE?' : '‹ PREV PUZZLE'}</button>
+               <span style="font-size:0.8rem;color:var(--ink-muted);font-family:'Orbitron',sans-serif;white-space:nowrap;">${state.puzzleIdx + 1} / ${state.totalPuzzles}</span>
+               <button class="modal-btn ghost" style="${btnStyle(helperJumpArmed === 1, nextDis)}flex:1;max-width:220px;" ${nextDis ? 'disabled' : ''}
+                 onclick="window.helperJump(1)">${helperJumpArmed === 1 ? 'SURE? ›' : 'NEXT PUZZLE ›'}</button>
            </div>`;
         })();
 }
