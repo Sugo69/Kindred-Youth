@@ -144,10 +144,11 @@
   .grid-col { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
   .well-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
   @media (min-width: 1000px) {
-    .play-columns { flex-direction: row; align-items: center; justify-content: center;
+    /* grid hugs the hint band (no dead space above); wheel stays vertically centered */
+    .play-columns { flex-direction: row; align-items: flex-start; justify-content: center;
       gap: clamp(20px, 4vw, 64px); }
     .grid-col { flex: 0 1 auto; max-width: 58%; }
-    .well-col { flex: 0 0 auto; }
+    .well-col { flex: 0 0 auto; align-self: center; }
   }
 
   /* Crossword grid */
