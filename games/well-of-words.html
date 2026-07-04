@@ -242,8 +242,10 @@
   .wc-btn.submit:disabled { opacity: 0.35; cursor: not-allowed; }
 
   /* Tried words — attempts that aren't in this well, so nobody repeats them */
-  .tried-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+  .tried-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
     max-width: 100%; }
+  #tried-chips, #bucket-chips { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;
+    align-items: center; }
   .tried-label { font-size: clamp(0.68rem, 1.1vw, 0.8rem); letter-spacing: 2px; color: var(--ink-muted);
     font-family: 'Orbitron', sans-serif; }
   .tried-chip { padding: 4px 13px; border-radius: 999px; border: 1px solid var(--border);
