@@ -120,8 +120,9 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
         max_tokens: gameType === 'well-of-words' ? 12000 : 8000,
         messages: [{ role: 'user', content: buildGenerationPrompt(lessonStructure, url, gameType, questionType) }],
     }
+    const generationTimeoutMs = gameType === 'well-of-words' ? 240000 : 180000
     stage(`→ Claude generation call (${activeModels.generation})…`)
-    let generateResp = await callClaude(claudeHeaders, generationBody)
+    let generateResp = await callClaude(claudeHeaders, generationBody, generationTimeoutMs)
     if (generateResp.error) {
         console.error(`${tag} Generation API error:`, { url, gameType, error: generateResp.error })
         return { status: 500, body: { error: `Generation step: ${generateResp.error}`, step: 'generation', debugExcerpt: generateResp.error } }
@@ -135,7 +136,7 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
         const firstExcerpt = (generateResp.text || '').slice(0, 800)
         console.warn(`${tag} Generation missing rounds/pairs/stops/puzzles — retrying once. First-attempt excerpt:\n${firstExcerpt}`)
         stage('↻ generation retry (parse failed, first attempt truncated or malformed)…')
-        generateResp = await callClaude(claudeHeaders, generationBody)
+        generateResp = await callClaude(claudeHeaders, generationBody, generationTimeoutMs)
         if (generateResp.error) {
             console.error(`${tag} Generation retry API error:`, { url, gameType, error: generateResp.error })
             return { status: 500, body: { error: `Generation step (retry): ${generateResp.error}`, step: 'generation', debugExcerpt: generateResp.error } }
@@ -617,17 +618,27 @@ const SOFTENING_PREAMBLE = `SAFETY NOTE: You are generating content for 13–16 
 
 `
 
-async function callClaude(headers, bodyObj) {
-    // 180s per-call timeout so a silently hung Claude connection surfaces as an
+async function callClaude(headers, bodyObj, timeoutMs = 180000) {
+    // Per-call timeout so a silently hung Claude connection surfaces as an
     // error instead of keeping the whole pipeline waiting forever. Sonnet 4.6
-    // generation on 25+ scripture-ref lessons can legitimately take 90–120s.
+    // generation on 25+ scripture-ref lessons can legitimately take 90–120s;
+    // well-of-words generation (30+ words with verse texts) passes 240s.
     const callWith = (obj) => fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST', headers, body: JSON.stringify(obj),
-        signal: AbortSignal.timeout(180000),
+        signal: AbortSignal.timeout(timeoutMs),
     })
 
     try {
-        let resp = await callWith(bodyObj)
+        let resp
+        try {
+            resp = await callWith(bodyObj)
+        } catch (e) {
+            if (e.name !== 'TimeoutError' && e.name !== 'AbortError') throw e
+            // One retry on a dead/hung connection — transient network stalls
+            // to api.anthropic.com are the most common generation failure.
+            await new Promise(r => setTimeout(r, 3000))
+            resp = await callWith(bodyObj)
+        }
         if (!resp.ok) {
             const txt = await resp.text()
             const isOverload = resp.status === 529 || resp.status === 500 || resp.status === 503 ||
@@ -876,10 +887,10 @@ Example: letters ["P","R","O","M","I","S","E"] → ROSE ✓, RIPE ✓, MOSES ✗
 - 10–12 target "words" per puzzle including the capstone; lengths 3–7. Prefer words that appear in
   this lesson's scriptures, then broader KJV vocabulary (any word must appear in SOME KJV verse so it
   can carry a verseBlank). Exactly ONE word per puzzle has isCapstone: true.
-- Each word: "definition" (one kid-level sentence), "verseBlank" (a real KJV phrase from the cited
+- Each word: "definition" (kid-level, max 12 words), "verseBlank" (a real KJV phrase from the cited
   verse with the word replaced by ________ — the word MUST literally appear in the verse; if it
   doesn't, pick a different verse where it does, or a different word. Never emit a verseBlank
-  without the ________ marker), "verseText" (the verbatim KJV verse, max 300 chars),
+  without the ________ marker), "verseText" (the verbatim KJV verse or its key clause, max 180 chars),
   "verseRef", "url" (exact Gospel Library URL from the references above, or null),
   "icon" (one emoji depicting the word's MEANING — not decoration), "iconLabel" (2–3 words).
 - EVERY word gets "christConnection" — one short sentence tying it to Jesus Christ (the capstone's
@@ -889,7 +900,10 @@ Example: letters ["P","R","O","M","I","S","E"] → ROSE ✓, RIPE ✓, MOSES ✗
 - Each puzzle: "theme" (3–6 word title) and "discussion" (one open class question a teacher asks
   after the puzzle is solved).
 
-Return ONLY valid JSON (no markdown, no explanation):
+Verify letter-by-letter SILENTLY — before the JSON output at most 10 short lines of working notes,
+then the JSON. Keep all prose fields tight; long responses get cut off.
+
+Return valid JSON (no markdown fences):
 {
   "topic": "...",
   "puzzles": [
