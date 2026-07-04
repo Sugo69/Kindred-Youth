@@ -2732,7 +2732,7 @@
                               : g.fit === 'good' ? 'GOOD FIT'
                               : 'LIMITED FIT';
                 const note = g.fit === 'limited'
-                    ? '<div class="twg-note">Better suited for narrative lessons</div>' : '';
+                    ? `<div class="twg-note">Better suited for ${g.bestFor || 'other'} lessons</div>` : '';
                 return `
                     <a class="this-week-game-tile ${g.color} fit-${g.fit}" href="${lessonLink(current, g.href)}">
                         <div class="twg-row">
@@ -2822,7 +2822,7 @@
                               : g.fit === 'good' ? 'GOOD FIT'
                               : 'LIMITED FIT';
                 const note = g.fit === 'limited'
-                    ? '<div class="twg-note">Better suited for narrative lessons</div>' : '';
+                    ? `<div class="twg-note">Better suited for ${g.bestFor || 'other'} lessons</div>` : '';
                 return `
                     <a class="this-week-game-tile ${g.color} fit-${g.fit}" href="${lessonLink(today, g.href)}">
                         <div class="twg-row">

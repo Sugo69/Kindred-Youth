@@ -207,11 +207,12 @@ const GAME_FIT_MATRIX = {
   },
 };
 
+// bestFor feeds the "Better suited for … lessons" note shown on limited-fit tiles.
 const GAME_META = {
-  'common-ground':   { id: 'common-ground',   icon: '🎯', name: 'Common Ground',   color: 'cyan',    href: 'games/common-ground.html'  },
-  'memory':          { id: 'memory',          icon: '🧩', name: 'Scripture Match', color: 'green',   href: 'games/memory.html'         },
-  'scripture-trail': { id: 'scripture-trail', icon: '🚶', name: 'Scripture Trail', color: 'gold',    href: 'games/scripture-trail.html' },
-  'well-of-words':   { id: 'well-of-words',   icon: '💧', name: 'Well of Words',   color: 'pink',    href: 'games/well-of-words.html'  },
+  'common-ground':   { id: 'common-ground',   icon: '🎯', name: 'Common Ground',   color: 'cyan',    href: 'games/common-ground.html',   bestFor: 'doctrinal'  },
+  'memory':          { id: 'memory',          icon: '🧩', name: 'Scripture Match', color: 'green',   href: 'games/memory.html',          bestFor: 'scripture-heavy' },
+  'scripture-trail': { id: 'scripture-trail', icon: '🚶', name: 'Scripture Trail', color: 'gold',    href: 'games/scripture-trail.html', bestFor: 'narrative'  },
+  'well-of-words':   { id: 'well-of-words',   icon: '💧', name: 'Well of Words',   color: 'pink',    href: 'games/well-of-words.html',   bestFor: 'doctrinal'  },
 };
 
 // Returns the best-fit game for a given lesson type.
