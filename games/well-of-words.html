@@ -434,9 +434,10 @@
     <div class="helper-topic" id="helper-topic">🎛 WELL OF WORDS — HELPER</div>
     <div class="helper-sub" id="helper-sub">Waiting for the classroom screen… start the game there to connect.</div>
     <div id="helper-list"></div>
-    <div class="helper-note">You see the answers — the class doesn't. 💬 meaning · 📖 verse · 🖼 picture ·
-      🔤+ reveals one more letter each tap (your discretion) · 👁 reveals the whole word (no points) ·
-      🚫 hides the current hint from the screen.</div>
+    <div class="helper-note">Answers stay masked until you peek. 💬 meaning · 📖 verse · 🖼 picture ·
+      🔤+ reveals one more letter each tap (your discretion) · 👁 first tap peeks the answer on this
+      device only, tapping “sure?” reveals it to the class (no points) — tap a peeked word to hide it
+      again · 🚫 hides the current hint from the screen.</div>
   </div>
 </div>
 
@@ -1656,18 +1657,49 @@ window.addEventListener('wow-sync-ready', setupSync);
 window.helperSend = function(type, word, tier) {
     const s = window.__wowSync;
     if (!s) return;
-    if (type === 'reveal' && !confirm(`Reveal "${word}" on the classroom screen? (no points)`)) return;
     s.setDoc(s.doc(s.db, `${s.basePath}/wowSession/cmd`), { type, word: word || null, tier: tier || null, ts: Date.now() })
         .catch(e => console.warn('[WoW helper] send failed:', e.message));
+};
+
+// Two-step eyeball: answers are masked on the helper too. First tap peeks the
+// word (helper screen only) and arms "sure?"; a second tap within 4s reveals
+// it to the whole class (no points). Letting the arm lapse keeps it peeked.
+let helperPeeked = new Set();
+let helperArmed = null, helperArmT = null;
+let helperLastState = null, helperLastPuzzle = -1;
+window.helperEye = function(word) {
+    if (helperArmed === word) {
+        clearTimeout(helperArmT);
+        helperArmed = null;
+        window.helperSend('reveal', word);
+        renderHelper(helperLastState);
+        return;
+    }
+    helperPeeked.add(word);
+    helperArmed = word;
+    clearTimeout(helperArmT);
+    helperArmT = setTimeout(() => { helperArmed = null; renderHelper(helperLastState); }, 4000);
+    renderHelper(helperLastState);
+};
+window.helperUnpeek = function(word) {
+    helperPeeked.delete(word);
+    if (helperArmed === word) { clearTimeout(helperArmT); helperArmed = null; }
+    renderHelper(helperLastState);
 };
 
 function renderHelper(state) {
     const sub = document.getElementById('helper-sub');
     const list = document.getElementById('helper-list');
+    helperLastState = state;
     if (!state || !state.words) {
         sub.textContent = 'Waiting for the classroom screen… start the game there to connect.';
         list.innerHTML = '';
         return;
+    }
+    if (state.puzzleIdx !== helperLastPuzzle) {
+        helperLastPuzzle = state.puzzleIdx;
+        helperPeeked = new Set();
+        helperArmed = null; clearTimeout(helperArmT);
     }
     const stale = Date.now() - (state.updatedAt || 0) > 1000 * 60 * 60 * 3;
     sub.innerHTML = `${esc(state.topic || '')} · Puzzle ${state.puzzleIdx + 1}/${state.totalPuzzles} · ${esc(state.theme || '')}`
@@ -1681,15 +1713,21 @@ function renderHelper(state) {
                 <span class="helper-word${w.isCapstone ? ' capstone' : ''}">${esc(w.word)}</span>
                 <span style="margin-left:auto;color:var(--water);">✓ drawn</span></div>`;
             const isOn = (t) => state.activeHint && state.activeHint.word === w.word && state.activeHint.tier === t;
+            const peeked = helperPeeked.has(w.word);
+            const armed = helperArmed === w.word;
+            const wordHtml = peeked
+                ? `<span class="helper-word${w.isCapstone ? ' capstone' : ''}" onclick="window.helperUnpeek('${w.word}')" title="Tap to hide again" style="cursor:pointer;">${esc(w.word)}${w.isCapstone ? ' ★' : ''}</span>`
+                : `<span class="helper-word" style="color:var(--ink-muted);letter-spacing:0.2em;">${'•'.repeat(w.word.length)}${w.isCapstone ? ' ★' : ''}</span>`;
             return `<div class="helper-row">
                 <span class="hintword-num">#${w.n} ${w.dir}</span>
-                <span class="helper-word${w.isCapstone ? ' capstone' : ''}">${esc(w.word)}${w.isCapstone ? ' ★' : ''}</span>
+                ${wordHtml}
+                <span style="font-size:0.68rem;color:var(--ink-muted);">${w.word.length}</span>
                 <div class="ladder-btns">
                     <button class="ladder-btn${isOn(1) ? ' on' : ''}" onclick="window.helperSend('hint','${w.word}',1)" title="Meaning">💬</button>
                     <button class="ladder-btn${isOn(2) ? ' on' : ''}" onclick="window.helperSend('hint','${w.word}',2)" title="Verse + QR">📖</button>
                     <button class="ladder-btn${isOn(3) ? ' on' : ''}" onclick="window.helperSend('hint','${w.word}',3)" title="Picture">🖼</button>
                     <button class="ladder-btn" onclick="window.helperSend('hint','${w.word}',4)" title="Reveal one more letter (repeatable)">🔤+</button>
-                    <button class="ladder-btn reveal" onclick="window.helperSend('reveal','${w.word}')" title="Reveal whole word">👁</button>
+                    <button class="ladder-btn reveal${armed ? ' armed' : ''}" onclick="window.helperEye('${w.word}')" title="${armed ? 'Tap again to reveal to the class (no points)' : 'Peek the answer (helper only)'}">${armed ? 'sure?' : '👁'}</button>
                 </div>
             </div>`;
         }).join('')
