@@ -115,16 +115,25 @@
   .hint-btn:hover { box-shadow: 0 0 14px rgba(45,212,191,0.2); }
   .blitz-btn.running { color: var(--gold); border-color: var(--gold); }
 
-  .hint-banner { display: none; width: 100%; background: rgba(45,212,191,0.08);
-    border: 1px solid rgba(45,212,191,0.35); border-radius: 10px; padding: 10px 42px 10px 16px;
-    font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.45; text-align: center; position: relative; }
-  .hint-banner.show { display: block; animation: fadeIn 0.25s ease-out; }
+  /* Fixed-height hint band — always reserved so the puzzle NEVER shifts when
+     hints change type or toggle. Content centers inside; QR floats right. */
+  .hint-banner { display: flex; flex-direction: column; justify-content: center; align-items: center;
+    width: 100%; height: clamp(92px, 13vh, 128px); overflow: hidden;
+    background: rgba(45,212,191,0.08); border: 1px solid rgba(45,212,191,0.35); border-radius: 10px;
+    padding: 8px 110px 8px 110px; font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.4;
+    text-align: center; position: relative; }
+  .hint-banner.idle { background: transparent; border-color: var(--border); }
+  .hint-banner .hint-idle-text { color: var(--ink-muted); opacity: 0.5; font-size: 0.72rem;
+    font-family: 'Orbitron', sans-serif; letter-spacing: 2px; }
+  .hint-qr { position: absolute; right: 38px; top: 50%; transform: translateY(-50%);
+    float: none; margin: 0; background: #fff; border-radius: 8px; padding: 4px; line-height: 0; }
   .hint-close { position: absolute; top: 6px; right: 8px; background: none; border: none;
     color: var(--ink-muted); font-size: 1rem; cursor: pointer; padding: 4px; }
   .hint-close:hover { color: var(--ink); }
   .hint-banner .hint-kind { font-family: 'Orbitron', sans-serif; font-size: 0.6rem;
-    letter-spacing: 2px; color: var(--water); display: block; margin-bottom: 4px; }
-  .hint-banner .hint-emoji { font-size: clamp(2.4rem, 7vw, 4rem); display: block; }
+    letter-spacing: 2px; color: var(--water); display: block; margin-bottom: 3px; }
+  .hint-banner .hint-emoji { font-size: clamp(1.8rem, 6vh, 2.6rem); display: inline-block;
+    vertical-align: middle; margin-right: 10px; line-height: 1; }
 
   /* Two-column play area: grid left, wheel right on wide screens; stacked on phones */
   .play-columns { display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -393,7 +402,7 @@
       </div>
     </div>
 
-    <div class="hint-banner" id="hint-banner"></div>
+    <div class="hint-banner idle" id="hint-banner"><span class="hint-idle-text">💡 HINTS APPEAR HERE</span></div>
 
     <div class="play-columns">
       <div class="grid-col">
@@ -1090,7 +1099,8 @@ function renderGrid() {
     const gridCol = document.querySelector('.grid-col');
     const isWide = window.matchMedia('(min-width: 1000px)').matches;
     const soloH = pack.solos.length ? pack.solos.length * 34 + 30 : 0;
-    const availH = Math.max(180, window.innerHeight - (isWide ? 190 : 470) - soloH);
+    const bannerH = (document.getElementById('hint-banner')?.offsetHeight || 100) + 10;
+    const availH = Math.max(180, window.innerHeight - (isWide ? 90 : 370) - bannerH - soloH);
     const availW = Math.max(200, (isWide ? window.innerWidth * 0.52 : window.innerWidth) - 40);
     const gap = 5;
     const size = Math.max(24, Math.min(62,
@@ -1577,20 +1587,20 @@ function refreshHintsIfOpen() {
     if (document.getElementById('hints-veil').classList.contains('show')) window.openHints();
 }
 
+// The band's height is fixed, so showing/hiding a hint never moves the puzzle.
 function showHintBanner(kind, html, qrUrl) {
     const b = document.getElementById('hint-banner');
     const qr = qrUrl && window.QRious ? '<span class="hint-qr"><canvas id="hint-qr-canvas"></canvas></span>' : '';
-    b.innerHTML = `${qr}<span class="hint-kind">${kind}</span>${html}<button class="hint-close" onclick="window.dismissHint()" aria-label="Hide hint">✕</button>`;
-    if (qr) new window.QRious({ element: document.getElementById('hint-qr-canvas'), value: qrUrl, size: 84, background: 'white', foreground: '#0a0a20' });
-    b.classList.add('show');
-    renderGrid(); // banner changes available height — refit the grid
+    b.innerHTML = `${qr}<div><span class="hint-kind">${kind}</span>${html}</div><button class="hint-close" onclick="window.dismissHint()" aria-label="Hide hint">✕</button>`;
+    if (qr) new window.QRious({ element: document.getElementById('hint-qr-canvas'), value: qrUrl, size: 78, background: 'white', foreground: '#0a0a20' });
+    b.classList.remove('idle');
 }
 window.dismissHint = function() { hideHintBanner(); };
 function hideHintBanner() {
     const b = document.getElementById('hint-banner');
-    b.classList.remove('show'); b.innerHTML = '';
+    b.innerHTML = '<span class="hint-idle-text">💡 HINTS APPEAR HERE</span>';
+    b.classList.add('idle');
     activeHint = null;
-    if (pack) renderGrid();
 }
 
 // ── Blitz timer (facilitation aid — no lockout) ──────────────────────────────
