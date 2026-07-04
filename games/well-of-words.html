@@ -33,6 +33,26 @@
   .back-nav .sep { color: var(--border); }
   .back-nav .game-name { color: var(--glow); }
 
+  /* Display-scale gear (Kindred standard: Mobile/Tablet/HD/4K presets) */
+  .scale-menu-wrap { margin-left: auto; position: relative; }
+  .scale-gear { background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--ink-muted); font-size: 0.9rem; padding: 3px 9px; cursor: pointer; line-height: 1; }
+  .scale-gear:hover { color: var(--ink); border-color: var(--ink-muted); }
+  .scale-menu { display: none; position: absolute; right: 0; top: calc(100% + 8px);
+    background: var(--bg-2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 10px; min-width: 190px; z-index: 300; box-shadow: 0 10px 30px rgba(0,0,0,0.6); }
+  .scale-menu.open { display: block; animation: fadeIn 0.15s ease-out; }
+  .scale-menu-title { font-size: 0.6rem; letter-spacing: 2px; color: var(--ink-muted);
+    margin-bottom: 8px; }
+  .scale-opt { display: flex; justify-content: space-between; gap: 14px; width: 100%;
+    background: none; border: 1px solid transparent; border-radius: 8px; padding: 8px 10px;
+    color: var(--ink); font-family: 'Rajdhani', sans-serif; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; text-align: left; }
+  .scale-opt span { color: var(--ink-muted); font-size: 0.8rem; }
+  .scale-opt:hover { border-color: var(--border); }
+  .scale-opt.active { border-color: var(--glow); color: var(--glow-soft); }
+  .scale-opt.active span { color: var(--glow-soft); }
+
   /* ── Scenes ── */
   .scene { display: none; flex: 1; }
   .scene.active { display: flex; flex-direction: column; }
@@ -280,6 +300,16 @@
   <a href="../index.html">← Kindred Hub</a>
   <span class="sep">|</span>
   <span class="game-name">Well of Words</span>
+  <div class="scale-menu-wrap">
+    <button class="scale-gear" id="scale-gear" onclick="window.toggleScaleMenu()" aria-label="Display scale">⚙</button>
+    <div class="scale-menu" id="scale-menu">
+      <div class="scale-menu-title">DISPLAY SCALE</div>
+      <button class="scale-opt" data-scale="0.55" onclick="window.setDisplayScale(0.55)">📱 Mobile <span>0.55×</span></button>
+      <button class="scale-opt" data-scale="0.75" onclick="window.setDisplayScale(0.75)">📟 Tablet <span>0.75×</span></button>
+      <button class="scale-opt" data-scale="1" onclick="window.setDisplayScale(1)">🖥 HD <span>1.0×</span></button>
+      <button class="scale-opt" data-scale="1.3" onclick="window.setDisplayScale(1.3)">📺 4K <span>1.3×</span></button>
+    </div>
+  </div>
 </div>
 
 <!-- ── SETUP SCENE ── -->
@@ -502,10 +532,30 @@ initFirebase().then(() => {
    ══════════════════════════════════════════════════════════════════════════ */
 
 // Display scale (Kindred house preset: Mobile 0.55 / Tablet 0.75 / HD 1.0 / 4K 1.3)
-(function applyDisplayScale() {
-    const s = parseFloat(localStorage.getItem('kindred_display_scale'));
-    if (s && s !== 1 && !Number.isNaN(s)) document.body.style.zoom = s;
-})();
+// Shared key: localStorage.kindred_display_scale — read by every game, set here via ⚙.
+function applyDisplayScale(s) {
+    document.body.style.zoom = (s && s !== 1) ? s : '';
+    document.querySelectorAll('.scale-opt').forEach(b =>
+        b.classList.toggle('active', parseFloat(b.dataset.scale) === (s || 1)));
+    // zoom changes effective viewport metrics — refit game surfaces if playing.
+    // Scene check FIRST: it short-circuits the initial pre-declaration call so
+    // `pack` (declared later in this script) is never touched in its TDZ.
+    if (document.getElementById('play-scene')?.classList.contains('active') && pack) {
+        renderWheel(); renderGrid();
+    }
+}
+window.setDisplayScale = function(s) {
+    localStorage.setItem('kindred_display_scale', String(s));
+    applyDisplayScale(s);
+    document.getElementById('scale-menu').classList.remove('open');
+};
+window.toggleScaleMenu = function() {
+    document.getElementById('scale-menu').classList.toggle('open');
+};
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.scale-menu-wrap')) document.getElementById('scale-menu')?.classList.remove('open');
+});
+applyDisplayScale(parseFloat(localStorage.getItem('kindred_display_scale')) || 1);
 
 // Mode plumbing — 🌱 Spring (K-6) ships in v1.1; only 'well' is exposed in v1.
 const WOW_MODE = 'well';                       // 'well' | 'spring'
