@@ -99,7 +99,12 @@
   .topic-block { min-width: 0; }
   .topic-title { font-family: 'Orbitron', sans-serif; font-size: clamp(0.75rem, 2vw, 1rem);
     color: var(--glow); letter-spacing: 1.5px; }
-  .topic-sub { font-size: clamp(0.75rem, 1.8vw, 0.9rem); color: var(--ink-muted); }
+  .topic-sub { font-size: clamp(0.75rem, 1.8vw, 0.9rem); color: var(--ink-muted);
+    display: flex; align-items: center; gap: 6px; }
+  .puz-nav { background: none; border: 1px solid var(--border); border-radius: 6px;
+    color: var(--ink-muted); font-size: 1rem; line-height: 1; padding: 1px 8px 3px; cursor: pointer; }
+  .puz-nav:hover:not(:disabled) { color: var(--glow-soft); border-color: var(--glow-soft); }
+  .puz-nav:disabled { opacity: 0.25; cursor: default; }
   .team-chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
   .team-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 10px;
     border: 2px solid var(--border); background: var(--bg-2); cursor: pointer;
@@ -413,7 +418,11 @@
     <div class="top-bar">
       <div class="topic-block">
         <div class="topic-title" id="topic-title"></div>
-        <div class="topic-sub" id="topic-sub"></div>
+        <div class="topic-sub">
+          <button class="puz-nav" id="puz-prev" onclick="window.jumpPuzzle(-1)" title="Previous puzzle">‹</button>
+          <span id="topic-sub-text"></span>
+          <button class="puz-nav" id="puz-next" onclick="window.jumpPuzzle(1)" title="Next puzzle">›</button>
+        </div>
       </div>
       <div class="team-chips">
         <div class="team-chip active" id="score-chip" style="cursor:default;">
@@ -1086,7 +1095,9 @@ function loadPuzzle() {
     stopBlitz();
     hideHintBanner();
     document.getElementById('topic-title').textContent = gameTopic.toUpperCase();
-    document.getElementById('topic-sub').textContent = `Puzzle ${puzzleIdx + 1} of ${puzzles.length} · ${p.theme || ''}`;
+    document.getElementById('topic-sub-text').textContent = `Puzzle ${puzzleIdx + 1} of ${puzzles.length} · ${p.theme || ''}`;
+    document.getElementById('puz-prev').disabled = puzzleIdx === 0;
+    document.getElementById('puz-next').disabled = puzzleIdx >= puzzles.length - 1;
     renderScore(); renderGrid(); renderBucket(); renderWheel(); renderPreview();
     publishState();
 }
@@ -1095,6 +1106,18 @@ window.nextPuzzle = function() {
     document.getElementById('overflow-veil').classList.remove('show');
     if (puzzleIdx < puzzles.length - 1) { puzzleIdx++; loadPuzzle(); }
     else { showScene('setup-scene'); }   // final overflow already showed closing content
+};
+
+// Teacher navigation: jump between puzzles freely (recovery after a refresh,
+// or pacing — skip ahead when time runs short, jump back to revisit).
+window.jumpPuzzle = function(delta) {
+    const target = puzzleIdx + delta;
+    if (target < 0 || target >= puzzles.length) return;
+    const p = puzzles[puzzleIdx];
+    const inProgress = solved.size > 0 && !p.words.every(w => solved.has(w.word));
+    if (inProgress && !confirm(`Leave puzzle ${puzzleIdx + 1} (${solved.size}/${p.words.length} words drawn)? Its progress resets.`)) return;
+    puzzleIdx = target;
+    loadPuzzle();
 };
 
 // ── Renders ──────────────────────────────────────────────────────────────────
