@@ -418,11 +418,7 @@
     <div class="top-bar">
       <div class="topic-block">
         <div class="topic-title" id="topic-title"></div>
-        <div class="topic-sub">
-          <button class="puz-nav" id="puz-prev" onclick="window.jumpPuzzle(-1)" title="Previous puzzle">‹</button>
-          <span id="topic-sub-text"></span>
-          <button class="puz-nav" id="puz-next" onclick="window.jumpPuzzle(1)" title="Next puzzle">›</button>
-        </div>
+        <div class="topic-sub"><span id="topic-sub-text"></span></div>
       </div>
       <div class="team-chips">
         <div class="team-chip active" id="score-chip" style="cursor:default;">
@@ -1096,8 +1092,6 @@ function loadPuzzle() {
     hideHintBanner();
     document.getElementById('topic-title').textContent = gameTopic.toUpperCase();
     document.getElementById('topic-sub-text').textContent = `Puzzle ${puzzleIdx + 1} of ${puzzles.length} · ${p.theme || ''}`;
-    document.getElementById('puz-prev').disabled = puzzleIdx === 0;
-    document.getElementById('puz-next').disabled = puzzleIdx >= puzzles.length - 1;
     renderScore(); renderGrid(); renderBucket(); renderWheel(); renderPreview();
     publishState();
 }
@@ -1110,14 +1104,11 @@ window.nextPuzzle = function() {
 
 // Teacher navigation: jump between puzzles freely (recovery after a refresh,
 // or pacing — skip ahead when time runs short, jump back to revisit).
-window.jumpPuzzle = function(delta, skipConfirm) {
+// Invoked only via helper cmds (no monitor UI) — the helper's two-tap "sure?"
+// is the safeguard, so no confirm() blocks the unattended monitor.
+window.jumpPuzzle = function(delta) {
     const target = puzzleIdx + delta;
     if (target < 0 || target >= puzzles.length) return;
-    const p = puzzles[puzzleIdx];
-    const inProgress = solved.size > 0 && !p.words.every(w => solved.has(w.word));
-    // skipConfirm: helper jumps already passed the two-tap "sure?" on the phone —
-    // a confirm() here would block the monitor waiting for a click nobody's at.
-    if (!skipConfirm && inProgress && !confirm(`Leave puzzle ${puzzleIdx + 1} (${solved.size}/${p.words.length} words drawn)? Its progress resets.`)) return;
     puzzleIdx = target;
     loadPuzzle();
 };
@@ -1716,7 +1707,7 @@ function publishState() {
 function applyHelperCmd(c) {
     if (!c) return;
     if (c.type === 'hide') { hideHintBanner(); publishState(); return; }
-    if (c.type === 'jump') { window.jumpPuzzle(c.tier === -1 ? -1 : 1, true); return; }
+    if (c.type === 'jump') { window.jumpPuzzle(c.tier === -1 ? -1 : 1); return; }
     if (!wordMap[c.word]) return;
     if (solved.has(c.word)) return;
     if (c.type === 'reveal') { solveWord(c.word, { withPoints: false }); return; }
