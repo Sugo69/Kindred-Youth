@@ -205,14 +205,52 @@
   .stone.sel { border-color: var(--glow); background: linear-gradient(145deg, #3a1330, #240a1e);
     box-shadow: 0 0 16px rgba(255,0,127,0.45); color: #fff; }
 
-  .wheel-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .wheel-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; align-items: center; }
   .wc-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
     background: var(--bg-2); color: var(--ink); font-family: 'Rajdhani', sans-serif;
     font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.12s; }
   .wc-btn:active { transform: scale(0.96); }
+  .wc-btn.shuffle { background: rgba(45,212,191,0.12); border-color: var(--water); color: var(--water);
+    font-family: 'Orbitron', sans-serif; font-size: 0.8rem; letter-spacing: 1.5px; padding: 13px 22px; }
+  .wc-btn.shuffle:hover { box-shadow: 0 0 16px rgba(45,212,191,0.25); }
   .wc-btn.submit { background: var(--glow); border-color: var(--glow); color: #fff;
     font-family: 'Orbitron', sans-serif; font-size: 0.72rem; letter-spacing: 1.5px; padding: 12px 22px; }
   .wc-btn.submit:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* Tried words — attempts that aren't in this well, so nobody repeats them */
+  .tried-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+    max-width: 100%; }
+  .tried-label { font-size: 0.62rem; letter-spacing: 2px; color: var(--ink-muted);
+    font-family: 'Orbitron', sans-serif; }
+  .tried-chip { padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border);
+    color: var(--ink-muted); font-size: 0.75rem; font-weight: 600; text-decoration: line-through;
+    text-decoration-color: rgba(255,92,168,0.5); }
+
+  /* Custom scale slider */
+  .scale-custom { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+  .scale-custom label { display: flex; justify-content: space-between; font-size: 0.78rem;
+    color: var(--ink-muted); margin-bottom: 4px; }
+  .scale-custom input[type="range"] { width: 100%; accent-color: var(--glow); }
+
+  /* Mini QR inside the verse hint banner */
+  .hint-qr { float: right; background: #fff; border-radius: 8px; padding: 4px; line-height: 0;
+    margin-left: 10px; }
+
+  /* Helper (second device) view */
+  #helper-scene { padding: 16px 12px 40px; align-items: center; }
+  .helper-card { width: 100%; max-width: 720px; background: var(--bg-2); border: 1px solid var(--border);
+    border-radius: 16px; padding: 18px; }
+  .helper-topic { font-family: 'Orbitron', sans-serif; color: var(--glow); font-size: 0.85rem;
+    letter-spacing: 1.5px; }
+  .helper-sub { color: var(--ink-muted); font-size: 0.85rem; margin: 2px 0 14px; }
+  .helper-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+    border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .helper-row.solved { opacity: 0.45; }
+  .helper-word { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.15rem;
+    letter-spacing: 0.12em; color: var(--ink); }
+  .helper-word.capstone { color: var(--gold); }
+  .helper-note { color: var(--ink-muted); font-size: 0.8rem; line-height: 1.5; margin-top: 12px;
+    border-top: 1px solid var(--border); padding-top: 10px; }
 
   /* ── Modals ── */
   .modal-veil { display: none; position: fixed; inset: 0; background: rgba(6,6,16,0.82);
@@ -308,6 +346,11 @@
       <button class="scale-opt" data-scale="0.75" onclick="window.setDisplayScale(0.75)">📟 Tablet <span>0.75×</span></button>
       <button class="scale-opt" data-scale="1" onclick="window.setDisplayScale(1)">🖥 HD <span>1.0×</span></button>
       <button class="scale-opt" data-scale="1.3" onclick="window.setDisplayScale(1.3)">📺 4K <span>1.3×</span></button>
+      <div class="scale-custom">
+        <label>🎚 Custom <span id="scale-custom-val">1.0×</span></label>
+        <input type="range" id="scale-slider" min="0.4" max="1.6" step="0.05" value="1"
+          oninput="window.setDisplayScale(parseFloat(this.value), true)">
+      </div>
     </div>
   </div>
 </div>
@@ -357,6 +400,10 @@
           <span class="bucket-label">🪣 BUCKET</span>
           <span id="bucket-chips"></span>
         </div>
+        <div class="tried-row" id="tried-row" style="display:none;">
+          <span class="tried-label">TRIED — NOT IN THIS WELL:</span>
+          <span id="tried-chips"></span>
+        </div>
       </div>
 
       <div class="well-col">
@@ -367,14 +414,26 @@
             <svg class="drag-svg" id="drag-svg"></svg>
           </div>
           <div class="wheel-controls">
-            <button class="wc-btn" onclick="window.wowShuffle()">🔀 Shuffle</button>
-            <button class="wc-btn" onclick="window.wowBackspace()">⌫</button>
-            <button class="wc-btn" onclick="window.wowClear()">✕</button>
-            <button class="wc-btn submit" id="submit-btn" onclick="window.wowSubmit()" disabled>DRAW ↑</button>
+            <button class="wc-btn shuffle" onclick="window.wowShuffle()" title="Rearrange the letters on the well">🔀 SHUFFLE</button>
+            <button class="wc-btn" onclick="window.wowBackspace()" title="Remove the last letter">⌫ Undo</button>
+            <button class="wc-btn" onclick="window.wowClear()" title="Clear the whole word">✕ Clear</button>
+            <button class="wc-btn submit" id="submit-btn" onclick="window.wowSubmit()" disabled title="Draw this word up from the well (submit)">DRAW WORD ↑</button>
           </div>
         </div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- ── HELPER SCENE (second device — ?mode=helper) ── -->
+<div class="scene" id="helper-scene">
+  <div class="helper-card">
+    <div class="helper-topic" id="helper-topic">🎛 WELL OF WORDS — HELPER</div>
+    <div class="helper-sub" id="helper-sub">Waiting for the classroom screen… start the game there to connect.</div>
+    <div id="helper-list"></div>
+    <div class="helper-note">You see the answers — the class doesn't. 💬 meaning · 📖 verse · 🖼 picture ·
+      🔤+ reveals one more letter each tap (your discretion) · 👁 reveals the whole word (no points) ·
+      🚫 hides the current hint from the screen.</div>
   </div>
 </div>
 
@@ -417,8 +476,10 @@
   <div class="modal-card water-border">
     <div style="font-family:'Orbitron',sans-serif;letter-spacing:2px;color:var(--water);font-size:0.9rem;margin-bottom:6px;">💡 TEACHER HINT LADDER</div>
     <div style="color:var(--ink-muted);font-size:0.85rem;margin-bottom:14px;line-height:1.4;">
-      One step at a time, in order: 💬 meaning → 📖 verse → 🖼 picture → 🔤 first letter → 👁 reveal.
-      Let the class wrestle before each step — the verse hint is the lesson.
+      Any word, any hint, any order: 💬 meaning · 📖 verse (+QR) · 🖼 picture · 🔤+ one more letter each tap · 👁 reveal.
+      Let the class wrestle before each step — the verse hint is the lesson.<br>
+      <span style="color:var(--water)">📱 Second device:</span> open this same page on a phone with
+      <b>&amp;mode=helper</b> added to the URL (keep the same ?room=) — it shows the answers and controls these hints remotely.
     </div>
     <div id="hintword-list"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:10px;">
@@ -430,7 +491,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, getDoc, collection, getDocs, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 const firebaseConfig = {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -443,6 +504,9 @@ const firebaseConfig = {
 
 const appId = 'exodus-feud-final-v10';
 const globalBasePath = `artifacts/${appId}/public/data`;
+// Session sync (monitor ↔ helper) is classroom-scoped via ?room= like Common Ground
+const wowRoomId = new URLSearchParams(location.search).get('room');
+const wowBasePath = wowRoomId ? `${globalBasePath}/classrooms/${wowRoomId}` : globalBasePath;
 
 let db = null;
 async function initFirebase() {
@@ -452,6 +516,8 @@ async function initFirebase() {
         db = getFirestore(app);
         await auth.authStateReady();
         if (!auth.currentUser) await signInAnonymously(auth);
+        window.__wowSync = { db, doc, setDoc, onSnapshot, basePath: wowBasePath };
+        window.dispatchEvent(new Event('wow-sync-ready'));
     } catch (e) {
         console.warn('[WoW] Firebase unavailable — demo mode only:', e.message);
         db = null;
@@ -537,6 +603,10 @@ function applyDisplayScale(s) {
     document.body.style.zoom = (s && s !== 1) ? s : '';
     document.querySelectorAll('.scale-opt').forEach(b =>
         b.classList.toggle('active', parseFloat(b.dataset.scale) === (s || 1)));
+    const slider = document.getElementById('scale-slider');
+    const sliderVal = document.getElementById('scale-custom-val');
+    if (slider) slider.value = s || 1;
+    if (sliderVal) sliderVal.textContent = (s || 1).toFixed(2).replace(/0$/, '') + '×';
     // zoom changes effective viewport metrics — refit game surfaces if playing.
     // Scene check FIRST: it short-circuits the initial pre-declaration call so
     // `pack` (declared later in this script) is never touched in its TDZ.
@@ -544,10 +614,10 @@ function applyDisplayScale(s) {
         renderWheel(); renderGrid();
     }
 }
-window.setDisplayScale = function(s) {
+window.setDisplayScale = function(s, fromSlider) {
     localStorage.setItem('kindred_display_scale', String(s));
     applyDisplayScale(s);
-    document.getElementById('scale-menu').classList.remove('open');
+    if (!fromSlider) document.getElementById('scale-menu').classList.remove('open');
 };
 window.toggleScaleMenu = function() {
     document.getElementById('scale-menu').classList.toggle('open');
@@ -866,7 +936,18 @@ let hintsUsed = {};         // WORD -> Set of tiers already shown (visual cue on
 let activeHint = null;      // { word, tier } currently on the banner, or null
 let armedReveal = null;     // word armed for 👁 reveal confirm (2nd tap fires)
 let wordNums = {};          // WORD -> { n, dir } crossword-style numbering
+let tried = new Set();      // valid-shaped attempts that aren't in this well (shown so nobody repeats)
 let classScore = 0;         // one class, one well — whole-class cooperative score
+
+// Second-device helper mode (?mode=helper) — controls hints on the monitor via Firestore
+const IS_HELPER = new URLSearchParams(location.search).get('mode') === 'helper';
+
+// Client-side display scrub for the tried-words list: anything a kid types can
+// end up on the classroom TV here, so crude words get the ripple but no chip.
+// (Biblical words like ASS/HELL stay allowed, per the compliance house rule.)
+const TRIED_BLOCK = /^(SHIT|SH1T|FU+C*K+\w*|FUK|FCK|CUNT|COCK|DICK|DIK|PISS|TIT|TITS|TITTY|ARSE|ANUS|SLUT|CUM|SEMEN|SEX|SEXY|FAG|FAGS|JIZZ?|RAPE|RAPES|NAZI|NIGGA|NIGGER|DAMN|CRAP|HOE|HOES|WTF|STFU|PORN|BONER|QUEEF)$/;
+
+function zoomFactor() { return parseFloat(document.body.style.zoom) || 1; }
 let stoneOrder = [];        // letters in current wheel arrangement
 let selection = [];         // indices into stoneOrder
 let dragging = false;
@@ -940,7 +1021,8 @@ function showScene(id) {
 function loadPuzzle() {
     const p = puzzles[puzzleIdx];
     solved = new Set(); bonusFound = new Set(); hintLetters = new Set();
-    hintsUsed = {}; activeHint = null; armedReveal = null;
+    hintsUsed = {}; activeHint = null; armedReveal = null; tried = new Set();
+    renderTried();
     selection = [];
     wordMap = Object.fromEntries(p.words.map(w => [w.word, w]));
     pack = packCrossword(p.words.map(w => w.word));
@@ -964,6 +1046,7 @@ function loadPuzzle() {
     document.getElementById('topic-title').textContent = gameTopic.toUpperCase();
     document.getElementById('topic-sub').textContent = `Puzzle ${puzzleIdx + 1} of ${puzzles.length} · ${p.theme || ''}`;
     renderScore(); renderGrid(); renderBucket(); renderWheel(); renderPreview();
+    publishState();
 }
 
 window.nextPuzzle = function() {
@@ -1038,8 +1121,10 @@ function renderGrid() {
         soloRow.innerHTML = '<span class="solo-label">ALSO IN THE WELL:</span>' + pack.solos.map(w => {
             const isCap = wordMap[w]?.isCapstone;
             const isSolved = solved.has(w);
-            return `<div class="solo-word"><span class="solo-num">#${wordNums[w]?.n ?? ''}</span>${[...w].map((ch, i) =>
-                `<span class="cell${isCap ? ' capstone' : ''}${isSolved ? ' solved' : ''}" data-solo="${w}:${i}">${isSolved ? ch : ''}</span>`).join('')}</div>`;
+            return `<div class="solo-word"><span class="solo-num">#${wordNums[w]?.n ?? ''}</span>${[...w].map((ch, i) => {
+                const isHinted = !isSolved && hintLetters.has(`solo:${w}:${i}`);
+                return `<span class="cell${isCap ? ' capstone' : ''}${isSolved ? ' solved' : ''}${isHinted ? ' hint-letter' : ''}" data-solo="${w}:${i}">${(isSolved || isHinted) ? ch : ''}</span>`;
+            }).join('')}</div>`;
         }).join('');
     } else { soloRow.style.display = 'none'; soloRow.innerHTML = ''; }
 }
@@ -1128,16 +1213,20 @@ function updateSelectionUI() {
         s.classList.toggle('sel', selection.includes(Number(s.dataset.idx))));
 }
 function stoneCenter(idx) {
+    // getBoundingClientRect returns zoomed client px; the SVG's coordinate space
+    // is layout px — divide by the display zoom or the lines land in the wrong place.
+    const z = zoomFactor();
     const el = document.querySelector(`.stone[data-idx="${idx}"]`);
     const ring = document.getElementById('well-ring').getBoundingClientRect();
     const r = el.getBoundingClientRect();
-    return { x: r.left - ring.left + r.width / 2, y: r.top - ring.top + r.height / 2 };
+    return { x: (r.left - ring.left + r.width / 2) / z, y: (r.top - ring.top + r.height / 2) / z };
 }
 function drawDragLines(e) {
+    const z = zoomFactor();
     const svg = document.getElementById('drag-svg');
     const ring = document.getElementById('well-ring').getBoundingClientRect();
     let pts = selection.map(stoneCenter);
-    if (e && dragging) pts.push({ x: e.clientX - ring.left, y: e.clientY - ring.top });
+    if (e && dragging) pts.push({ x: (e.clientX - ring.left) / z, y: (e.clientY - ring.top) / z });
     svg.innerHTML = pts.length > 1
         ? `<polyline points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" fill="none" stroke="var(--glow)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`
         : '';
@@ -1171,13 +1260,26 @@ window.wowSubmit = function() {
         sfxBonus(); renderBucket(); renderScore();
         return;
     }
-    // already found, or not in this well → gentle ripple
+    // already found, or not in this well → gentle ripple; log clean attempts
+    // so the class doesn't keep re-trying the same word
+    if (word.length >= 3 && !wordMap[word] && !p.bonusWords.includes(word) && !TRIED_BLOCK.test(word)) {
+        tried.add(word);
+        renderTried();
+    }
     sfxInvalid();
     const strip = document.getElementById('preview-strip');
     strip.innerHTML = [...word].map(ch => `<span class="preview-tile" style="border-color:var(--border);color:var(--ink-muted);">${ch}</span>`).join('');
     strip.classList.add('shake');
     setTimeout(() => { strip.classList.remove('shake'); renderPreview(); }, 450);
 };
+
+function renderTried() {
+    const row = document.getElementById('tried-row');
+    if (!tried.size) { row.style.display = 'none'; return; }
+    row.style.display = 'flex';
+    document.getElementById('tried-chips').innerHTML =
+        [...tried].map(w => `<span class="tried-chip">${w}</span>`).join(' ');
+}
 
 function solveWord(word, { withPoints }) {
     solved.add(word);
@@ -1187,6 +1289,7 @@ function solveWord(word, { withPoints }) {
     if (pts) classScore += pts;
     sfxValid();
     renderGrid(); renderScore();
+    publishState();
     // pop animation on the word's cells
     const pl = pack.placements.find(x => x.word === word);
     if (pl) cellsOf(pl).forEach((cc, i) => {
@@ -1284,11 +1387,34 @@ function rainDroplets() {
 // ── Hint ladder (teacher-triggered, in order) ────────────────────────────────
 const HINT_TIERS = [
     { n: 1, icon: '💬', label: 'Meaning' },
-    { n: 2, icon: '📖', label: 'Verse' },
+    { n: 2, icon: '📖', label: 'Verse (+QR)' },
     { n: 3, icon: '🖼', label: 'Picture' },
-    { n: 4, icon: '🔤', label: 'First letter' },
-    { n: 5, icon: '👁', label: 'Reveal' },
+    { n: 4, icon: '🔤+', label: 'Reveal one more letter (repeatable)' },
+    { n: 5, icon: '👁', label: 'Reveal whole word' },
 ];
+
+// Reveal the next hidden letter of a word (teacher's discretion, repeatable).
+// Returns the revealed index, or 'complete' when every letter is already visible.
+function isCellVisible(k) {
+    if (hintLetters.has(k)) return true;
+    return pack.placements.some(q => solved.has(q.word) && cellsOf(q).some(c => c.r + ',' + c.c === k));
+}
+function revealNextLetter(word) {
+    const pl = pack.placements.find(x => x.word === word);
+    if (pl) {
+        const cells = cellsOf(pl);
+        for (let i = 0; i < cells.length; i++) {
+            const k = cells[i].r + ',' + cells[i].c;
+            if (!isCellVisible(k)) { hintLetters.add(k); renderGrid(); return i; }
+        }
+        return 'complete';
+    }
+    for (let i = 0; i < word.length; i++) {
+        const k = `solo:${word}:${i}`;
+        if (!hintLetters.has(k)) { hintLetters.add(k); renderGrid(); return i; }
+    }
+    return 'complete';
+}
 
 window.openHints = function() {
     const p = puzzles[puzzleIdx];
@@ -1303,7 +1429,7 @@ window.openHints = function() {
             const num = wordNums[w.word] || {};
             const slots = [...w.word].map((ch, i) => {
                 const cellK = placedCellKey(w.word, i);
-                const shown = cellK && hintLetters.has(cellK);
+                const shown = (cellK && hintLetters.has(cellK)) || hintLetters.has(`solo:${w.word}:${i}`);
                 return `<span class="hintword-slot${w.isCapstone ? ' gold' : ''}">${shown ? ch : ''}</span>`;
             }).join('');
             const btns = HINT_TIERS.map(t => {
@@ -1359,27 +1485,37 @@ window.useHint = function(word, tier) {
         return;
     }
 
-    (hintsUsed[word] = hintsUsed[word] || new Set()).add(tier);
     const numLabel = wordNums[word] ? `#${wordNums[word].n} · ` : '';
-    if (tier === 1) showHintBanner(`${numLabel}💬 MEANING`, esc(w.definition || '(no definition provided)'));
-    if (tier === 2) showHintBanner(`${numLabel}📖 FROM THE VERSE`, '“' + esc(w.verseBlank || w.verseText || '') + '”' + (w.verseRef ? ` <span style="color:var(--water);font-size:0.8em;">— ${esc(w.verseRef)}</span>` : ''));
-    if (tier === 3) showHintBanner(`${numLabel}🖼 PICTURE`, `<span class="hint-emoji">${esc(w.icon || '💧')}</span>${esc(w.iconLabel || '')}`);
     if (tier === 4) {
-        const k = placedCellKey(word, 0);
-        if (k) { hintLetters.add(k); renderGrid(); }
-        showHintBanner(`${numLabel}🔤 FIRST LETTER`, `The word starts with <b style="color:var(--glow-soft)">${word[0]}</b>`);
+        // Repeatable: each press reveals one more letter on the board.
+        const idx = revealNextLetter(word);
+        if (idx === 'complete') { window.closeHints(); solveWord(word, { withPoints: false }); return; }
+        (hintsUsed[word] = hintsUsed[word] || new Set()).add(tier);
+        showHintBanner(`${numLabel}🔤 LETTER`, `Letter ${idx + 1} revealed on the board`);
+        activeHint = { word, tier };
+        window.closeHints();
+        publishState();
+        return;
     }
+
+    (hintsUsed[word] = hintsUsed[word] || new Set()).add(tier);
+    if (tier === 1) showHintBanner(`${numLabel}💬 MEANING`, esc(w.definition || '(no definition provided)'));
+    if (tier === 2) showHintBanner(`${numLabel}📖 FROM THE VERSE`, '“' + esc(w.verseBlank || w.verseText || '') + '”' + (w.verseRef ? ` <span style="color:var(--water);font-size:0.8em;">— ${esc(w.verseRef)}</span>` : ''), buildVerseUrl(w));
+    if (tier === 3) showHintBanner(`${numLabel}🖼 PICTURE`, `<span class="hint-emoji">${esc(w.icon || '💧')}</span>${esc(w.iconLabel || '')}`);
     activeHint = { word, tier };
     window.closeHints();
+    publishState();
 };
 
 function refreshHintsIfOpen() {
     if (document.getElementById('hints-veil').classList.contains('show')) window.openHints();
 }
 
-function showHintBanner(kind, html) {
+function showHintBanner(kind, html, qrUrl) {
     const b = document.getElementById('hint-banner');
-    b.innerHTML = `<span class="hint-kind">${kind}</span>${html}<button class="hint-close" onclick="window.dismissHint()" aria-label="Hide hint">✕</button>`;
+    const qr = qrUrl && window.QRious ? '<span class="hint-qr"><canvas id="hint-qr-canvas"></canvas></span>' : '';
+    b.innerHTML = `${qr}<span class="hint-kind">${kind}</span>${html}<button class="hint-close" onclick="window.dismissHint()" aria-label="Hide hint">✕</button>`;
+    if (qr) new window.QRious({ element: document.getElementById('hint-qr-canvas'), value: qrUrl, size: 84, background: 'white', foreground: '#0a0a20' });
     b.classList.add('show');
     renderGrid(); // banner changes available height — refit the grid
 }
@@ -1410,6 +1546,114 @@ function stopBlitz() {
     const btn = document.getElementById('blitz-btn');
     btn.classList.remove('running');
     btn.textContent = '⏱ BLITZ 90s';
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   Monitor ↔ Helper sync (Common Ground pattern, classroom-scoped via ?room=)
+   Monitor publishes wowSession/state after every change; the helper device
+   (?mode=helper) renders the word list WITH answers and sends commands via
+   wowSession/cmd. Everything no-ops silently when Firestore is unavailable.
+   ══════════════════════════════════════════════════════════════════════════ */
+let _lastCmdTs = Date.now(); // ignore commands from before this monitor loaded
+
+function publishState() {
+    const s = window.__wowSync;
+    if (!s || IS_HELPER || !pack) return;
+    const p = puzzles[puzzleIdx];
+    s.setDoc(s.doc(s.db, `${s.basePath}/wowSession/state`), {
+        topic: gameTopic,
+        puzzleIdx,
+        totalPuzzles: puzzles.length,
+        theme: p.theme || '',
+        letters: p.letters,
+        words: p.words.map(w => ({
+            n: wordNums[w.word]?.n ?? 0,
+            dir: wordNums[w.word]?.dir ?? '',
+            word: w.word,
+            isCapstone: !!w.isCapstone,
+            solved: solved.has(w.word),
+        })),
+        activeHint: activeHint ? { word: activeHint.word, tier: activeHint.tier } : null,
+        updatedAt: Date.now(),
+    }).catch(e => console.warn('[WoW sync] publish failed:', e.message));
+}
+
+function applyHelperCmd(c) {
+    if (!c || !wordMap[c.word] && c.type !== 'hide') return;
+    if (c.type === 'hide') { hideHintBanner(); publishState(); return; }
+    if (solved.has(c.word)) return;
+    if (c.type === 'reveal') { solveWord(c.word, { withPoints: false }); return; }
+    if (c.type === 'hint') { window.useHint(c.word, c.tier); return; } // covers tiers 1-4
+}
+
+function setupSync() {
+    const s = window.__wowSync;
+    if (!s) return;
+    if (IS_HELPER) {
+        // Helper listens to state and renders the control panel
+        s.onSnapshot(s.doc(s.db, `${s.basePath}/wowSession/state`), snap => {
+            renderHelper(snap.exists() ? snap.data() : null);
+        }, e => console.warn('[WoW helper] state listen failed:', e.message));
+    } else {
+        // Monitor listens for helper commands
+        s.onSnapshot(s.doc(s.db, `${s.basePath}/wowSession/cmd`), snap => {
+            const c = snap.exists() ? snap.data() : null;
+            if (!c || !c.ts || c.ts <= _lastCmdTs) return;
+            _lastCmdTs = c.ts;
+            applyHelperCmd(c);
+        }, e => console.warn('[WoW monitor] cmd listen failed:', e.message));
+    }
+}
+window.addEventListener('wow-sync-ready', setupSync);
+
+window.helperSend = function(type, word, tier) {
+    const s = window.__wowSync;
+    if (!s) return;
+    if (type === 'reveal' && !confirm(`Reveal "${word}" on the classroom screen? (no points)`)) return;
+    s.setDoc(s.doc(s.db, `${s.basePath}/wowSession/cmd`), { type, word: word || null, tier: tier || null, ts: Date.now() })
+        .catch(e => console.warn('[WoW helper] send failed:', e.message));
+};
+
+function renderHelper(state) {
+    const sub = document.getElementById('helper-sub');
+    const list = document.getElementById('helper-list');
+    if (!state || !state.words) {
+        sub.textContent = 'Waiting for the classroom screen… start the game there to connect.';
+        list.innerHTML = '';
+        return;
+    }
+    const stale = Date.now() - (state.updatedAt || 0) > 1000 * 60 * 60 * 3;
+    sub.innerHTML = `${esc(state.topic || '')} · Puzzle ${state.puzzleIdx + 1}/${state.totalPuzzles} · ${esc(state.theme || '')}`
+        + ` · letters <b style="letter-spacing:0.15em;color:var(--water)">${(state.letters || []).join('')}</b>`
+        + (stale ? ' <span style="color:var(--gold)">⚠ last update was hours ago — is the game running?</span>' : '');
+    list.innerHTML = state.words
+        .slice().sort((a, b) => a.n - b.n)
+        .map(w => {
+            if (w.solved) return `<div class="helper-row solved">
+                <span class="hintword-num">#${w.n} ${w.dir}</span>
+                <span class="helper-word${w.isCapstone ? ' capstone' : ''}">${esc(w.word)}</span>
+                <span style="margin-left:auto;color:var(--water);">✓ drawn</span></div>`;
+            const isOn = (t) => state.activeHint && state.activeHint.word === w.word && state.activeHint.tier === t;
+            return `<div class="helper-row">
+                <span class="hintword-num">#${w.n} ${w.dir}</span>
+                <span class="helper-word${w.isCapstone ? ' capstone' : ''}">${esc(w.word)}${w.isCapstone ? ' ★' : ''}</span>
+                <div class="ladder-btns">
+                    <button class="ladder-btn${isOn(1) ? ' on' : ''}" onclick="window.helperSend('hint','${w.word}',1)" title="Meaning">💬</button>
+                    <button class="ladder-btn${isOn(2) ? ' on' : ''}" onclick="window.helperSend('hint','${w.word}',2)" title="Verse + QR">📖</button>
+                    <button class="ladder-btn${isOn(3) ? ' on' : ''}" onclick="window.helperSend('hint','${w.word}',3)" title="Picture">🖼</button>
+                    <button class="ladder-btn" onclick="window.helperSend('hint','${w.word}',4)" title="Reveal one more letter (repeatable)">🔤+</button>
+                    <button class="ladder-btn reveal" onclick="window.helperSend('reveal','${w.word}')" title="Reveal whole word">👁</button>
+                </div>
+            </div>`;
+        }).join('')
+        + `<div style="display:flex;justify-content:flex-end;margin-top:6px;">
+             <button class="modal-btn ghost" onclick="window.helperSend('hide')">🚫 HIDE CURRENT HINT</button>
+           </div>`;
+}
+
+// Helper devices skip setup/play entirely
+if (IS_HELPER) {
+    document.addEventListener('DOMContentLoaded', () => showScene('helper-scene'));
 }
 
 // Re-render wheel on resize so stones stay on the ring
