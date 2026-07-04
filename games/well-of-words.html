@@ -436,8 +436,8 @@
     <div id="helper-list"></div>
     <div class="helper-note">Answers stay masked until you peek. 💬 meaning · 📖 verse · 🖼 picture ·
       🔤+ reveals one more letter each tap (your discretion) · 👁 first tap peeks the answer on this
-      device only, tapping “sure?” reveals it to the class (no points) — tap a peeked word to hide it
-      again · 🚫 hides the current hint from the screen.</div>
+      device only, tapping “sure?” reveals it to the class (no points) — peeks auto-hide after 8s,
+      or tap 🙈 / the word to hide sooner · 🚫 hides the current hint from the screen.</div>
   </div>
 </div>
 
@@ -1216,7 +1216,7 @@ function onDragMove(e) {
             selection.pop(); updateSelectionUI(); renderPreview(); drawDragLines(e);
         }
     }
-    if (dragVisited) drawDragLines(e);
+    drawDragLines(e);
 }
 function onDragUp() {
     window.removeEventListener('pointermove', onDragMove);
@@ -1240,6 +1240,7 @@ function addToSelection(idx) {
 function updateSelectionUI() {
     document.querySelectorAll('.stone').forEach(s =>
         s.classList.toggle('sel', selection.includes(Number(s.dataset.idx))));
+    drawSelectionLines(); // lines persist for the whole selection, tap or drag
 }
 function stoneCenter(idx) {
     // getBoundingClientRect returns zoomed client px; the SVG's coordinate space
@@ -1250,17 +1251,20 @@ function stoneCenter(idx) {
     const r = el.getBoundingClientRect();
     return { x: (r.left - ring.left + r.width / 2) / z, y: (r.top - ring.top + r.height / 2) / z };
 }
-function drawDragLines(e) {
-    const z = zoomFactor();
+function drawSelectionLines(extraPt) {
     const svg = document.getElementById('drag-svg');
-    const ring = document.getElementById('well-ring').getBoundingClientRect();
     let pts = selection.map(stoneCenter);
-    if (e && dragging) pts.push({ x: (e.clientX - ring.left) / z, y: (e.clientY - ring.top) / z });
+    if (extraPt) pts.push(extraPt);
     svg.innerHTML = pts.length > 1
         ? `<polyline points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" fill="none" stroke="var(--glow)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`
         : '';
 }
-function clearDragLines() { document.getElementById('drag-svg').innerHTML = ''; }
+function drawDragLines(e) {
+    const z = zoomFactor();
+    const ring = document.getElementById('well-ring').getBoundingClientRect();
+    drawSelectionLines(e && dragging ? { x: (e.clientX - ring.left) / z, y: (e.clientY - ring.top) / z } : null);
+}
+function clearDragLines() { drawSelectionLines(); }
 
 window.wowBackspace = function() { selection.pop(); updateSelectionUI(); renderPreview(); };
 window.wowClear = function() { selection = []; updateSelectionUI(); renderPreview(); };
@@ -1681,6 +1685,7 @@ window.helperSend = function(type, word, tier) {
 let helperPeeked = new Set();
 let helperArmed = null, helperArmT = null;
 let helperLastState = null, helperLastPuzzle = -1;
+const helperPeekTimers = {};
 window.helperEye = function(word) {
     if (helperArmed === word) {
         clearTimeout(helperArmT);
@@ -1693,10 +1698,14 @@ window.helperEye = function(word) {
     helperArmed = word;
     clearTimeout(helperArmT);
     helperArmT = setTimeout(() => { helperArmed = null; renderHelper(helperLastState); }, 4000);
+    // Shoulder-surfing guard: peeks auto-re-mask after 8s
+    clearTimeout(helperPeekTimers[word]);
+    helperPeekTimers[word] = setTimeout(() => window.helperUnpeek(word), 8000);
     renderHelper(helperLastState);
 };
 window.helperUnpeek = function(word) {
     helperPeeked.delete(word);
+    clearTimeout(helperPeekTimers[word]);
     if (helperArmed === word) { clearTimeout(helperArmT); helperArmed = null; }
     renderHelper(helperLastState);
 };
@@ -1730,7 +1739,8 @@ function renderHelper(state) {
             const peeked = helperPeeked.has(w.word);
             const armed = helperArmed === w.word;
             const wordHtml = peeked
-                ? `<span class="helper-word${w.isCapstone ? ' capstone' : ''}" onclick="window.helperUnpeek('${w.word}')" title="Tap to hide again" style="cursor:pointer;">${esc(w.word)}${w.isCapstone ? ' ★' : ''}</span>`
+                ? `<span class="helper-word${w.isCapstone ? ' capstone' : ''}" onclick="window.helperUnpeek('${w.word}')" title="Tap to hide" style="cursor:pointer;">${esc(w.word)}${w.isCapstone ? ' ★' : ''}</span>
+                   <button class="ladder-btn" onclick="window.helperUnpeek('${w.word}')" title="Hide the answer again">🙈</button>`
                 : `<span class="helper-word" style="color:var(--ink-muted);letter-spacing:0.2em;">${'•'.repeat(w.word.length)}${w.isCapstone ? ' ★' : ''}</span>`;
             return `<div class="helper-row">
                 <span class="hintword-num">#${w.n} ${w.dir}</span>
