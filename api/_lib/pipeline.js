@@ -873,7 +873,9 @@ Example: letters ["P","R","O","M","I","S","E"] → ROSE ✓, RIPE ✓, MOSES ✗
 - 4–6 target "words" per puzzle including the capstone; lengths 3–7. Prefer words that appear in or
   echo this lesson's scriptures (KJV vocabulary welcome). Exactly ONE word per puzzle has isCapstone: true.
 - Each word: "definition" (one kid-level sentence), "verseBlank" (a real KJV phrase from the cited
-  verse with the word replaced by ________), "verseText" (the verbatim KJV verse, max 300 chars),
+  verse with the word replaced by ________ — the word MUST literally appear in the verse; if it
+  doesn't, pick a different verse where it does, or a different word. Never emit a verseBlank
+  without the ________ marker), "verseText" (the verbatim KJV verse, max 300 chars),
   "verseRef", "url" (exact Gospel Library URL from the references above, or null),
   "icon" (one emoji depicting the word's MEANING — not decoration), "iconLabel" (2–3 words).
 - EVERY word gets "christConnection" — one short sentence tying it to Jesus Christ (the capstone's
