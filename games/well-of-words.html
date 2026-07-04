@@ -1569,10 +1569,12 @@ window.useHint = function(word, tier) {
     }
     armedReveal = null;
 
-    // Toggle off if this exact hint is already showing
-    if (activeHint && activeHint.word === word && activeHint.tier === tier) {
+    // Toggle off if this exact hint is already showing. 🔤+ is exempt — it's a
+    // repeatable ACTION, not a toggle (a second press must reveal another letter,
+    // and must never pop the hints modal when triggered from the helper device).
+    if (tier !== 4 && activeHint && activeHint.word === word && activeHint.tier === tier) {
         hideHintBanner();
-        window.openHints();
+        refreshHintsIfOpen();
         return;
     }
 
