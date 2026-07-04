@@ -130,8 +130,11 @@
   .hint-close { position: absolute; top: 6px; right: 8px; background: none; border: none;
     color: var(--ink-muted); font-size: 1rem; cursor: pointer; padding: 4px; }
   .hint-close:hover { color: var(--ink); }
-  .hint-banner .hint-kind { font-family: 'Orbitron', sans-serif; font-size: 0.6rem;
-    letter-spacing: 2px; color: var(--water); display: block; margin-bottom: 3px; }
+  .hint-banner .hint-kind { font-family: 'Orbitron', sans-serif;
+    font-size: clamp(0.85rem, 1.9vw, 1.1rem); letter-spacing: 2px; color: var(--water);
+    display: block; margin-bottom: 5px; }
+  .hint-banner .hint-num { color: var(--glow-soft); font-size: 1.25em; font-weight: 800;
+    text-shadow: 0 0 12px rgba(255,0,127,0.4); }
   .hint-banner .hint-emoji { font-size: clamp(1.8rem, 6vh, 2.6rem); display: inline-block;
     vertical-align: middle; margin-right: 10px; line-height: 1; }
 
@@ -1565,7 +1568,7 @@ window.useHint = function(word, tier) {
         return;
     }
 
-    const numLabel = wordNums[word] ? `#${wordNums[word].n} · ` : '';
+    const numLabel = wordNums[word] ? `<span class="hint-num">#${wordNums[word].n}</span> · ` : '';
     if (tier === 4) {
         // Repeatable: each press reveals one more letter on the board.
         const idx = revealNextLetter(word);
