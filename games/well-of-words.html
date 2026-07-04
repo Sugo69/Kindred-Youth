@@ -96,15 +96,29 @@
   .blitz-btn.running { color: var(--gold); border-color: var(--gold); }
 
   .hint-banner { display: none; width: 100%; background: rgba(45,212,191,0.08);
-    border: 1px solid rgba(45,212,191,0.35); border-radius: 10px; padding: 10px 16px;
-    font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.45; text-align: center; }
+    border: 1px solid rgba(45,212,191,0.35); border-radius: 10px; padding: 10px 42px 10px 16px;
+    font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.45; text-align: center; position: relative; }
   .hint-banner.show { display: block; animation: fadeIn 0.25s ease-out; }
+  .hint-close { position: absolute; top: 6px; right: 8px; background: none; border: none;
+    color: var(--ink-muted); font-size: 1rem; cursor: pointer; padding: 4px; }
+  .hint-close:hover { color: var(--ink); }
   .hint-banner .hint-kind { font-family: 'Orbitron', sans-serif; font-size: 0.6rem;
     letter-spacing: 2px; color: var(--water); display: block; margin-bottom: 4px; }
   .hint-banner .hint-emoji { font-size: clamp(2.4rem, 7vw, 4rem); display: block; }
 
+  /* Two-column play area: grid left, wheel right on wide screens; stacked on phones */
+  .play-columns { display: flex; flex-direction: column; align-items: center; gap: 10px;
+    width: 100%; flex: 1; min-height: 0; }
+  .grid-col { display: flex; flex-direction: column; align-items: center; gap: 10px; min-width: 0; }
+  .well-col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  @media (min-width: 1000px) {
+    .play-columns { flex-direction: row; align-items: center; justify-content: center;
+      gap: clamp(20px, 4vw, 64px); }
+    .grid-col { flex: 0 1 auto; max-width: 58%; }
+    .well-col { flex: 0 0 auto; }
+  }
+
   /* Crossword grid */
-  .grid-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
   .cross-grid { display: grid; gap: clamp(3px, 0.6vw, 6px); }
   .cell { width: var(--cell); height: var(--cell); border-radius: 6px;
     background: var(--bg-3); border: 1px solid var(--border);
@@ -117,11 +131,20 @@
   .cell.capstone.solved { background: rgba(255,200,87,0.16); border-color: var(--gold); }
   .cell.pop { animation: cellPop 0.35s ease-out; }
   @keyframes cellPop { 0% { transform: scale(0.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
-  .solo-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: center; }
+  .cell-num { position: absolute; top: 1px; left: 3px; line-height: 1; font-weight: 600;
+    font-size: calc(var(--cell) * 0.24); color: var(--ink-muted); pointer-events: none; }
+  .cell.solved .cell-num { color: rgba(255,255,255,0.55); }
+
+  /* Solo words — vertical stack, one word per row, compact cells */
+  .solo-stack { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
   .solo-label { font-size: 0.65rem; letter-spacing: 2px; color: var(--ink-muted);
     font-family: 'Orbitron', sans-serif; }
-  .solo-word { display: flex; gap: clamp(3px, 0.6vw, 6px); padding: 5px 7px;
+  .solo-word { display: flex; align-items: center; gap: clamp(2px, 0.4vw, 4px); padding: 4px 6px;
     border: 1px dashed var(--border); border-radius: 10px; background: rgba(255,255,255,0.02); }
+  .solo-word .cell { width: calc(var(--cell) * 0.72); height: calc(var(--cell) * 0.72);
+    font-size: calc(var(--cell) * 0.4); }
+  .solo-num { font-size: 0.62rem; color: var(--ink-muted); font-family: 'Orbitron', sans-serif;
+    margin-right: 4px; min-width: 22px; }
 
   /* Bucket (bonus words) */
   .bucket-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
@@ -233,8 +256,12 @@
   .ladder-btns { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
   .ladder-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(45,212,191,0.35);
     background: none; color: var(--water); font-size: 0.85rem; cursor: pointer; }
-  .ladder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .ladder-btn.used { opacity: 0.45; }
+  .ladder-btn.on { background: rgba(45,212,191,0.18); opacity: 1; }
   .ladder-btn.reveal { border-color: rgba(255,0,127,0.4); color: var(--glow-soft); }
+  .ladder-btn.armed { background: var(--glow); border-color: var(--glow); color: #fff; opacity: 1; }
+  .hintword-num { font-family: 'Orbitron', sans-serif; font-size: 0.68rem; color: var(--water);
+    min-width: 40px; }
 
   /* Droplet particles */
   .drop { position: fixed; z-index: 300; pointer-events: none; font-size: 1.2rem;
@@ -292,28 +319,30 @@
 
     <div class="hint-banner" id="hint-banner"></div>
 
-    <div class="grid-wrap">
-      <div class="cross-grid" id="cross-grid"></div>
-      <div class="solo-row" id="solo-row" style="display:none;"></div>
-    </div>
-
-    <div class="bucket-row" id="bucket-row" style="display:none;">
-      <span class="bucket-label">🪣 BUCKET</span>
-      <span id="bucket-chips"></span>
-    </div>
-
-    <div class="preview-strip" id="preview-strip"></div>
-
-    <div class="well-area">
-      <div class="well-ring" id="well-ring">
-        <div class="well-water"></div>
-        <svg class="drag-svg" id="drag-svg"></svg>
+    <div class="play-columns">
+      <div class="grid-col">
+        <div class="cross-grid" id="cross-grid"></div>
+        <div class="solo-stack" id="solo-row" style="display:none;"></div>
+        <div class="bucket-row" id="bucket-row" style="display:none;">
+          <span class="bucket-label">🪣 BUCKET</span>
+          <span id="bucket-chips"></span>
+        </div>
       </div>
-      <div class="wheel-controls">
-        <button class="wc-btn" onclick="window.wowShuffle()">🔀 Shuffle</button>
-        <button class="wc-btn" onclick="window.wowBackspace()">⌫</button>
-        <button class="wc-btn" onclick="window.wowClear()">✕</button>
-        <button class="wc-btn submit" id="submit-btn" onclick="window.wowSubmit()" disabled>DRAW ↑</button>
+
+      <div class="well-col">
+        <div class="preview-strip" id="preview-strip"></div>
+        <div class="well-area">
+          <div class="well-ring" id="well-ring">
+            <div class="well-water"></div>
+            <svg class="drag-svg" id="drag-svg"></svg>
+          </div>
+          <div class="wheel-controls">
+            <button class="wc-btn" onclick="window.wowShuffle()">🔀 Shuffle</button>
+            <button class="wc-btn" onclick="window.wowBackspace()">⌫</button>
+            <button class="wc-btn" onclick="window.wowClear()">✕</button>
+            <button class="wc-btn submit" id="submit-btn" onclick="window.wowSubmit()" disabled>DRAW ↑</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -783,7 +812,10 @@ let wordMap = {};           // WORD -> word object
 let solved = new Set();     // solved target words
 let bonusFound = new Set();
 let hintLetters = new Set();// "r,c" cells revealed by 🔤 hints
-let hintTier = {};          // WORD -> highest tier used (1-5)
+let hintsUsed = {};         // WORD -> Set of tiers already shown (visual cue only)
+let activeHint = null;      // { word, tier } currently on the banner, or null
+let armedReveal = null;     // word armed for 👁 reveal confirm (2nd tap fires)
+let wordNums = {};          // WORD -> { n, dir } crossword-style numbering
 let classScore = 0;         // one class, one well — whole-class cooperative score
 let stoneOrder = [];        // letters in current wheel arrangement
 let selection = [];         // indices into stoneOrder
@@ -857,10 +889,21 @@ function showScene(id) {
 // ── Puzzle lifecycle ─────────────────────────────────────────────────────────
 function loadPuzzle() {
     const p = puzzles[puzzleIdx];
-    solved = new Set(); bonusFound = new Set(); hintLetters = new Set(); hintTier = {};
+    solved = new Set(); bonusFound = new Set(); hintLetters = new Set();
+    hintsUsed = {}; activeHint = null; armedReveal = null;
     selection = [];
     wordMap = Object.fromEntries(p.words.map(w => [w.word, w]));
     pack = packCrossword(p.words.map(w => w.word));
+    // Crossword-style numbering: start cells in reading order share a number
+    wordNums = {};
+    const startNums = new Map();
+    let numSeq = 0;
+    for (const pl of [...pack.placements].sort((a, b) => a.row - b.row || a.col - b.col)) {
+        const k = pl.row + ',' + pl.col;
+        if (!startNums.has(k)) startNums.set(k, ++numSeq);
+        wordNums[pl.word] = { n: startNums.get(k), dir: pl.dir === 'H' ? '→' : '↓' };
+    }
+    for (const w of pack.solos) wordNums[w] = { n: ++numSeq, dir: '•' };
     stoneOrder = [...p.letters];
     stopBlitz();
     hideHintBanner();
@@ -894,17 +937,31 @@ function cellsOf(placement) {
 
 function renderGrid() {
     const grid = document.getElementById('cross-grid');
+    // Auto-fit cell size so the grid ALWAYS fits its column — nothing may push
+    // the wheel below the fold, regardless of puzzle size.
+    const gridCol = document.querySelector('.grid-col');
+    const isWide = window.matchMedia('(min-width: 1000px)').matches;
+    const soloH = pack.solos.length ? pack.solos.length * 34 + 30 : 0;
+    const availH = Math.max(180, window.innerHeight - (isWide ? 190 : 470) - soloH);
+    const availW = Math.max(200, (isWide ? window.innerWidth * 0.52 : window.innerWidth) - 40);
+    const gap = 5;
+    const size = Math.max(24, Math.min(62,
+        Math.floor(availW / pack.cols) - gap,
+        Math.floor(availH / pack.rows) - gap));
+    if (gridCol) gridCol.style.setProperty('--cell', size + 'px');
     grid.style.gridTemplateColumns = `repeat(${pack.cols}, var(--cell))`;
-    const cellInfo = new Map(); // "r,c" -> {ch, words:[], capstone}
+
+    const cellInfo = new Map(); // "r,c" -> {ch, words:[], capstone, num}
     for (const pl of pack.placements) {
         const isCap = wordMap[pl.word]?.isCapstone;
-        for (const cc of cellsOf(pl)) {
+        cellsOf(pl).forEach((cc, i) => {
             const k = cc.r + ',' + cc.c;
-            const info = cellInfo.get(k) || { ch: cc.ch, words: [], capstone: false };
+            const info = cellInfo.get(k) || { ch: cc.ch, words: [], capstone: false, num: null };
             info.words.push(pl.word);
             if (isCap) info.capstone = true;
+            if (i === 0) info.num = wordNums[pl.word]?.n ?? info.num;
             cellInfo.set(k, info);
-        }
+        });
     }
     let html = '';
     for (let r = 0; r < pack.rows; r++) {
@@ -914,20 +971,21 @@ function renderGrid() {
             if (!info) { html += '<div style="width:var(--cell);height:var(--cell);"></div>'; continue; }
             const isSolved = info.words.some(w => solved.has(w));
             const isHint = !isSolved && hintLetters.has(k);
-            html += `<div class="cell${info.capstone ? ' capstone' : ''}${isSolved ? ' solved' : ''}${isHint ? ' hint-letter' : ''}" data-k="${k}">${(isSolved || isHint) ? info.ch : ''}</div>`;
+            const numBadge = info.num ? `<span class="cell-num">${info.num}</span>` : '';
+            html += `<div class="cell${info.capstone ? ' capstone' : ''}${isSolved ? ' solved' : ''}${isHint ? ' hint-letter' : ''}" data-k="${k}">${numBadge}${(isSolved || isHint) ? info.ch : ''}</div>`;
         }
     }
     grid.innerHTML = html;
 
-    // Solo words (couldn't cross — rendered as labeled mini rows)
+    // Solo words (couldn't cross) — vertical stack, one numbered word per row
     const soloRow = document.getElementById('solo-row');
     if (pack.solos.length) {
         soloRow.style.display = 'flex';
         soloRow.innerHTML = '<span class="solo-label">ALSO IN THE WELL:</span>' + pack.solos.map(w => {
             const isCap = wordMap[w]?.isCapstone;
             const isSolved = solved.has(w);
-            return `<span class="solo-word">${[...w].map((ch, i) =>
-                `<span class="cell${isCap ? ' capstone' : ''}${isSolved ? ' solved' : ''}" data-solo="${w}:${i}">${isSolved ? ch : ''}</span>`).join('')}</span>`;
+            return `<div class="solo-word"><span class="solo-num">#${wordNums[w]?.n ?? ''}</span>${[...w].map((ch, i) =>
+                `<span class="cell${isCap ? ' capstone' : ''}${isSolved ? ' solved' : ''}" data-solo="${w}:${i}">${isSolved ? ch : ''}</span>`).join('')}</div>`;
         }).join('');
     } else { soloRow.style.display = 'none'; soloRow.innerHTML = ''; }
 }
@@ -1066,6 +1124,7 @@ window.wowSubmit = function() {
 
 function solveWord(word, { withPoints }) {
     solved.add(word);
+    if (activeHint?.word === word) hideHintBanner();
     const w = wordMap[word];
     const pts = withPoints ? (w.isCapstone ? POINTS.capstone : POINTS.target) : 0;
     if (pts) classScore += pts;
@@ -1162,22 +1221,29 @@ const HINT_TIERS = [
 
 window.openHints = function() {
     const p = puzzles[puzzleIdx];
-    const unsolvedWords = p.words.filter(w => !solved.has(w.word));
+    const unsolvedWords = p.words.filter(w => !solved.has(w.word))
+        .sort((a, b) => (wordNums[a.word]?.n ?? 99) - (wordNums[b.word]?.n ?? 99));
     const list = document.getElementById('hintword-list');
     if (!unsolvedWords.length) {
         list.innerHTML = '<div class="lesson-status">Every word is drawn — the well is full!</div>';
     } else {
         list.innerHTML = unsolvedWords.map(w => {
-            const used = hintTier[w.word] || 0;
+            const used = hintsUsed[w.word] || new Set();
+            const num = wordNums[w.word] || {};
             const slots = [...w.word].map((ch, i) => {
                 const cellK = placedCellKey(w.word, i);
                 const shown = cellK && hintLetters.has(cellK);
                 return `<span class="hintword-slot${w.isCapstone ? ' gold' : ''}">${shown ? ch : ''}</span>`;
             }).join('');
-            const btns = HINT_TIERS.map(t =>
-                `<button class="ladder-btn${t.n === 5 ? ' reveal' : ''}" ${t.n !== used + 1 ? 'disabled' : ''}
-                    onclick="window.useHint('${w.word}', ${t.n})" title="${t.label}">${t.icon}</button>`).join('');
+            const btns = HINT_TIERS.map(t => {
+                const isOn = activeHint && activeHint.word === w.word && activeHint.tier === t.n;
+                const isArmed = t.n === 5 && armedReveal === w.word;
+                const cls = `ladder-btn${t.n === 5 ? ' reveal' : ''}${used.has(t.n) ? ' used' : ''}${isOn ? ' on' : ''}${isArmed ? ' armed' : ''}`;
+                const label = isArmed ? 'sure?' : t.icon;
+                return `<button class="${cls}" onclick="window.useHint('${w.word}', ${t.n})" title="${t.label}">${label}</button>`;
+            }).join('');
             return `<div class="hintword-row">
+                <span class="hintword-num">#${num.n ?? ''} ${num.dir ?? ''}</span>
                 <div class="hintword-slots">${slots}</div>
                 <span style="font-size:0.7rem;color:var(--ink-muted);">${w.word.length} letters${w.isCapstone ? ' · ★ capstone' : ''}</span>
                 <div class="ladder-btns">${btns}</div>
@@ -1186,7 +1252,7 @@ window.openHints = function() {
     }
     document.getElementById('hints-veil').classList.add('show');
 };
-window.closeHints = function() { document.getElementById('hints-veil').classList.remove('show'); };
+window.closeHints = function() { armedReveal = null; document.getElementById('hints-veil').classList.remove('show'); };
 
 function placedCellKey(word, i) {
     const pl = pack.placements.find(x => x.word === word);
@@ -1195,33 +1261,64 @@ function placedCellKey(word, i) {
     return cc.r + ',' + cc.c;
 }
 
+// Free navigation: any word, any tier, any order. Tapping an active hint
+// toggles it off. Reveal (👁) requires a second confirming tap.
 window.useHint = function(word, tier) {
     const w = wordMap[word];
     if (!w || solved.has(word)) return;
-    hintTier[word] = Math.max(hintTier[word] || 0, tier);
-    if (tier === 1) showHintBanner('💬 MEANING', esc(w.definition || '(no definition provided)'));
-    if (tier === 2) showHintBanner('📖 FROM THE VERSE', '“' + esc(w.verseBlank || w.verseText || '') + '”' + (w.verseRef ? ` <span style="color:var(--water);font-size:0.8em;">— ${esc(w.verseRef)}</span>` : ''));
-    if (tier === 3) showHintBanner('🖼 PICTURE', `<span class="hint-emoji">${esc(w.icon || '💧')}</span>${esc(w.iconLabel || '')}`);
-    if (tier === 4) {
-        const k = placedCellKey(word, 0);
-        if (k) { hintLetters.add(k); renderGrid(); }
-        showHintBanner('🔤 FIRST LETTER', `The word starts with <b style="color:var(--glow-soft)">${word[0]}</b>`);
-    }
+
     if (tier === 5) {
+        if (armedReveal !== word) {
+            armedReveal = word;
+            setTimeout(() => { if (armedReveal === word) { armedReveal = null; refreshHintsIfOpen(); } }, 3000);
+            window.openHints();
+            return;
+        }
+        armedReveal = null;
         window.closeHints();
         solveWord(word, { withPoints: false });
         return;
     }
-    window.openHints(); // re-render ladder state
+    armedReveal = null;
+
+    // Toggle off if this exact hint is already showing
+    if (activeHint && activeHint.word === word && activeHint.tier === tier) {
+        hideHintBanner();
+        window.openHints();
+        return;
+    }
+
+    (hintsUsed[word] = hintsUsed[word] || new Set()).add(tier);
+    const numLabel = wordNums[word] ? `#${wordNums[word].n} · ` : '';
+    if (tier === 1) showHintBanner(`${numLabel}💬 MEANING`, esc(w.definition || '(no definition provided)'));
+    if (tier === 2) showHintBanner(`${numLabel}📖 FROM THE VERSE`, '“' + esc(w.verseBlank || w.verseText || '') + '”' + (w.verseRef ? ` <span style="color:var(--water);font-size:0.8em;">— ${esc(w.verseRef)}</span>` : ''));
+    if (tier === 3) showHintBanner(`${numLabel}🖼 PICTURE`, `<span class="hint-emoji">${esc(w.icon || '💧')}</span>${esc(w.iconLabel || '')}`);
+    if (tier === 4) {
+        const k = placedCellKey(word, 0);
+        if (k) { hintLetters.add(k); renderGrid(); }
+        showHintBanner(`${numLabel}🔤 FIRST LETTER`, `The word starts with <b style="color:var(--glow-soft)">${word[0]}</b>`);
+    }
+    activeHint = { word, tier };
+    window.closeHints();
 };
+
+function refreshHintsIfOpen() {
+    if (document.getElementById('hints-veil').classList.contains('show')) window.openHints();
+}
 
 function showHintBanner(kind, html) {
     const b = document.getElementById('hint-banner');
-    b.innerHTML = `<span class="hint-kind">${kind}</span>${html}`;
+    b.innerHTML = `<span class="hint-kind">${kind}</span>${html}<button class="hint-close" onclick="window.dismissHint()" aria-label="Hide hint">✕</button>`;
     b.classList.add('show');
-    window.closeHints();
+    renderGrid(); // banner changes available height — refit the grid
 }
-function hideHintBanner() { const b = document.getElementById('hint-banner'); b.classList.remove('show'); b.innerHTML = ''; }
+window.dismissHint = function() { hideHintBanner(); };
+function hideHintBanner() {
+    const b = document.getElementById('hint-banner');
+    b.classList.remove('show'); b.innerHTML = '';
+    activeHint = null;
+    if (pack) renderGrid();
+}
 
 // ── Blitz timer (facilitation aid — no lockout) ──────────────────────────────
 window.toggleBlitz = function() {
@@ -1248,7 +1345,11 @@ function stopBlitz() {
 let resizeT = null;
 window.addEventListener('resize', () => {
     clearTimeout(resizeT);
-    resizeT = setTimeout(() => { if (document.getElementById('play-scene').classList.contains('active')) renderWheel(); }, 150);
+    resizeT = setTimeout(() => {
+        if (!document.getElementById('play-scene').classList.contains('active')) return;
+        renderWheel();
+        if (pack) renderGrid(); // refit cells to the new column size
+    }, 150);
 });
 </script>
 </body>
