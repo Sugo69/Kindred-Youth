@@ -351,6 +351,9 @@
         <input type="range" id="scale-slider" min="0.4" max="1.6" step="0.05" value="1"
           oninput="window.setDisplayScale(parseFloat(this.value), true)">
       </div>
+      <div class="scale-custom">
+        <button class="scale-opt" id="mode-flip-btn" onclick="window.gotoHelper()">🎛 Helper view <span>this device</span></button>
+      </div>
     </div>
   </div>
 </div>
@@ -477,9 +480,16 @@
     <div style="font-family:'Orbitron',sans-serif;letter-spacing:2px;color:var(--water);font-size:0.9rem;margin-bottom:6px;">💡 TEACHER HINT LADDER</div>
     <div style="color:var(--ink-muted);font-size:0.85rem;margin-bottom:14px;line-height:1.4;">
       Any word, any hint, any order: 💬 meaning · 📖 verse (+QR) · 🖼 picture · 🔤+ one more letter each tap · 👁 reveal.
-      Let the class wrestle before each step — the verse hint is the lesson.<br>
-      <span style="color:var(--water)">📱 Second device:</span> open this same page on a phone with
-      <b>&amp;mode=helper</b> added to the URL (keep the same ?room=) — it shows the answers and controls these hints remotely.
+      Let the class wrestle before each step — the verse hint is the lesson.
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:14px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;">
+      <span style="background:#fff;border-radius:8px;padding:4px;line-height:0;"><canvas id="helper-link-qr"></canvas></span>
+      <div style="min-width:0;flex:1;">
+        <div style="color:var(--water);font-size:0.8rem;font-weight:700;">📱 HELPER — SECOND DEVICE</div>
+        <div style="color:var(--ink-muted);font-size:0.78rem;line-height:1.4;">Scan with a phone (or copy the link) — it shows the answers and controls these hints remotely.</div>
+        <div id="helper-link-url" style="color:var(--ink-muted);font-size:0.68rem;word-break:break-all;margin-top:2px;"></div>
+      </div>
+      <button class="modal-btn ghost" style="padding:8px 14px;font-size:0.65rem;" onclick="window.copyHelperLink(this)">COPY LINK</button>
     </div>
     <div id="hintword-list"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:10px;">
@@ -1451,9 +1461,30 @@ window.openHints = function() {
             </div>`;
         }).join('');
     }
+    // Helper-device QR + link (scan from the TV to open the phone controller)
+    const hUrl = helperUrl();
+    document.getElementById('helper-link-url').textContent = hUrl;
+    if (window.QRious) new window.QRious({ element: document.getElementById('helper-link-qr'), value: hUrl, size: 92, background: 'white', foreground: '#0a0a20' });
     document.getElementById('hints-veil').classList.add('show');
 };
 window.closeHints = function() { armedReveal = null; document.getElementById('hints-veil').classList.remove('show'); };
+
+function helperUrl() {
+    const u = new URL(location.href);
+    u.searchParams.set('mode', 'helper');
+    return u.toString();
+}
+window.gotoHelper = function() {
+    const u = new URL(location.href);
+    if (IS_HELPER) u.searchParams.delete('mode'); else u.searchParams.set('mode', 'helper');
+    location.href = u.toString();
+};
+window.copyHelperLink = function(btn) {
+    navigator.clipboard?.writeText(helperUrl()).then(() => {
+        btn.textContent = '✓ COPIED';
+        setTimeout(() => { btn.textContent = 'COPY LINK'; }, 1800);
+    }).catch(() => { prompt('Copy this link:', helperUrl()); });
+};
 
 function placedCellKey(word, i) {
     const pl = pack.placements.find(x => x.word === word);
@@ -1657,7 +1688,11 @@ function renderHelper(state) {
 
 // Helper devices skip setup/play entirely
 if (IS_HELPER) {
-    document.addEventListener('DOMContentLoaded', () => showScene('helper-scene'));
+    document.addEventListener('DOMContentLoaded', () => {
+        showScene('helper-scene');
+        const flip = document.getElementById('mode-flip-btn');
+        if (flip) flip.innerHTML = '🖥 Monitor view <span>this device</span>';
+    });
 }
 
 // Re-render wheel on resize so stones stay on the ring
