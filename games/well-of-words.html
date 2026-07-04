@@ -1722,7 +1722,7 @@ window.helperSend = function(type, word, tier) {
 // it to the whole class (no points). Letting the arm lapse keeps it peeked.
 let helperPeeked = new Set();
 let helperArmed = null, helperArmT = null;
-let helperLastState = null, helperLastPuzzle = -1;
+let helperLastState = null, helperLastPuzzle = -1, helperScrambled = [];
 const helperPeekTimers = {};
 window.helperEye = function(word) {
     if (helperArmed === word) {
@@ -1761,10 +1761,15 @@ function renderHelper(state) {
         helperLastPuzzle = state.puzzleIdx;
         helperPeeked = new Set();
         helperArmed = null; clearTimeout(helperArmT);
+        // scramble the header letters once per puzzle — in given order they spell the capstone
+        helperScrambled = [...(state.letters || [])];
+        for (let a = 0; a < 5 && helperScrambled.join('') === (state.letters || []).join(''); a++) {
+            shuffleArray(helperScrambled);
+        }
     }
     const stale = Date.now() - (state.updatedAt || 0) > 1000 * 60 * 60 * 3;
     sub.innerHTML = `${esc(state.topic || '')} · Puzzle ${state.puzzleIdx + 1}/${state.totalPuzzles} · ${esc(state.theme || '')}`
-        + ` · letters <b style="letter-spacing:0.15em;color:var(--water)">${(state.letters || []).join('')}</b>`
+        + ` · letters <b style="letter-spacing:0.05em;color:var(--water)">${helperScrambled.join(', ')}</b>`
         + (stale ? ' <span style="color:var(--gold)">⚠ last update was hours ago — is the game running?</span>' : '');
     list.innerHTML = state.words
         .slice().sort((a, b) => a.n - b.n)
