@@ -1110,12 +1110,14 @@ window.nextPuzzle = function() {
 
 // Teacher navigation: jump between puzzles freely (recovery after a refresh,
 // or pacing — skip ahead when time runs short, jump back to revisit).
-window.jumpPuzzle = function(delta) {
+window.jumpPuzzle = function(delta, skipConfirm) {
     const target = puzzleIdx + delta;
     if (target < 0 || target >= puzzles.length) return;
     const p = puzzles[puzzleIdx];
     const inProgress = solved.size > 0 && !p.words.every(w => solved.has(w.word));
-    if (inProgress && !confirm(`Leave puzzle ${puzzleIdx + 1} (${solved.size}/${p.words.length} words drawn)? Its progress resets.`)) return;
+    // skipConfirm: helper jumps already passed the two-tap "sure?" on the phone —
+    // a confirm() here would block the monitor waiting for a click nobody's at.
+    if (!skipConfirm && inProgress && !confirm(`Leave puzzle ${puzzleIdx + 1} (${solved.size}/${p.words.length} words drawn)? Its progress resets.`)) return;
     puzzleIdx = target;
     loadPuzzle();
 };
@@ -1712,8 +1714,10 @@ function publishState() {
 }
 
 function applyHelperCmd(c) {
-    if (!c || !wordMap[c.word] && c.type !== 'hide') return;
+    if (!c) return;
     if (c.type === 'hide') { hideHintBanner(); publishState(); return; }
+    if (c.type === 'jump') { window.jumpPuzzle(c.tier === -1 ? -1 : 1, true); return; }
+    if (!wordMap[c.word]) return;
     if (solved.has(c.word)) return;
     if (c.type === 'reveal') { solveWord(c.word, { withPoints: false }); return; }
     if (c.type === 'hint') { window.useHint(c.word, c.tier); return; } // covers tiers 1-4
@@ -1828,10 +1832,42 @@ function renderHelper(state) {
                 </div>
             </div>`;
         }).join('')
-        + `<div style="display:flex;justify-content:flex-end;margin-top:6px;">
-             <button class="modal-btn ghost" onclick="window.helperSend('hide')">🚫 HIDE CURRENT HINT</button>
+        + (() => {
+            const btnStyle = (armed, disabled) =>
+                `padding:8px 14px;font-size:0.65rem;` +
+                (armed ? 'border-color:var(--glow);color:var(--glow-soft);' : '') +
+                (disabled ? 'opacity:0.3;' : '');
+            const prevDis = state.puzzleIdx <= 0;
+            const nextDis = state.puzzleIdx >= state.totalPuzzles - 1;
+            return `<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:10px;flex-wrap:wrap;">
+             <div style="display:flex;gap:8px;align-items:center;">
+               <button class="modal-btn ghost" style="${btnStyle(helperJumpArmed === -1, prevDis)}" ${prevDis ? 'disabled' : ''}
+                 onclick="window.helperJump(-1)">${helperJumpArmed === -1 ? '‹ SURE?' : '‹ PREV'}</button>
+               <span style="font-size:0.7rem;color:var(--ink-muted);font-family:'Orbitron',sans-serif;">${state.puzzleIdx + 1}/${state.totalPuzzles}</span>
+               <button class="modal-btn ghost" style="${btnStyle(helperJumpArmed === 1, nextDis)}" ${nextDis ? 'disabled' : ''}
+                 onclick="window.helperJump(1)">${helperJumpArmed === 1 ? 'SURE? ›' : 'NEXT ›'}</button>
+             </div>
+             <button class="modal-btn ghost" style="padding:8px 14px;font-size:0.65rem;" onclick="window.helperSend('hide')">🚫 HIDE CURRENT HINT</button>
            </div>`;
+        })();
 }
+
+// Puzzle jumps from the phone use the same two-tap "sure?" safeguard as 👁 —
+// one stray tap can never advance the classroom screen.
+let helperJumpArmed = null, helperJumpT = null;
+window.helperJump = function(delta) {
+    if (helperJumpArmed === delta) {
+        clearTimeout(helperJumpT);
+        helperJumpArmed = null;
+        window.helperSend('jump', null, delta);
+        renderHelper(helperLastState);
+        return;
+    }
+    helperJumpArmed = delta;
+    clearTimeout(helperJumpT);
+    helperJumpT = setTimeout(() => { helperJumpArmed = null; renderHelper(helperLastState); }, 3000);
+    renderHelper(helperLastState);
+};
 
 // Helper devices skip setup/play entirely
 if (IS_HELPER) {
