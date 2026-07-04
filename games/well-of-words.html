@@ -1143,8 +1143,12 @@ function renderWheel() {
     const ring = document.getElementById('well-ring');
     ring.querySelectorAll('.stone').forEach(s => s.remove());
     const W = ring.clientWidth || 320;
-    const stoneSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stone')) || 64;
-    const R = (W / 2) - (stoneSize / 2) - 2;
+    // Mirror the CSS: --stone: clamp(52px, calc(var(--wheel) * 0.19), 84px).
+    // (getComputedStyle returns the raw clamp() expression for custom props —
+    // parseFloat on it silently NaN'd to 64px, so the radius was computed for
+    // smaller stones than were drawn and the ring bulged into the controls.)
+    const stoneSize = Math.max(52, Math.min(84, W * 0.19));
+    const R = (W / 2) - (stoneSize / 2) - 4;
     const n = stoneOrder.length;
     stoneOrder.forEach((letter, i) => {
         const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
