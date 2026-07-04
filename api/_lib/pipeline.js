@@ -116,7 +116,8 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
     // Memory's 12 pairs and Common Ground's 8 rounds with all their Christ connections.
     const generationBody = {
         model: activeModels.generation,
-        max_tokens: 8000,
+        // well-of-words emits 3 puzzles × 10-12 words each with verse texts — needs more headroom
+        max_tokens: gameType === 'well-of-words' ? 12000 : 8000,
         messages: [{ role: 'user', content: buildGenerationPrompt(lessonStructure, url, gameType, questionType) }],
     }
     stage(`→ Claude generation call (${activeModels.generation})…`)
@@ -338,10 +339,10 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
             if (scrubbedBonusByIdx.has(idx)) {
                 findings.push(`Bonus word removed: ${scrubbedBonusByIdx.get(idx).join(', ')}`)
             }
-            if (letters.length < 4 || letters.length > 7 || !letters.every(l => /^[A-Z]$/.test(l))) {
-                findings.push('letters must be 4–7 single A–Z characters')
+            if (letters.length < 6 || letters.length > 7 || !letters.every(l => /^[A-Z]$/.test(l))) {
+                findings.push('letters must be 6–7 single A–Z characters')
             }
-            if (!Array.isArray(item.words) || item.words.length < 3) findings.push('Fewer than 3 target words')
+            if (!Array.isArray(item.words) || item.words.length < 10) findings.push(`Fewer than 10 target words (${(item.words || []).length})`)
             let capstoneCount = 0
             for (const w of (item.words || [])) {
                 w.word = String(w.word || '').toUpperCase()
@@ -860,8 +861,10 @@ ${scriptureList || 'None — use your KJV knowledge for the lesson scriptures.'}
 
 ## Your task
 Generate exactly 3 puzzles, easiest first:
-- Puzzle 1: 5-letter capstone (warm-up), Puzzle 2: 6-letter capstone, Puzzle 3: 6–7-letter capstone
-  that is THE key vocabulary word of this lesson.
+- Puzzle 1: 6-letter capstone (warm-up), Puzzles 2–3: 6–7-letter capstones; Puzzle 3's capstone
+  is THE key vocabulary word of this lesson.
+- Choose FERTILE capstones — words whose letters yield many real sub-words (e.g. MASTER, HEAVENS,
+  PRAISED, SERVANT). A doctrinally perfect capstone with only 4 sub-words is the wrong choice.
 
 ### The letter rule (CRITICAL — checked by a machine, violations are discarded)
 "letters" is exactly the letters of the capstone word, one array entry per letter, in order.
@@ -870,8 +873,9 @@ AT MOST as many times as it appears in the array. Before including any word, ver
 Example: letters ["P","R","O","M","I","S","E"] → ROSE ✓, RIPE ✓, MOSES ✗ (needs two S), SEER ✗ (needs two E).
 
 ### Word rules
-- 4–6 target "words" per puzzle including the capstone; lengths 3–7. Prefer words that appear in or
-  echo this lesson's scriptures (KJV vocabulary welcome). Exactly ONE word per puzzle has isCapstone: true.
+- 10–12 target "words" per puzzle including the capstone; lengths 3–7. Prefer words that appear in
+  this lesson's scriptures, then broader KJV vocabulary (any word must appear in SOME KJV verse so it
+  can carry a verseBlank). Exactly ONE word per puzzle has isCapstone: true.
 - Each word: "definition" (one kid-level sentence), "verseBlank" (a real KJV phrase from the cited
   verse with the word replaced by ________ — the word MUST literally appear in the verse; if it
   doesn't, pick a different verse where it does, or a different word. Never emit a verseBlank

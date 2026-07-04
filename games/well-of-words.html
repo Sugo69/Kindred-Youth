@@ -268,12 +268,6 @@
       <div class="lesson-status">Loading library…</div>
     </div>
 
-    <div class="setup-section-label">Teams</div>
-    <div class="team-inputs">
-      <input id="team1-name" value="LIGHT SQUAD" maxlength="18" aria-label="Team 1 name">
-      <input id="team2-name" value="STAR SQUAD" maxlength="18" aria-label="Team 2 name">
-    </div>
-
     <button class="start-btn" id="start-btn" onclick="window.startGame()">🎲 Play Demo Puzzles</button>
   </div>
 </div>
@@ -287,11 +281,8 @@
         <div class="topic-sub" id="topic-sub"></div>
       </div>
       <div class="team-chips">
-        <div class="team-chip active" id="chip-0" onclick="window.setActiveTeam(0)">
-          <span id="chip-0-name"></span> <span class="score" id="chip-0-score">0</span>
-        </div>
-        <div class="team-chip" id="chip-1" onclick="window.setActiveTeam(1)">
-          <span id="chip-1-name"></span> <span class="score" id="chip-1-score">0</span>
+        <div class="team-chip active" id="score-chip" style="cursor:default;">
+          💧 CLASS <span class="score" id="class-score">0</span>
         </div>
         <button class="blitz-btn" id="blitz-btn" onclick="window.toggleBlitz()">⏱ BLITZ 90s</button>
         <button class="hint-btn" onclick="window.openHints()">💡 HINTS</button>
@@ -494,100 +485,211 @@ const POINTS = { capstone: 40, target: 20, bonus: 5 };
 
 // ── Demo puzzles (playable with zero Firestore content) ─────────────────────
 const DEMO_DATA = {
-    topic: 'Deliverance & Covenant — Demo',
+    topic: 'Follow the Master — Demo',
     puzzles: [
         {
-            n: 1, theme: 'The Passover Lamb',
-            letters: ['L','A','M','B','S'], capstone: 'LAMBS',
+            n: 1, theme: 'The Master and His Harvest',
+            letters: ['M','A','S','T','E','R'], capstone: 'MASTER',
+            discussion: 'Which word from this well shows you something about who Jesus is to you — Master, provider, or comforter?',
             words: [
-                { word: 'LAMBS', isCapstone: true, definition: 'young sheep — the Good Shepherd gathers them close',
-                  verseBlank: 'he shall gather the ________ with his arm', verseRef: 'Isaiah 40:11',
-                  verseText: 'He shall feed his flock like a shepherd: he shall gather the lambs with his arm, and carry them in his bosom.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/isa/40?lang=eng&id=p11#p11',
-                  icon: '🐑', iconLabel: 'lamb',
-                  christConnection: 'Jesus Christ is both the Lamb of God and the Shepherd who carries His lambs.' },
-                { word: 'LAMB', isCapstone: false, definition: 'the Passover offering — spotless and without blemish',
-                  verseBlank: 'Your ________ shall be without blemish', verseRef: 'Exodus 12:5',
-                  verseText: 'Your lamb shall be without blemish, a male of the first year.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/12?lang=eng&id=p5#p5',
-                  icon: '🐑', iconLabel: 'passover lamb',
-                  christConnection: 'The Passover lamb was a similitude of Jesus Christ, our sinless sacrifice.' },
-                { word: 'ALMS', isCapstone: false, definition: 'gifts given quietly to those in need',
-                  verseBlank: 'do not your ________ before men, to be seen of them', verseRef: 'Matthew 6:1',
-                  verseText: 'Take heed that ye do not your alms before men, to be seen of them.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/6?lang=eng&id=p1#p1',
-                  icon: '🤲', iconLabel: 'giving',
-                  christConnection: 'Jesus Christ taught us to serve quietly, as He served others without seeking praise.' },
-                { word: 'BALM', isCapstone: false, definition: 'a healing ointment — a symbol of the Savior’s healing',
-                  verseBlank: 'Is there no ________ in Gilead', verseRef: 'Jeremiah 8:22',
-                  verseText: 'Is there no balm in Gilead; is there no physician there?',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/jer/8?lang=eng&id=p22#p22',
-                  icon: '🌿', iconLabel: 'healing balm',
-                  christConnection: 'Jesus Christ is the true balm — the Great Physician who heals every wound.' },
-            ],
-            bonusWords: ['SLAB', 'SLAM', 'BAM'],
-        },
-        {
-            n: 2, theme: 'A House of the Lord',
-            letters: ['T','E','M','P','L','E'], capstone: 'TEMPLE',
-            words: [
-                { word: 'TEMPLE', isCapstone: true, definition: 'the house of the Lord — His holiest place on earth',
-                  verseBlank: 'to enquire in his ________', verseRef: 'Psalm 27:4',
-                  verseText: 'One thing have I desired of the Lord… to behold the beauty of the Lord, and to enquire in his temple.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/27?lang=eng&id=p4#p4',
-                  icon: '🏛️', iconLabel: 'temple',
-                  christConnection: 'The temple points to Jesus Christ — every covenant made there draws us closer to Him.' },
-                { word: 'MEET', isCapstone: false, definition: 'to come together with someone — the Lord promises to meet His people',
-                  verseBlank: 'And there I will ________ with thee', verseRef: 'Exodus 25:22',
+                { word: 'MASTER', isCapstone: true, definition: 'a teacher and lord — what disciples called Jesus',
+                  verseBlank: '________, I will follow thee whithersoever thou goest', verseRef: 'Matthew 8:19',
+                  verseText: 'And a certain scribe came, and said unto him, Master, I will follow thee whithersoever thou goest.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/8?lang=eng&id=p19#p19',
+                  icon: '👑', iconLabel: 'the Master',
+                  christConnection: 'Jesus Christ is the Master — following Him wherever He leads is the heart of discipleship.' },
+                { word: 'TARES', isCapstone: false, definition: 'weeds that look like wheat in the Savior’s parable',
+                  verseBlank: 'his enemy came and sowed ________ among the wheat', verseRef: 'Matthew 13:25',
+                  verseText: 'But while men slept, his enemy came and sowed tares among the wheat, and went his way.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/13?lang=eng&id=p25#p25',
+                  icon: '🌱', iconLabel: 'tares parable',
+                  christConnection: 'In Jesus’ parable, He patiently lets wheat and tares grow together until His harvest.' },
+                { word: 'TEARS', isCapstone: false, definition: 'what we cry when we hurt — God promises to wipe them away',
+                  verseBlank: 'And God shall wipe away all ________ from their eyes', verseRef: 'Revelation 21:4',
+                  verseText: 'And God shall wipe away all tears from their eyes; and there shall be no more death, neither sorrow, nor crying.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/rev/21?lang=eng&id=p4#p4',
+                  icon: '😢', iconLabel: 'tears wiped away',
+                  christConnection: 'Because of Jesus Christ, every tear will one day be wiped away.' },
+                { word: 'REST', isCapstone: false, definition: 'peace for a tired heart — the Savior’s personal promise',
+                  verseBlank: 'Come unto me… and I will give you ________', verseRef: 'Matthew 11:28',
+                  verseText: 'Come unto me, all ye that labour and are heavy laden, and I will give you rest.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/11?lang=eng&id=p28#p28',
+                  icon: '🕊️', iconLabel: 'rest in Christ',
+                  christConnection: 'Jesus Christ personally promises rest to everyone who comes to Him.' },
+                { word: 'SEAT', isCapstone: false, definition: 'the mercy seat — the holiest place on the ark of the covenant',
+                  verseBlank: 'I will commune with thee from above the mercy ________', verseRef: 'Exodus 25:22',
                   verseText: 'And there I will meet with thee, and I will commune with thee from above the mercy seat.',
                   url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/25?lang=eng&id=p22#p22',
-                  icon: '🤝', iconLabel: 'meeting God',
-                  christConnection: 'The mercy seat where the Lord promised to meet Israel points forward to Jesus Christ, our mercy seat.' },
-                { word: 'MELT', isCapstone: false, definition: 'to soften — what happens to hearts that feel God’s power',
-                  verseBlank: 'our hearts did ________', verseRef: 'Joshua 2:11',
-                  verseText: 'And as soon as we had heard these things, our hearts did melt.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/josh/2?lang=eng&id=p11#p11',
-                  icon: '💗', iconLabel: 'softened heart',
-                  christConnection: 'Hearts still melt today when we feel the Spirit testify of Jesus Christ.' },
-                { word: 'LET', isCapstone: false, definition: 'to allow — Moses’ great demand to Pharaoh',
-                  verseBlank: '________ my people go', verseRef: 'Exodus 5:1',
-                  verseText: 'Thus saith the Lord God of Israel, Let my people go.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/5?lang=eng&id=p1#p1',
-                  icon: '🕊️', iconLabel: 'set free',
-                  christConnection: 'Jesus Christ is the deliverer who still says, "Let my people go" from sin and bondage.' },
+                  icon: '🙏', iconLabel: 'mercy seat',
+                  christConnection: 'The mercy seat pointed to Jesus Christ, through whom we receive mercy.' },
+                { word: 'STAR', isCapstone: false, definition: 'the sign in the sky that led the wise men to Jesus',
+                  verseBlank: 'we have seen his ________ in the east, and are come to worship him', verseRef: 'Matthew 2:2',
+                  verseText: 'Saying, Where is he that is born King of the Jews? for we have seen his star in the east, and are come to worship him.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/2?lang=eng&id=p2#p2',
+                  icon: '⭐', iconLabel: 'new star',
+                  christConnection: 'The new star announced the birth of Jesus Christ to all the earth.' },
+                { word: 'EAST', isCapstone: false, definition: 'the direction of the sunrise',
+                  verseBlank: 'the glory of the God of Israel came from the way of the ________', verseRef: 'Ezekiel 43:2',
+                  verseText: 'And, behold, the glory of the God of Israel came from the way of the east: and his voice was like a noise of many waters: and the earth shined with his glory.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ezek/43?lang=eng&id=p2#p2',
+                  icon: '🌅', iconLabel: 'glory from the east',
+                  christConnection: 'The glory of the Lord coming from the east points to the Savior’s return.' },
+                { word: 'RAM', isCapstone: false, definition: 'the male sheep God provided in Isaac’s place',
+                  verseBlank: 'behold behind him a ________ caught in a thicket by his horns', verseRef: 'Genesis 22:13',
+                  verseText: 'And Abraham lifted up his eyes, and looked, and behold behind him a ram caught in a thicket by his horns.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/gen/22?lang=eng&id=p13#p13',
+                  icon: '🐏', iconLabel: 'ram in the thicket',
+                  christConnection: 'The ram in the thicket was God’s provided sacrifice — a symbol of Jesus Christ.' },
+                { word: 'ARM', isCapstone: false, definition: 'a symbol of the Lord’s power to save',
+                  verseBlank: 'to whom is the ________ of the Lord revealed?', verseRef: 'Isaiah 53:1',
+                  verseText: 'Who hath believed our report? and to whom is the arm of the Lord revealed?',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/isa/53?lang=eng&id=p1#p1',
+                  icon: '💪', iconLabel: 'arm of the Lord',
+                  christConnection: 'Isaiah 53 reveals the arm of the Lord — the saving power of Jesus Christ.' },
+                { word: 'SEA', isCapstone: false, definition: 'the Red Sea the Lord parted to deliver Israel',
+                  verseBlank: 'the Lord caused the ________ to go back… and the waters were divided', verseRef: 'Exodus 14:21',
+                  verseText: 'And Moses stretched out his hand over the sea; and the Lord caused the sea to go back by a strong east wind all that night, and made the sea dry land, and the waters were divided.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/14?lang=eng&id=p21#p21',
+                  icon: '🌊', iconLabel: 'sea divided',
+                  christConnection: 'The Lord who parted the sea is Jesus Christ, mighty to deliver us.' },
             ],
-            bonusWords: ['ELM', 'PET', 'MET', 'PELT', 'TEE'],
+            bonusWords: ['STREAM', 'TEAM', 'MEAT', 'TAME', 'RATE', 'TEA', 'EAT'],
         },
         {
-            n: 3, theme: 'His Promise Stands',
-            letters: ['P','R','O','M','I','S','E'], capstone: 'PROMISE',
+            n: 2, theme: 'The Heavens Declare',
+            letters: ['H','E','A','V','E','N','S'], capstone: 'HEAVENS',
+            discussion: 'The heavens declare God’s glory. Where have you seen the Creator’s hand in the world around you this week?',
             words: [
-                { word: 'PROMISE', isCapstone: true, definition: 'something God says He will surely do',
-                  verseBlank: 'For the ________ is unto you, and to your children', verseRef: 'Acts 2:39',
-                  verseText: 'For the promise is unto you, and to your children, and to all that are afar off.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/acts/2?lang=eng&id=p39#p39',
-                  icon: '🌈', iconLabel: 'promise',
-                  christConnection: 'Every promise of God is kept through Jesus Christ — He is the surety of the covenant.' },
-                { word: 'ROSE', isCapstone: false, definition: 'a flower that blooms even in the desert',
-                  verseBlank: 'the desert shall rejoice, and blossom as the ________', verseRef: 'Isaiah 35:1',
-                  verseText: 'The wilderness and the solitary place shall be glad for them; and the desert shall rejoice, and blossom as the rose.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/isa/35?lang=eng&id=p1#p1',
-                  icon: '🌹', iconLabel: 'desert rose',
-                  christConnection: 'Jesus Christ makes even our driest, hardest seasons blossom with hope.' },
+                { word: 'HEAVENS', isCapstone: true, definition: 'the sky and stars — all of creation testifying of God',
+                  verseBlank: 'The ________ declare the glory of God', verseRef: 'Psalm 19:1',
+                  verseText: 'The heavens declare the glory of God; and the firmament sheweth his handywork.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/19?lang=eng&id=p1#p1',
+                  icon: '🌌', iconLabel: 'heavens declare',
+                  christConnection: 'The heavens themselves testify of Jesus Christ, the Creator of all things.' },
+                { word: 'HEAVEN', isCapstone: false, definition: 'where our Heavenly Father lives',
+                  verseBlank: 'Our Father which art in ________, Hallowed be thy name', verseRef: 'Matthew 6:9',
+                  verseText: 'After this manner therefore pray ye: Our Father which art in heaven, Hallowed be thy name.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/6?lang=eng&id=p9#p9',
+                  icon: '☁️', iconLabel: 'our Father’s home',
+                  christConnection: 'Jesus taught us to pray to our Father in heaven — He shows us the way home.' },
+                { word: 'HEAVE', isCapstone: false, definition: 'to lift up — Israel lifted offerings up to the Lord',
+                  verseBlank: 'a cake of the first of your dough for an ________ offering', verseRef: 'Numbers 15:20',
+                  verseText: 'Ye shall offer up a cake of the first of your dough for an heave offering: as ye do the heave offering of the threshingfloor, so shall ye heave it.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/num/15?lang=eng&id=p20#p20',
+                  icon: '🙌', iconLabel: 'lifted offering',
+                  christConnection: 'Every offering lifted to God foreshadowed the great offering of Jesus Christ.' },
+                { word: 'SEVEN', isCapstone: false, definition: 'the number of times Israel circled Jericho',
+                  verseBlank: 'ye shall compass the city ________ times', verseRef: 'Joshua 6:4',
+                  verseText: 'And seven priests shall bear before the ark seven trumpets of rams’ horns: and the seventh day ye shall compass the city seven times.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/josh/6?lang=eng&id=p4#p4',
+                  icon: '🎺', iconLabel: 'Jericho trumpets',
+                  christConnection: 'Jericho fell when Israel trusted the Lord’s plan — Jesus asks that same trust of us.' },
+                { word: 'EVEN', isCapstone: false, definition: 'a little word that stretches a promise all the way',
+                  verseBlank: 'I am with you alway, ________ unto the end of the world', verseRef: 'Matthew 28:20',
+                  verseText: 'Teaching them to observe all things whatsoever I have commanded you: and, lo, I am with you alway, even unto the end of the world. Amen.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/28?lang=eng&id=p20#p20',
+                  icon: '🤝', iconLabel: 'with us always',
+                  christConnection: 'Jesus promises to be with us even to the end of the world.' },
+                { word: 'SEEN', isCapstone: false, definition: 'what Philip asked for — and Jesus’ surprising answer',
+                  verseBlank: 'he that hath ________ me hath seen the Father', verseRef: 'John 14:9',
+                  verseText: 'He that hath seen me hath seen the Father; and how sayest thou then, Shew us the Father?',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/john/14?lang=eng&id=p9#p9',
+                  icon: '👀', iconLabel: 'seeing the Father',
+                  christConnection: 'To see Jesus Christ is to see the Father’s perfect love.' },
+                { word: 'SEE', isCapstone: false, definition: 'the promise made to the pure in heart',
+                  verseBlank: 'Blessed are the pure in heart: for they shall ________ God', verseRef: 'Matthew 5:8',
+                  verseText: 'Blessed are the pure in heart: for they shall see God.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/5?lang=eng&id=p8#p8',
+                  icon: '👁️', iconLabel: 'pure in heart',
+                  christConnection: 'Jesus promises that the pure in heart will see God.' },
+                { word: 'EVE', isCapstone: false, definition: 'the mother of all living',
+                  verseBlank: 'And Adam called his wife’s name ________', verseRef: 'Genesis 3:20',
+                  verseText: 'And Adam called his wife’s name Eve; because she was the mother of all living.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/gen/3?lang=eng&id=p20#p20',
+                  icon: '🌺', iconLabel: 'mother Eve',
+                  christConnection: 'Adam and Eve’s choice opened the way for the Savior’s redeeming mission in God’s plan.' },
+                { word: 'HAVE', isCapstone: false, definition: 'what believing in the Son lets us receive',
+                  verseBlank: 'whosoever believeth in him should not perish, but ________ everlasting life', verseRef: 'John 3:16',
+                  verseText: 'For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/john/3?lang=eng&id=p16#p16',
+                  icon: '💝', iconLabel: 'everlasting life',
+                  christConnection: 'Through Jesus Christ we can have everlasting life.' },
+                { word: 'HEN', isCapstone: false, definition: 'a mother bird that shelters her chicks under her wings',
+                  verseBlank: 'even as a ________ gathereth her chickens under her wings', verseRef: 'Matthew 23:37',
+                  verseText: 'How often would I have gathered thy children together, even as a hen gathereth her chickens under her wings, and ye would not!',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/23?lang=eng&id=p37#p37',
+                  icon: '🐔', iconLabel: 'gathered safe',
+                  christConnection: 'Jesus longs to gather us as a hen gathers her chickens — safe under His wings.' },
+            ],
+            bonusWords: ['SHE', 'ASH', 'EASE', 'EAVES'],
+        },
+        {
+            n: 3, theme: 'Arise and Praise',
+            letters: ['P','R','A','I','S','E','D'], capstone: 'PRAISED',
+            discussion: 'What helps you praise the Lord in everyday life? Hebrews 12 talks about laying aside anything that slows us down in following Him — no need to share specifics, just think of one thing you could lay aside this week.',
+            words: [
+                { word: 'PRAISED', isCapstone: true, definition: 'honored and thanked — what the Lord’s name deserves all day long',
+                  verseBlank: 'unto the going down of the same the Lord’s name is to be ________', verseRef: 'Psalm 113:3',
+                  verseText: 'From the rising of the sun unto the going down of the same the Lord’s name is to be praised.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/113?lang=eng&id=p3#p3',
+                  icon: '🎺', iconLabel: 'name praised',
+                  christConnection: 'Jesus Christ is worthy to be praised from sunrise to sunset, everywhere on earth.' },
+                { word: 'PRAISE', isCapstone: false, definition: 'the song every living thing owes to God',
+                  verseBlank: 'Let every thing that hath breath ________ the Lord', verseRef: 'Psalm 150:6',
+                  verseText: 'Let every thing that hath breath praise the Lord. Praise ye the Lord.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/150?lang=eng&id=p6#p6',
+                  icon: '🎶', iconLabel: 'everything praises',
+                  christConnection: 'Everything that breathes owes its song of praise to the Savior.' },
+                { word: 'RAISED', isCapstone: false, definition: 'lifted from death to life',
+                  verseBlank: 'like as Christ was ________ up from the dead by the glory of the Father', verseRef: 'Romans 6:4',
+                  verseText: 'Therefore we are buried with him by baptism into death: that like as Christ was raised up from the dead by the glory of the Father, even so we also should walk in newness of life.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/rom/6?lang=eng&id=p4#p4',
+                  icon: '☀️', iconLabel: 'raised to life',
+                  christConnection: 'Because Christ was raised, we too can walk in newness of life.' },
+                { word: 'ARISE', isCapstone: false, definition: 'Jesus’ gentle command that brought a girl back to life',
+                  verseBlank: 'Damsel, I say unto thee, ________', verseRef: 'Mark 5:41',
+                  verseText: 'And he took the damsel by the hand, and said unto her, Talitha cumi; which is, being interpreted, Damsel, I say unto thee, arise.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/mark/5?lang=eng&id=p41#p41',
+                  icon: '🌷', iconLabel: 'talitha cumi',
+                  christConnection: 'Jesus’ power to say “arise” reaches every one of us.' },
+                { word: 'SAID', isCapstone: false, definition: 'God speaks — and creation obeys',
+                  verseBlank: 'And God ________, Let there be light: and there was light', verseRef: 'Genesis 1:3',
+                  verseText: 'And God said, Let there be light: and there was light.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/gen/1?lang=eng&id=p3#p3',
+                  icon: '💬', iconLabel: 'God spoke',
+                  christConnection: 'By the word of Jesus Christ the worlds were made — His word still creates light in us.' },
+                { word: 'READ', isCapstone: false, definition: 'what Jesus stood up to do in the synagogue',
+                  verseBlank: 'he went into the synagogue on the sabbath day, and stood up for to ________', verseRef: 'Luke 4:16',
+                  verseText: 'And he came to Nazareth, where he had been brought up: and, as his custom was, he went into the synagogue on the sabbath day, and stood up for to read.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/luke/4?lang=eng&id=p16#p16',
+                  icon: '📖', iconLabel: 'reading scripture',
+                  christConnection: 'Jesus Himself read and loved the scriptures — He invites us to do the same.' },
+                { word: 'EARS', isCapstone: false, definition: 'what Jesus asks us to use when He teaches',
+                  verseBlank: 'He that hath ________ to hear, let him hear', verseRef: 'Matthew 11:15',
+                  verseText: 'He that hath ears to hear, let him hear.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/11?lang=eng&id=p15#p15',
+                  icon: '👂', iconLabel: 'ears to hear',
+                  christConnection: 'Jesus still asks for listening ears — hearing Him is the first step to following Him.' },
                 { word: 'RIPE', isCapstone: false, definition: 'ready for harvest',
                   verseBlank: 'Put ye in the sickle, for the harvest is ________', verseRef: 'Joel 3:13',
                   verseText: 'Put ye in the sickle, for the harvest is ripe.',
                   url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/joel/3?lang=eng&id=p13#p13',
                   icon: '🌾', iconLabel: 'harvest',
                   christConnection: 'Jesus Christ invites us to gather souls, for the harvest of His gospel is ripe.' },
-                { word: 'MIRE', isCapstone: false, definition: 'deep mud — what the Lord lifts us out of',
-                  verseBlank: 'Deliver me out of the ________', verseRef: 'Psalm 69:14',
-                  verseText: 'Deliver me out of the mire, and let me not sink.',
-                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/69?lang=eng&id=p14#p14',
-                  icon: '🕳️', iconLabel: 'lifted out',
-                  christConnection: 'Jesus Christ is the one who lifts us out of the mire of sin and despair.' },
+                { word: 'ASIDE', isCapstone: false, definition: 'what we do with heavy things that slow us down',
+                  verseBlank: 'let us lay ________ every weight, and the sin which doth so easily beset us', verseRef: 'Hebrews 12:1',
+                  verseText: 'Let us lay aside every weight, and the sin which doth so easily beset us, and let us run with patience the race that is set before us.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/heb/12?lang=eng&id=p1#p1',
+                  icon: '🪨', iconLabel: 'lay it down',
+                  christConnection: 'We lay our burdens aside by looking unto Jesus, the author and finisher of our faith.' },
+                { word: 'SPREAD', isCapstone: false, definition: 'what the crowd did with their garments on Palm Sunday',
+                  verseBlank: 'a very great multitude ________ their garments in the way', verseRef: 'Matthew 21:8',
+                  verseText: 'And a very great multitude spread their garments in the way; others cut down branches from the trees, and strawed them in the way.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/21?lang=eng&id=p8#p8',
+                  icon: '🌴', iconLabel: 'palm sunday',
+                  christConnection: 'The crowds honored Jesus as King — we spread our best before Him too.' },
             ],
-            bonusWords: ['PRIME', 'PROSE', 'PRISM', 'ROPES', 'PORES'],
+            bonusWords: ['SPARED', 'PEARS', 'PAIRS', 'SPIRE', 'RIDES', 'IDEAS'],
         },
     ],
 };
@@ -681,8 +783,7 @@ let solved = new Set();     // solved target words
 let bonusFound = new Set();
 let hintLetters = new Set();// "r,c" cells revealed by 🔤 hints
 let hintTier = {};          // WORD -> highest tier used (1-5)
-let teams = [ { name: 'LIGHT SQUAD', score: 0 }, { name: 'STAR SQUAD', score: 0 } ];
-let activeTeam = 0;
+let classScore = 0;         // one class, one well — whole-class cooperative score
 let stoneOrder = [];        // letters in current wheel arrangement
 let selection = [];         // indices into stoneOrder
 let dragging = false;
@@ -741,11 +842,7 @@ window.startGame = function() {
     puzzles = validatePuzzles(data);
     if (!puzzles.length) { alert('No valid puzzles in this lesson — falling back to demo.'); puzzles = validatePuzzles(DEMO_DATA); }
     gameTopic = data.topic || 'Well of Words';
-    teams = [
-        { name: (document.getElementById('team1-name').value.trim() || 'LIGHT SQUAD').toUpperCase(), score: 0 },
-        { name: (document.getElementById('team2-name').value.trim() || 'STAR SQUAD').toUpperCase(), score: 0 },
-    ];
-    activeTeam = 0;
+    classScore = 0;
     puzzleIdx = 0;
     showScene('play-scene');
     loadPuzzle();
@@ -768,7 +865,7 @@ function loadPuzzle() {
     hideHintBanner();
     document.getElementById('topic-title').textContent = gameTopic.toUpperCase();
     document.getElementById('topic-sub').textContent = `Puzzle ${puzzleIdx + 1} of ${puzzles.length} · ${p.theme || ''}`;
-    renderTeams(); renderGrid(); renderBucket(); renderWheel(); renderPreview();
+    renderScore(); renderGrid(); renderBucket(); renderWheel(); renderPreview();
 }
 
 window.nextPuzzle = function() {
@@ -778,14 +875,9 @@ window.nextPuzzle = function() {
 };
 
 // ── Renders ──────────────────────────────────────────────────────────────────
-function renderTeams() {
-    for (const i of [0, 1]) {
-        document.getElementById(`chip-${i}-name`).textContent = teams[i].name;
-        document.getElementById(`chip-${i}-score`).textContent = teams[i].score;
-        document.getElementById(`chip-${i}`).classList.toggle('active', activeTeam === i);
-    }
+function renderScore() {
+    document.getElementById('class-score').textContent = classScore;
 }
-window.setActiveTeam = function(i) { activeTeam = i; renderTeams(); };
 
 function cellsOf(placement) {
     const out = [];
@@ -959,8 +1051,8 @@ window.wowSubmit = function() {
     if (wordMap[word] && !solved.has(word)) { solveWord(word, { withPoints: true }); return; }
     if (p.bonusWords.includes(word) && !bonusFound.has(word)) {
         bonusFound.add(word);
-        teams[activeTeam].score += POINTS.bonus;
-        sfxBonus(); renderBucket(); renderTeams();
+        classScore += POINTS.bonus;
+        sfxBonus(); renderBucket(); renderScore();
         return;
     }
     // already found, or not in this well → gentle ripple
@@ -975,9 +1067,9 @@ function solveWord(word, { withPoints }) {
     solved.add(word);
     const w = wordMap[word];
     const pts = withPoints ? (w.isCapstone ? POINTS.capstone : POINTS.target) : 0;
-    if (pts) teams[activeTeam].score += pts;
+    if (pts) classScore += pts;
     sfxValid();
-    renderGrid(); renderTeams();
+    renderGrid(); renderScore();
     // pop animation on the word's cells
     const pl = pack.placements.find(x => x.word === word);
     if (pl) cellsOf(pl).forEach((cc, i) => {
@@ -1011,7 +1103,7 @@ function showWellCard(w, pts) {
         qrWrap.style.display = 'block';
         new window.QRious({ element: document.getElementById('wc-qr'), value: w.url, size: 120, background: 'white', foreground: '#0a0a20' });
     } else qrWrap.style.display = 'none';
-    document.getElementById('wc-points').textContent = pts ? `+${pts} · ${teams[activeTeam].name}` : 'revealed — no points';
+    document.getElementById('wc-points').textContent = pts ? `+${pts} pts` : 'revealed — no points';
     document.getElementById('wellcard-veil').classList.add('show');
 }
 
@@ -1031,8 +1123,8 @@ function checkPuzzleComplete() {
     document.getElementById('overflow-sub').textContent = isLast
         ? `${gameTopic} — every word drawn from the well.`
         : `Puzzle ${puzzleIdx + 1} complete — ${p.theme || ''}`;
-    document.getElementById('overflow-scores').innerHTML = teams.map(t =>
-        `<div class="overflow-score"><div class="name">${esc(t.name)}</div><div class="pts">${t.score}</div></div>`).join('');
+    document.getElementById('overflow-scores').innerHTML =
+        `<div class="overflow-score"><div class="name">CLASS SCORE</div><div class="pts">${classScore}</div></div>`;
     const disc = document.getElementById('overflow-discussion');
     const discussion = p.discussion ||
         (isLast ? 'Which word from today’s well means the most to you — and where do you see Jesus Christ in it? (Invite anyone who wants to, to share a short testimony.)' : null);

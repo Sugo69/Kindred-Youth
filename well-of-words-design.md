@@ -2,6 +2,8 @@
 
 **Date:** 2026-07-03 · **Status:** FINAL — decisions locked with Lewis; ready for build · **Role split:** this doc is the advisor deliverable; the implementing agent ("the DO") codes from §8.
 
+**Post-playtest revisions (2026-07-03, after first hands-on):** (1) **No teams** — one cooperative class score; the team-turns/steal facilitation in §4c is superseded. (2) **Bigger puzzles** — every puzzle has 6–7 letters and 10–12 target words (was 4-6 words); §4b/§4f word counts are superseded. Pipeline enforces via structural flag `<10 words` + fertile-capstone prompt guidance.
+
 **Locked decisions (2026-07-03):**
 1. **Name: Well of Words** (Lewis's pick; screened clean — TESS + app-store manual check still owed before first commit). Fallbacks: Word Grove, Gathered Words.
 2. **In the recommendation engine** — add to `GAME_FIT_MATRIX`, not catalog-only.

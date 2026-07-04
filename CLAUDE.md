@@ -17,7 +17,7 @@
 - **Common Ground / Scripture Match** — Monitor View (TV display) + Admin View (phone controller) + Teacher Portal (📚 Library, 🔗 lesson URL pipeline, ✏️ manual editor)
 - **Scripture Trail** — single playing screen + setup scene + new **✏️ Edit Stops** teacher editor (classroom-scoped overrides at `classrooms/{room}/trailLessons/{lessonId}`)
 - **By Heart** — single screen, no Monitor split. Three passage picker modes (📖 This Week DM / 📚 All 25 NT DM / ✏️ Any verse).
-- **Well of Words** — single screen, teacher-driven. Setup (library picker + team names) + play (crossword grid, stone-ring wheel with drag AND tap input, teacher hint ladder 💬→📖→🖼→🔤→👁, Well Card modal with QR per word, 🪣 bonus bucket, 90s blitz timer). **Whitelist-only word validation** — only pipeline/demo words accepted, no dictionary shipped. Grid layout computed client-side by a deterministic crossword packer (never Claude). v1 is teen mode; 💧 Spring (K-6) plumbing exists but hidden (v1.1).
+- **Well of Words** — single screen, teacher-driven, **single cooperative class score** (no teams — decided 2026-07-03). Setup (library picker) + play (crossword grid, stone-ring wheel with drag AND tap input, teacher hint ladder 💬→📖→🖼→🔤→👁, Well Card modal with QR per word, 🪣 bonus bucket, 90s blitz timer). Puzzles are **6–7 letters with 10–12 target words**. **Whitelist-only word validation** — only pipeline/demo words accepted, no dictionary shipped. Grid layout computed client-side by a deterministic crossword packer (never Claude). v1 is teen mode; 💧 Spring (K-6) plumbing exists but hidden (v1.1).
 
 ## Tech Stack
 - **Frontend**: Vite MPA + vanilla HTML/CSS/JS (`index.html` + `games/*.html`)
@@ -173,6 +173,7 @@ build: {
             memory: resolve(__dirname, 'games/memory.html'),
             scriptureTrail: resolve(__dirname, 'games/scripture-trail.html'),
             byHeart: resolve(__dirname, 'games/by-heart.html'),
+            wellOfWords: resolve(__dirname, 'games/well-of-words.html'),
         }
     }
 }
@@ -193,6 +194,7 @@ Two-step Claude pipeline for all three content-generating games (Common Ground, 
 - **Common Ground output**: `{ topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
 - **Scripture Match output**: `{ topic, pairs[{cardA, cardB, icon, iconLabel, scene, verse, question, christConnection, url, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }`
 - **Scripture Trail output**: `{ topic, stops[{n, title, ref, verse, verseRef, url, arc?, summary, objective, choices[{text,correct}×3], answer, discussion, christ, points, complianceCheck}], sourceUrl, generatedAt, videoLinks[], talkLinks[], pipeline: 'lesson-pipeline-v3', complianceReport }` — 7 stops in 2-3 arcs; first stop of each arc carries the `arc` object
+- **Well of Words output** (`gameType: 'well-of-words'`, field `lessonLibrary/{id}.wellOfWords`): `{ topic, puzzles[{n, theme, letters[], capstone, words[{word, isCapstone, definition, verseBlank, verseText, verseRef, url, icon, iconLabel, christConnection, complianceCheck}], bonusWords[], discussion, complianceCheck}], … complianceReport }` — 3 puzzles, 6–7 letter capstones, 10–12 target words each (structural flags <10; generation max_tokens 12000 for this type). Structural compliance adds a **deterministic letter-multiset check** (`spellableFrom`) on every target + bonus word; profane bonus words are scrubbed pre-scan and flagged amber; unspellable words are flagged then dropped in backfill; safety review runs on the FLATTENED word list (`flattenWowWords`); a puzzle that loses its capstone or drops below 3 words is removed. Grid layout is computed client-side — never ask Claude for coordinates.
 - **`complianceReport` shape**: `{ version: 'v3', policyRefs: ['Handbook §13', 'Handbook §37.8', "Teaching in the Savior's Way"], structural: {...}, safety: {...}, passCount, reviewCount, rewrittenCount, blockedCount, overall: 'PASS' | 'PASS_WITH_REWRITES' | 'REVIEW_REQUIRED' }`
 - **Server-side retry**: if Claude API returns 500/503/529 or timeout/overload error, waits 5s and retries once
 - **Client-side retry**: on any error, shows 30-second countdown in status bar and auto-retries; clicking Generate again cancels the countdown and retries immediately
