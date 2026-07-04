@@ -1316,6 +1316,18 @@ function solveWord(word, { withPoints }) {
 // ── Well Card ────────────────────────────────────────────────────────────────
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// Translation/volume label for a reference — "(KJV)" only applies to the Bible.
+const BOFM_BOOKS = /^(1 |2 |3 |4 )?(Nephi|Jacob|Enos|Jarom|Omni|Words of Mormon|Mosiah|Alma|Helaman|Mormon|Ether|Moroni)\b/i;
+const DC_BOOKS = /^(D&C|Doctrine and Covenants|Official Declaration)\b/i;
+const PGP_BOOKS = /^(Moses|Abraham|Joseph Smith|Articles of Faith)\b/i;
+function scriptureLabel(ref) {
+    const r = String(ref || '').trim();
+    if (BOFM_BOOKS.test(r)) return 'Book of Mormon';
+    if (DC_BOOKS.test(r)) return 'D&C';
+    if (PGP_BOOKS.test(r)) return 'Pearl of Great Price';
+    return 'KJV';
+}
+
 // Gospel Library deep link: if the url is chapter-level (no #anchor), derive the
 // verse anchor from verseRef ("Isaiah 40:11" → &id=p11#p11, "19:19–21" → p19-p21)
 // so the QR lands on the exact verse, not just the chapter.
@@ -1341,7 +1353,7 @@ function showWellCard(w, pts) {
     } else if (w.verseText) {
         verseEl.innerHTML = '“' + esc(w.verseText) + '”';
     } else { verseEl.innerHTML = ''; }
-    document.getElementById('wc-ref').textContent = w.verseRef ? `— ${w.verseRef} (KJV)` : '';
+    document.getElementById('wc-ref').textContent = w.verseRef ? `— ${w.verseRef} (${scriptureLabel(w.verseRef)})` : '';
     const christ = document.getElementById('wc-christ');
     if (w.christConnection) { christ.style.display = 'block'; christ.textContent = '✝ ' + w.christConnection; }
     else christ.style.display = 'none';

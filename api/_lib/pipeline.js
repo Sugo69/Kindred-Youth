@@ -890,7 +890,8 @@ Example: letters ["P","R","O","M","I","S","E"] → ROSE ✓, RIPE ✓, MOSES ✗
 - Each word: "definition" (kid-level, max 12 words), "verseBlank" (a real KJV phrase from the cited
   verse with the word replaced by ________ — the word MUST literally appear in the verse; if it
   doesn't, pick a different verse where it does, or a different word. Never emit a verseBlank
-  without the ________ marker), "verseText" (the verbatim KJV verse or its key clause, max 180 chars),
+  without the ________ marker), "verseText" (verbatim scripture text or its key clause, max 180 chars —
+  KJV for the Bible, exact LDS standard-works text for Book of Mormon / D&C / Pearl of Great Price),
   "verseRef", "url" (exact Gospel Library URL from the references above, or null),
   "icon" (one emoji depicting the word's MEANING — not decoration), "iconLabel" (2–3 words).
 - EVERY word gets "christConnection" — one short sentence tying it to Jesus Christ (the capstone's
