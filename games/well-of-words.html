@@ -203,7 +203,11 @@
     border: 2px solid rgba(45,212,191,0.25); box-shadow: inset 0 0 40px rgba(45,212,191,0.18), 0 0 30px rgba(255,0,127,0.10); }
   .well-water::after { content: ''; position: absolute; inset: 18%; border-radius: 50%;
     border: 1px solid rgba(255,92,168,0.18); }
-  .drag-svg { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  /* width/height 100% is required: an absolutely-positioned SVG is a replaced
+     element, so inset:0 alone leaves it at its intrinsic 300x150 default and
+     every line outside that box gets clipped. */
+  .drag-svg { position: absolute; inset: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 2; overflow: visible; }
   .stone { position: absolute; width: var(--stone); height: var(--stone); border-radius: 30% 34% 32% 30%;
     background: linear-gradient(145deg, #232345, #14142c); border: 2px solid var(--border);
     color: var(--ink); font-family: 'Rajdhani', sans-serif; font-weight: 700;
