@@ -1184,14 +1184,22 @@ function renderPreview() {
 }
 
 // ── Input: tap + drag on stones ──────────────────────────────────────────────
+// A press is a TAP until the pointer visits a different stone while held down —
+// only real drags auto-submit on release. Taps accumulate letters for DRAW WORD.
+let dragVisited = false;     // pointer entered another stone during this press
+let pressIdx = null;         // stone the press started on
+let pressWasSelected = false; // was it already selected? (tap again = remove it)
+
 function onStoneDown(e) {
     e.preventDefault();
     ac(); // unlock audio on first gesture
     const idx = Number(e.currentTarget.dataset.idx);
     if (!dragging) {
-        // begin potential drag; also works as a tap
         dragging = true;
-        addToSelection(idx);
+        dragVisited = false;
+        pressIdx = idx;
+        pressWasSelected = selection.includes(idx);
+        if (!pressWasSelected) addToSelection(idx);
         window.addEventListener('pointermove', onDragMove);
         window.addEventListener('pointerup', onDragUp, { once: true });
     }
@@ -1201,21 +1209,27 @@ function onDragMove(e) {
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (el?.classList?.contains('stone')) {
         const idx = Number(el.dataset.idx);
+        if (idx !== pressIdx) dragVisited = true;
         const pos = selection.indexOf(idx);
         if (pos === -1) addToSelection(idx);
         else if (pos === selection.length - 2) { // backtrack
             selection.pop(); updateSelectionUI(); renderPreview(); drawDragLines(e);
         }
     }
-    drawDragLines(e);
+    if (dragVisited) drawDragLines(e);
 }
 function onDragUp() {
     window.removeEventListener('pointermove', onDragMove);
-    const moved = selection.length > 1;
     dragging = false;
     clearDragLines();
-    if (moved) window.wowSubmit();
-    // single tap keeps the letter selected for tap-to-build mode
+    if (dragVisited && selection.length > 1) {
+        window.wowSubmit();          // real drag → submit on release
+    } else if (!dragVisited && pressWasSelected && selection[selection.length - 1] === pressIdx) {
+        // tapping the last-added letter again removes it (quick undo)
+        selection.pop(); updateSelectionUI(); renderPreview();
+    }
+    // otherwise: a tap — the letter stays queued for DRAW WORD ↑
+    pressIdx = null; dragVisited = false; pressWasSelected = false;
 }
 function addToSelection(idx) {
     if (selection.includes(idx)) return;
