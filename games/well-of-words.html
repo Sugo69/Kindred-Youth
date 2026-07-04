@@ -1360,6 +1360,10 @@ function solveWord(word, { withPoints }) {
         const el = document.querySelector(`.cell[data-k="${cc.r + ',' + cc.c}"]`);
         if (el) setTimeout(() => el.classList.add('pop'), i * 60);
     });
+    // A teacher reveal that finishes the puzzle goes straight to the overflow
+    // celebration — no Well Card detour for a word nobody actually solved.
+    const complete = puzzles[puzzleIdx].words.every(x => solved.has(x.word));
+    if (!withPoints && complete) { checkPuzzleComplete(); return; }
     showWellCard(w, pts);
 }
 
