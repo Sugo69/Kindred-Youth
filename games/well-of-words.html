@@ -1469,20 +1469,20 @@ function isCellVisible(k) {
     return pack.placements.some(q => solved.has(q.word) && cellsOf(q).some(c => c.r + ',' + c.c === k));
 }
 function revealNextLetter(word) {
+    // First press anchors the word with its FIRST letter; every press after
+    // that reveals a RANDOM remaining letter (a prefix reveal gives too much away).
     const pl = pack.placements.find(x => x.word === word);
-    if (pl) {
-        const cells = cellsOf(pl);
-        for (let i = 0; i < cells.length; i++) {
-            const k = cells[i].r + ',' + cells[i].c;
-            if (!isCellVisible(k)) { hintLetters.add(k); renderGrid(); return i; }
-        }
-        return 'complete';
-    }
-    for (let i = 0; i < word.length; i++) {
-        const k = `solo:${word}:${i}`;
-        if (!hintLetters.has(k)) { hintLetters.add(k); renderGrid(); return i; }
-    }
-    return 'complete';
+    const keyAt = pl
+        ? (i) => { const c = cellsOf(pl)[i]; return c.r + ',' + c.c; }
+        : (i) => `solo:${word}:${i}`;
+    const visible = pl ? (k) => isCellVisible(k) : (k) => hintLetters.has(k);
+    const hidden = [];
+    for (let i = 0; i < word.length; i++) if (!visible(keyAt(i))) hidden.push(i);
+    if (!hidden.length) return 'complete';
+    const i = hidden.includes(0) ? 0 : hidden[Math.floor(Math.random() * hidden.length)];
+    hintLetters.add(keyAt(i));
+    renderGrid();
+    return i;
 }
 
 window.openHints = function() {
