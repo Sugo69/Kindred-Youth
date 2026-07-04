@@ -954,7 +954,11 @@ function loadPuzzle() {
         wordNums[pl.word] = { n: startNums.get(k), dir: pl.dir === 'H' ? '→' : '↓' };
     }
     for (const w of pack.solos) wordNums[w] = { n: ++numSeq, dir: '•' };
+    // Scramble the ring — in given order the stones literally spell the capstone
     stoneOrder = [...p.letters];
+    for (let attempt = 0; attempt < 5 && stoneOrder.join('') === p.letters.join(''); attempt++) {
+        shuffleArray(stoneOrder);
+    }
     stopBlitz();
     hideHintBanner();
     document.getElementById('topic-title').textContent = gameTopic.toUpperCase();
@@ -1142,11 +1146,14 @@ function clearDragLines() { document.getElementById('drag-svg').innerHTML = ''; 
 
 window.wowBackspace = function() { selection.pop(); updateSelectionUI(); renderPreview(); };
 window.wowClear = function() { selection = []; updateSelectionUI(); renderPreview(); };
-window.wowShuffle = function() {
-    for (let i = stoneOrder.length - 1; i > 0; i--) {
+function shuffleArray(a) {
+    for (let i = a.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
-        [stoneOrder[i], stoneOrder[j]] = [stoneOrder[j], stoneOrder[i]];
+        [a[i], a[j]] = [a[j], a[i]];
     }
+}
+window.wowShuffle = function() {
+    shuffleArray(stoneOrder);
     selection = []; renderWheel(); renderPreview();
 };
 
@@ -1192,6 +1199,19 @@ function solveWord(word, { withPoints }) {
 // ── Well Card ────────────────────────────────────────────────────────────────
 function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
+// Gospel Library deep link: if the url is chapter-level (no #anchor), derive the
+// verse anchor from verseRef ("Isaiah 40:11" → &id=p11#p11, "19:19–21" → p19-p21)
+// so the QR lands on the exact verse, not just the chapter.
+function buildVerseUrl(w) {
+    if (!w.url) return null;
+    if (w.url.includes('#')) return w.url;
+    const m = String(w.verseRef || '').match(/:(\d+)(?:\s*[–-]\s*(\d+))?/);
+    if (!m) return w.url;
+    const anchor = m[2] ? `p${m[1]}-p${m[2]}` : `p${m[1]}`;
+    const sep = w.url.includes('?') ? '&' : '?lang=eng&';
+    return `${w.url}${sep}id=${anchor}#p${m[1]}`;
+}
+
 function showWellCard(w, pts) {
     document.getElementById('wc-icon').textContent = w.icon || '💧';
     const wordEl = document.getElementById('wc-word');
@@ -1209,9 +1229,10 @@ function showWellCard(w, pts) {
     if (w.christConnection) { christ.style.display = 'block'; christ.textContent = '✝ ' + w.christConnection; }
     else christ.style.display = 'none';
     const qrWrap = document.getElementById('wc-qr-wrap');
-    if (w.url && window.QRious) {
+    const qrUrl = buildVerseUrl(w);
+    if (qrUrl && window.QRious) {
         qrWrap.style.display = 'block';
-        new window.QRious({ element: document.getElementById('wc-qr'), value: w.url, size: 120, background: 'white', foreground: '#0a0a20' });
+        new window.QRious({ element: document.getElementById('wc-qr'), value: qrUrl, size: 120, background: 'white', foreground: '#0a0a20' });
     } else qrWrap.style.display = 'none';
     document.getElementById('wc-points').textContent = pts ? `+${pts} pts` : 'revealed — no points';
     document.getElementById('wellcard-veil').classList.add('show');
