@@ -92,6 +92,7 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                     memory: resolve(__dirname, 'games/memory.html'),
                     scriptureTrail: resolve(__dirname, 'games/scripture-trail.html'),
                     byHeart: resolve(__dirname, 'games/by-heart.html'),
+                    wellOfWords: resolve(__dirname, 'games/well-of-words.html'),
                 }
             }
         },

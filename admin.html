@@ -2015,7 +2015,7 @@
                 const costEl = document.getElementById('lib-cost');
                 const genAllBtn = document.getElementById('lib-gen-all-btn');
                 if (costEl) {
-                    const missing = libraryItems.filter(e => !e.commonGround || !e.memory).length;
+                    const missing = libraryItems.filter(e => !e.commonGround || !e.memory || !e.wellOfWords).length;
                     const estCost = (missing * 2 * 0.20).toFixed(2);
                     costEl.textContent = missing > 0 ? `${missing} missing game type${missing !== 1 ? 's' : ''} · est. $${estCost}` : 'All generated ✓';
                     if (genAllBtn) genAllBtn.style.display = missing > 0 ? 'block' : 'none';
@@ -2134,12 +2134,15 @@
             list.innerHTML = libraryItems.map(entry => {
                 const hasCG = !!(entry.commonGround?.rounds?.length);
                 const hasMem = !!(entry.memory?.pairs?.length);
+                const hasWoW = !!(entry.wellOfWords?.puzzles?.length);
                 const cgDate = entry.commonGround?.generatedAt ? new Date(entry.commonGround.generatedAt).toLocaleDateString() : null;
                 const memDate = entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleDateString() : null;
+                const wowDate = entry.wellOfWords?.generatedAt ? new Date(entry.wellOfWords.generatedAt).toLocaleDateString() : null;
                 const hasContent = hasCG || hasMem;
                 const detailsHtml = buildLibraryDetails(entry);
                 const cgBadge = renderComplianceBadge(entry.commonGround?.complianceReport);
                 const memBadge = renderComplianceBadge(entry.memory?.complianceReport);
+                const wowBadge = renderComplianceBadge(entry.wellOfWords?.complianceReport);
                 return `<div class="record-card" style="flex-direction:column; align-items:stretch; gap:0;">
                     <div style="display:flex; align-items:center; gap:12px;">
                         <div class="record-avatar" style="background:linear-gradient(135deg,#0d1a2e,#1a2a4a); color:var(--neon-cyan); font-size:1.2rem;">📚</div>
@@ -2147,7 +2150,8 @@
                             <div class="record-name">${esc(entry.name || entry.id)}</div>
                             <div class="record-meta">
                                 ${hasCG ? `<span style="color:var(--neon-cyan)">🎯 CG (${(entry.commonGround.rounds||[]).length} rounds${cgDate ? ', '+cgDate : ''})</span> ${cgBadge}` : '<span style="color:#444">🎯 CG —</span>'} &nbsp;
-                                ${hasMem ? `<span style="color:#a78bfa">🧩 Mem (${(entry.memory.pairs||[]).length} pairs${memDate ? ', '+memDate : ''})</span> ${memBadge}` : '<span style="color:#444">🧩 Mem —</span>'}
+                                ${hasMem ? `<span style="color:#a78bfa">🧩 Mem (${(entry.memory.pairs||[]).length} pairs${memDate ? ', '+memDate : ''})</span> ${memBadge}` : '<span style="color:#444">🧩 Mem —</span>'} &nbsp;
+                                ${hasWoW ? `<span style="color:var(--neon-pink)">💧 WoW (${(entry.wellOfWords.puzzles||[]).length} puzzles${wowDate ? ', '+wowDate : ''})</span> ${wowBadge}` : '<span style="color:#444">💧 WoW —</span>'}
                             </div>
                             ${entry.url ? `<div class="record-meta" style="word-break:break-all; margin-top:2px; color:#333;"><a href="${esc(entry.url)}" target="_blank" style="color:#333; text-decoration:none;" onmouseover="this.style.color='var(--neon-cyan)'" onmouseout="this.style.color='#333'">${esc(entry.url.slice(0,70))}${entry.url.length>70?'…':''}</a></div>` : ''}
                         </div>
@@ -2155,6 +2159,7 @@
                             ${hasContent ? `<button id="lib-toggle-${entry.id}" class="btn-secondary" style="font-size:0.7rem; padding:5px 10px; white-space:nowrap;" onclick="window.toggleLibraryDetails('${entry.id}')">▼ Content</button>` : ''}
                             ${!hasCG ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap;" onclick="window.generateLibraryGame('${entry.id}','common-ground')">⚡ CG</button>` : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap;" onclick="window.generateLibraryGame('${entry.id}','common-ground')">↺ CG</button>`}
                             ${!hasMem ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#a78bfa; color:#a78bfa;" onclick="window.generateLibraryGame('${entry.id}','memory')">⚡ Mem</button>` : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#a78bfa; color:#6b7280;" onclick="window.generateLibraryGame('${entry.id}','memory')">↺ Mem</button>`}
+                            ${!hasWoW ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:var(--neon-pink); color:var(--neon-pink);" onclick="window.generateLibraryGame('${entry.id}','well-of-words')">⚡ WoW</button>` : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:var(--neon-pink); color:#6b7280;" onclick="window.generateLibraryGame('${entry.id}','well-of-words')">↺ WoW</button>`}
                             <button class="btn-icon" title="Delete" onclick="window.deleteLibraryEntry('${entry.id}', '${esc(entry.name||entry.id)}')">🗑</button>
                         </div>
                     </div>
@@ -2310,7 +2315,8 @@
             const entry = libraryItems.find(e => e.id === entryId);
             if (!entry?.url) { showToast('Entry has no URL.', true); return; }
             const statusEl = document.getElementById(`lib-status-${entryId}`);
-            const gameLabel = gameType === 'common-ground' ? 'Common Ground' : 'Scripture Match';
+            const gameLabel = gameType === 'common-ground' ? 'Common Ground'
+                : gameType === 'well-of-words' ? 'Well of Words' : 'Scripture Match';
             const batchSuffix = batchInfo ? ` (${batchInfo.i}/${batchInfo.total})` : '';
             // Progress bar — eases toward 85% while Claude is running, plus an elapsed timer
             let pct = 0;
@@ -2361,7 +2367,8 @@
                 clearTimeout(clientTimeout);
                 const data = await resp.json();
                 if (!resp.ok) throw new Error(data.error || 'Pipeline failed');
-                const field = gameType === 'common-ground' ? 'commonGround' : 'memory';
+                const field = gameType === 'common-ground' ? 'commonGround'
+                    : gameType === 'well-of-words' ? 'wellOfWords' : 'memory';
                 await updateDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`), {
                     [field]: { ...data, generatedAt: Date.now() }
                 });
@@ -2402,6 +2409,7 @@
             for (const e of libraryItems) {
                 if (!e.commonGround) jobs.push({ id: e.id, type: 'common-ground' });
                 if (!e.memory) jobs.push({ id: e.id, type: 'memory' });
+                if (!e.wellOfWords) jobs.push({ id: e.id, type: 'well-of-words' });
             }
             if (!jobs.length) { showToast('All entries already generated.'); return; }
             showToast(`Generating ${jobs.length} game types — this will take a while…`);
@@ -2419,12 +2427,12 @@
                 showToast('No upcoming Come Follow Me lessons to generate.');
                 return;
             }
-            const maxCostUsd = (lessons.length * 2 * 0.15).toFixed(2); // rough — 2 games/lesson × ~$0.15/game
+            const maxCostUsd = (lessons.length * 3 * 0.15).toFixed(2); // rough — 3 games/lesson × ~$0.15/game
             const ok = confirm(
                 `Pre-generate the next ${lessons.length} Come Follow Me lessons?\n\n` +
-                `This will create any missing library entries and generate both\n` +
-                `games (Common Ground + Scripture Match) for each. Already-generated\n` +
-                `games are skipped.\n\n` +
+                `This will create any missing library entries and generate the\n` +
+                `games (Common Ground + Scripture Match + Well of Words) for each.\n` +
+                `Already-generated games are skipped.\n\n` +
                 `Estimated Claude API cost: up to ~$${maxCostUsd} (fewer if some are already generated).\n\n` +
                 `Leave this tab open while it runs.`
             );
@@ -2458,6 +2466,7 @@
                 if (!isGeneratableLessonUrl(e.url)) continue; // defensive
                 if (!e.commonGround) jobs.push({ id: e.id, type: 'common-ground' });
                 if (!e.memory) jobs.push({ id: e.id, type: 'memory' });
+                if (!e.wellOfWords) jobs.push({ id: e.id, type: 'well-of-words' });
             }
             if (!jobs.length) {
                 showToast('All 8 upcoming lessons are already generated. Nothing to do.');

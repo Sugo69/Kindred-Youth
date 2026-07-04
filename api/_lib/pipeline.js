@@ -130,9 +130,9 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
 
     // Retry once on parse failure — intermittent Claude truncations happen and
     // the same prompt often succeeds on a second call.
-    if (!parsed?.rounds?.length && !parsed?.pairs?.length && !parsed?.stops?.length) {
+    if (!parsed?.rounds?.length && !parsed?.pairs?.length && !parsed?.stops?.length && !parsed?.puzzles?.length) {
         const firstExcerpt = (generateResp.text || '').slice(0, 800)
-        console.warn(`${tag} Generation missing rounds/pairs/stops — retrying once. First-attempt excerpt:\n${firstExcerpt}`)
+        console.warn(`${tag} Generation missing rounds/pairs/stops/puzzles — retrying once. First-attempt excerpt:\n${firstExcerpt}`)
         stage('↻ generation retry (parse failed, first attempt truncated or malformed)…')
         generateResp = await callClaude(claudeHeaders, generationBody)
         if (generateResp.error) {
@@ -143,12 +143,12 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
         parsed = parseJsonLoose(generateResp.text)
     }
 
-    if (!parsed?.rounds?.length && !parsed?.pairs?.length && !parsed?.stops?.length) {
+    if (!parsed?.rounds?.length && !parsed?.pairs?.length && !parsed?.stops?.length && !parsed?.puzzles?.length) {
         const excerpt = (generateResp.text || '').slice(0, 800)
-        console.error(`${tag} Generation missing rounds/pairs/stops after retry for ${url}\n--- Raw Claude response (first 800 chars) ---\n${excerpt}\n--- end ---`)
-        return { status: 502, body: { error: 'Generation step missing rounds/pairs/stops (after retry)', step: 'generation', debugExcerpt: excerpt } }
+        console.error(`${tag} Generation missing rounds/pairs/stops/puzzles after retry for ${url}\n--- Raw Claude response (first 800 chars) ---\n${excerpt}\n--- end ---`)
+        return { status: 502, body: { error: 'Generation step missing rounds/pairs/stops/puzzles (after retry)', step: 'generation', debugExcerpt: excerpt } }
     }
-    stage(`generation parsed: ${(parsed.rounds || parsed.pairs || parsed.stops || []).length} items`)
+    stage(`generation parsed: ${(parsed.rounds || parsed.pairs || parsed.stops || parsed.puzzles || []).length} items`)
 
     // Step 3: structural compliance (server-side, cannot be prompted away)
     const structural = runStructuralCompliance(parsed, lessonStructure, gameType)
@@ -164,7 +164,7 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
             safetyReport = { enabled: true, items: [], blockedCount: 0, rewrittenCount: 0, warning: r.error }
         } else {
             safetyReport = r
-            applySafetyRewrites(parsed, safetyReport)
+            applySafetyRewrites(parsed, safetyReport, gameType)
             stage(`← safety review: rewrote=${r.rewrittenCount} blocked=${r.blockedCount}`)
         }
     }
@@ -172,6 +172,7 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
     // Step 5: verse text backfill for memory pairs and trail stops
     if (parsed.pairs?.length) backfillPairs(parsed, lessonStructure)
     if (parsed.stops?.length) backfillStops(parsed, lessonStructure)
+    if (parsed.puzzles?.length) backfillPuzzles(parsed, lessonStructure)
     stage(`DONE in ${((Date.now() - t0) / 1000).toFixed(1)}s`)
 
     // Step 6: assemble response
@@ -263,8 +264,45 @@ function stripHtml(html) {
 }
 
 // ── Structural compliance ────────────────────────────────────────────────────
+
+// Letter-multiset containment: can `word` be spelled from the puzzle's letters,
+// using each letter at most as many times as it appears? Deterministic — Claude
+// occasionally miscounts letters, so this check cannot live in the prompt.
+function spellableFrom(word, letters) {
+    const pool = {}
+    for (const ch of letters) pool[ch] = (pool[ch] || 0) + 1
+    for (const ch of String(word).toUpperCase()) {
+        if (!pool[ch]) return false
+        pool[ch]--
+    }
+    return true
+}
+
 function runStructuralCompliance(parsed, lessonStructure, gameType) {
-    const items = parsed.rounds || parsed.pairs || parsed.stops || []
+    const items = parsed.rounds || parsed.pairs || parsed.stops || parsed.puzzles || []
+
+    // well-of-words pre-pass: scrub the bonus whitelist BEFORE the generic
+    // hard-block scan below, so an already-removed word can't escalate the
+    // whole lesson to REVIEW_REQUIRED. Unspellable/invalid bonus words are
+    // dropped silently (mechanical fix); profane ones are dropped AND flagged.
+    // Scrub records live in a side map, NOT on the item — the hard-block scan
+    // stringifies the item and must never see the removed words.
+    const scrubbedBonusByIdx = new Map()
+    if (gameType === 'well-of-words') {
+        items.forEach((p, i) => {
+            p.letters = (p.letters || []).map(l => String(l).toUpperCase())
+            const kept = [], removedProfane = []
+            for (const b0 of (p.bonusWords || [])) {
+                const b = String(b0).toUpperCase()
+                if (!/^[A-Z]{2,}$/.test(b) || !spellableFrom(b, p.letters)) continue
+                if (HARD_BLOCK_TERMS.some(rx => rx.test(b))) { removedProfane.push(b); continue }
+                kept.push(b)
+            }
+            p.bonusWords = kept
+            if (removedProfane.length) scrubbedBonusByIdx.set(i, removedProfane)
+        })
+    }
+
     const report = {
         itemCount: items.length,
         passCount: 0,
@@ -294,7 +332,40 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
         }
 
         // Required fields per type
-        if (gameType === 'memory') {
+        if (gameType === 'well-of-words') {
+            // item is a puzzle: { letters[], capstone, words[{word,...}], bonusWords[] }
+            const letters = item.letters
+            if (scrubbedBonusByIdx.has(idx)) {
+                findings.push(`Bonus word removed: ${scrubbedBonusByIdx.get(idx).join(', ')}`)
+            }
+            if (letters.length < 4 || letters.length > 7 || !letters.every(l => /^[A-Z]$/.test(l))) {
+                findings.push('letters must be 4–7 single A–Z characters')
+            }
+            if (!Array.isArray(item.words) || item.words.length < 3) findings.push('Fewer than 3 target words')
+            let capstoneCount = 0
+            for (const w of (item.words || [])) {
+                w.word = String(w.word || '').toUpperCase()
+                const label = w.word || '(empty)'
+                if (!/^[A-Z]{2,}$/.test(w.word)) findings.push(`Invalid word: ${label}`)
+                else if (!spellableFrom(w.word, letters)) {
+                    w._unspellable = true
+                    findings.push(`Word not spellable from letters: ${label}`)
+                }
+                if (w.isCapstone) {
+                    capstoneCount++
+                    if (!w.christConnection?.trim()) findings.push(`Capstone ${label} missing Christ connection`)
+                }
+                if (!w.definition?.trim()) findings.push(`${label} missing definition`)
+                if (!w.verseBlank?.trim()) findings.push(`${label} missing verseBlank`)
+                if (!w.verseRef?.trim()) findings.push(`${label} missing verseRef`)
+                if (w.url && !isOutputUrlAllowed(w.url)) {
+                    report.urlAllowlistViolations.push({ idx, field: `words.${label}.url`, value: w.url })
+                    findings.push(`Non-allowlisted URL stripped on ${label}`)
+                    w.url = null
+                }
+            }
+            if (capstoneCount !== 1) findings.push(`Expected exactly 1 capstone word, got ${capstoneCount}`)
+        } else if (gameType === 'memory') {
             if (!item.verse?.trim()) findings.push('Missing verse text')
             if (!item.scene?.trim()) findings.push('Missing scene')
             if (!item.question?.trim()) findings.push('Missing discussion question')
@@ -310,8 +381,9 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
             if (item.type && item.type !== 'family_feud' && !item.verseText?.trim()) findings.push('Scripture question missing verseText')
         }
 
-        // Christ-connection requirement for non-trail types (trail checks above)
-        if (gameType !== 'scripture-trail' && !item.christConnection?.trim()) findings.push('Missing Christ connection')
+        // Christ-connection requirement for non-trail types (trail and
+        // well-of-words check it above, at their own levels)
+        if (gameType !== 'scripture-trail' && gameType !== 'well-of-words' && !item.christConnection?.trim()) findings.push('Missing Christ connection')
 
         if (findings.length > 0) {
             report.reviewCount++
@@ -327,8 +399,23 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
 }
 
 // ── AI safety review ─────────────────────────────────────────────────────────
+
+// well-of-words nests words inside puzzles; the safety review works on a flat
+// per-item list, so we review the flattened words (plus each puzzle's bonus
+// list) and map verdicts back through this same flattening in applySafetyRewrites.
+function flattenWowWords(parsed) {
+    const flat = []
+    ;(parsed.puzzles || []).forEach((p, pi) => {
+        (p.words || []).forEach((w, wi) => flat.push({ pi, wi, w, puzzle: p }))
+    })
+    return flat
+}
+
 async function runSafetyReview(headers, parsed, gameType, model = DEFAULT_MODELS.safety) {
-    const items = parsed.rounds || parsed.pairs || parsed.stops || []
+    const isWow = gameType === 'well-of-words'
+    const wowFlat = isWow ? flattenWowWords(parsed) : null
+    const items = isWow ? wowFlat.map(f => f.w)
+        : (parsed.rounds || parsed.pairs || parsed.stops || [])
     if (items.length === 0) return { enabled: true, items: [], blockedCount: 0, rewrittenCount: 0 }
 
     const contentForReview = items.map((it, i) => ({
@@ -341,6 +428,12 @@ async function runSafetyReview(headers, parsed, gameType, model = DEFAULT_MODELS
         summary: it.summary || null,
         discussion: it.discussion || null,
         christConnection: it.christConnection || it.christ || null,
+        word: it.word || null,
+        definition: it.definition || null,
+        verseBlank: it.verseBlank || null,
+        // surface each puzzle's bonus whitelist once (on its first word) so the
+        // reviewer sees every word a classroom screen could ever display
+        bonusWords: isWow && wowFlat[i].wi === 0 ? wowFlat[i].puzzle.bonusWords : null,
     }))
 
     const prompt = `You are a child-safety reviewer for an LDS youth Sunday School game (ages 13–16). You apply General Handbook §13 and §37.8 plus For the Strength of Youth standards.
@@ -394,7 +487,31 @@ ${JSON.stringify(contentForReview, null, 2)}`
     return { enabled: true, items: parsedReview.items, blockedCount, rewrittenCount }
 }
 
-function applySafetyRewrites(parsed, safetyReport) {
+function applySafetyRewrites(parsed, safetyReport, gameType) {
+    if (gameType === 'well-of-words') {
+        // Flat indices map to nested puzzle words — apply rewrites in place,
+        // then remove blocked words per puzzle (descending so indices hold).
+        const flat = flattenWowWords(parsed)
+        for (const review of safetyReport.items) {
+            if (review.action !== 'rewrite' || !review.rewrites) continue
+            const f = flat[review.idx]
+            if (!f) continue
+            for (const [k, v] of Object.entries(review.rewrites)) {
+                if (v !== undefined && v !== null && k !== 'bonusWords') f.w[k] = v
+            }
+            if (Array.isArray(review.rewrites.bonusWords)) f.puzzle.bonusWords = review.rewrites.bonusWords
+            f.w.complianceCheck = `REWRITTEN: ${review.reason || 'safety review'}`
+        }
+        const blocked = safetyReport.items.filter(i => i.action === 'block')
+            .map(i => flat[i.idx]).filter(Boolean)
+            .sort((a, b) => b.wi - a.wi)
+        for (const f of blocked) parsed.puzzles[f.pi].words.splice(f.wi, 1)
+        // A puzzle that lost its capstone or dropped below 3 words is no longer playable
+        parsed.puzzles = parsed.puzzles.filter(p =>
+            (p.words || []).length >= 3 && p.words.some(w => w.isCapstone))
+        return
+    }
+
     const items = parsed.rounds || parsed.pairs || parsed.stops
     if (!items) return
 
@@ -453,6 +570,32 @@ function backfillStops(parsed, lessonStructure) {
     }
     // Drop stops that have neither verse nor ref
     parsed.stops = parsed.stops.filter(s => s.verse?.trim() || s.ref?.trim())
+}
+
+function backfillPuzzles(parsed, lessonStructure) {
+    const verseLookup = {}
+    const urlLookup = {}
+    for (const s of (lessonStructure.scriptureRefs || [])) {
+        const key = s.ref?.toLowerCase().replace(/\s+/g, '')
+        if (!key) continue
+        if (s.verseText?.trim()) verseLookup[key] = s.verseText.trim()
+        if (s.url?.trim() && isOutputUrlAllowed(s.url)) urlLookup[key] = s.url.trim()
+    }
+    for (const p of parsed.puzzles) {
+        // Drop words the structural check proved unspellable — the client
+        // whitelist must never contain a word the wheel cannot produce.
+        p.words = (p.words || []).filter(w => !w._unspellable)
+        for (const w of p.words) {
+            delete w._unspellable
+            const key = (w.verseRef || '').toLowerCase().replace(/\s+/g, '').replace(/\(kjv\)/g, '')
+            if (!w.verseText?.trim() && verseLookup[key]) w.verseText = verseLookup[key]
+            if (!w.url && urlLookup[key]) w.url = urlLookup[key]
+        }
+        if (!p.capstone) p.capstone = p.words.find(w => w.isCapstone)?.word || null
+    }
+    // Unplayable puzzles (fewer than 3 spellable words, or no capstone left) are dropped
+    parsed.puzzles = parsed.puzzles.filter(p =>
+        (p.words || []).length >= 3 && p.words.some(w => w.isCapstone))
 }
 
 function decideOverall(structural, safety) {
@@ -575,6 +718,7 @@ Return ONLY valid JSON:
 
 function buildGenerationPrompt(lessonStructure, sourceUrl, gameType, questionType) {
     if (gameType === 'scripture-trail') return buildTrailGenerationPrompt(lessonStructure, sourceUrl)
+    if (gameType === 'well-of-words') return buildWellOfWordsGenerationPrompt(lessonStructure, sourceUrl)
     const isMemory = gameType === 'memory'
     const scriptureList = (lessonStructure.scriptureRefs || [])
         .map(s => `- ${s.ref}: "${s.verseText?.trim() || '[supply verbatim from your KJV knowledge]'}" [${s.url || ''}]`).join('\n')
@@ -686,6 +830,91 @@ Return ONLY valid JSON:
   ]
 }`
 }
+
+// ── Well of Words generation prompt ──────────────────────────────────────────
+function buildWellOfWordsGenerationPrompt(lessonStructure, sourceUrl) {
+    const scriptureList = (lessonStructure.scriptureRefs || [])
+        .map(s => `- ${s.ref}: "${s.verseText?.trim() || '[supply verbatim KJV]'}" [${s.url || ''}]`).join('\n')
+
+    return `You are the Kindred Gamemaster designing a Well of Words puzzle set for LDS youth (ages 13–16).
+Well of Words is a letter-wheel word game: 5–7 letters sit on stones around a well mouth, and the class
+spells lesson vocabulary from those letters to fill a small crossword. Every solved word opens a
+teaching card (definition → verse → Christ connection), so the words ARE the lesson.
+
+Lesson: ${lessonStructure.title} (${lessonStructure.weekLabel || ''})
+Source: ${sourceUrl}
+
+Key themes: ${(lessonStructure.keyThemes || []).join(', ')}
+
+Scripture references with verse texts:
+${scriptureList || 'None — use your KJV knowledge for the lesson scriptures.'}
+
+## Church policy rubric (MUST follow — your output will be audited)
+- Handbook §13: uplifting, faith-promoting, appropriate for mixed-gender classes. No public shaming.
+- Handbook §37.8: never request or imply collection of personal info about youth.
+- Teaching in the Savior's Way: the capstone word of every puzzle must connect to Jesus Christ.
+- URL safety: every URL must be on churchofjesuschrist.org. Never invent or guess URLs — reuse the
+  exact URLs from the scripture references above, or use null.
+- Content safety: no violence, sexual content, substances, self-harm, slang, or brand names —
+  in TARGET WORDS and in BONUS WORDS alike. Every word may appear on a classroom TV.
+
+## Your task
+Generate exactly 3 puzzles, easiest first:
+- Puzzle 1: 5-letter capstone (warm-up), Puzzle 2: 6-letter capstone, Puzzle 3: 6–7-letter capstone
+  that is THE key vocabulary word of this lesson.
+
+### The letter rule (CRITICAL — checked by a machine, violations are discarded)
+"letters" is exactly the letters of the capstone word, one array entry per letter, in order.
+EVERY word in "words" and "bonusWords" must be spellable from those letters, using each letter
+AT MOST as many times as it appears in the array. Before including any word, verify letter-by-letter.
+Example: letters ["P","R","O","M","I","S","E"] → ROSE ✓, RIPE ✓, MOSES ✗ (needs two S), SEER ✗ (needs two E).
+
+### Word rules
+- 4–6 target "words" per puzzle including the capstone; lengths 3–7. Prefer words that appear in or
+  echo this lesson's scriptures (KJV vocabulary welcome). Exactly ONE word per puzzle has isCapstone: true.
+- Each word: "definition" (one kid-level sentence), "verseBlank" (a real KJV phrase from the cited
+  verse with the word replaced by ________), "verseText" (the verbatim KJV verse, max 300 chars),
+  "verseRef", "url" (exact Gospel Library URL from the references above, or null),
+  "icon" (one emoji depicting the word's MEANING — not decoration), "iconLabel" (2–3 words).
+- EVERY word gets "christConnection" — one short sentence tying it to Jesus Christ (the capstone's
+  should be the strongest). Every solved word shows its card to the class; every card returns to Christ.
+- "bonusWords": 3–8 additional simple sub-words teens know (common nouns/verbs only; no proper nouns,
+  no abbreviations, no slang). These earn small points but show no card.
+- Each puzzle: "theme" (3–6 word title) and "discussion" (one open class question a teacher asks
+  after the puzzle is solved).
+
+Return ONLY valid JSON (no markdown, no explanation):
+{
+  "topic": "...",
+  "puzzles": [
+    {
+      "n": 1,
+      "theme": "Short Puzzle Title",
+      "letters": ["P","R","O","M","I","S","E"],
+      "capstone": "PROMISE",
+      "words": [
+        {
+          "word": "PROMISE",
+          "isCapstone": true,
+          "definition": "something God says He will surely do",
+          "verseBlank": "For the ________ is unto you, and to your children",
+          "verseText": "For the promise is unto you, and to your children, and to all that are afar off.",
+          "verseRef": "Acts 2:39",
+          "url": "https://www.churchofjesuschrist.org/... or null",
+          "icon": "🌈",
+          "iconLabel": "promise kept",
+          "christConnection": "Every promise of God is kept through Jesus Christ."
+        }
+      ],
+      "bonusWords": ["PRIME", "ROPES"],
+      "discussion": "Open question for the class after this puzzle."
+    }
+  ]
+}`
+}
+
+// Internal hooks for offline unit tests (test scripts only — not used by handlers)
+export const __testables = { spellableFrom, runStructuralCompliance, applySafetyRewrites, backfillPuzzles, buildWellOfWordsGenerationPrompt }
 
 // ── Scripture Trail generation prompt ─────────────────────────────────────────
 function buildTrailGenerationPrompt(lessonStructure, sourceUrl) {

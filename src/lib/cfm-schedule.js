@@ -191,16 +191,19 @@ const GAME_FIT_MATRIX = {
     'scripture-trail': 'best',
     'common-ground':   'good',
     'memory':          'good',
+    'well-of-words':   'limited',
   },
   doctrinal: {
     'common-ground':   'best',
     'memory':          'good',
+    'well-of-words':   'good',
     'scripture-trail': 'limited',
   },
   mixed: {
     'common-ground':   'best',
     'scripture-trail': 'good',
     'memory':          'good',
+    'well-of-words':   'good',
   },
 };
 
@@ -208,6 +211,7 @@ const GAME_META = {
   'common-ground':   { id: 'common-ground',   icon: '🎯', name: 'Common Ground',   color: 'cyan',    href: 'games/common-ground.html'  },
   'memory':          { id: 'memory',          icon: '🧩', name: 'Scripture Match', color: 'green',   href: 'games/memory.html'         },
   'scripture-trail': { id: 'scripture-trail', icon: '🚶', name: 'Scripture Trail', color: 'gold',    href: 'games/scripture-trail.html' },
+  'well-of-words':   { id: 'well-of-words',   icon: '💧', name: 'Well of Words',   color: 'pink',    href: 'games/well-of-words.html'  },
 };
 
 // Returns the best-fit game for a given lesson type.

@@ -1989,6 +1989,13 @@
                     <span class="game-card-tag">Sequential · Arcs · 30 min</span>
                     <div class="game-card-play">Play →</div>
                 </a>
+                <a id="link-well-of-words" href="games/well-of-words.html" class="game-card pink">
+                    <div class="game-card-icon">💧</div>
+                    <h3 class="game-card-name">Well of Words</h3>
+                    <p class="game-card-desc">Letter-wheel word puzzle · draw this week's scripture words from the well.</p>
+                    <span class="game-card-tag">Word Puzzle · Teams · Vocabulary</span>
+                    <div class="game-card-play">Play →</div>
+                </a>
                 <a href="games/by-heart.html" class="game-card" style="border-color:#7c3aed;">
                     <div class="game-card-icon">💜</div>
                     <h3 class="game-card-name" style="color:#a78bfa;">By Heart</h3>
@@ -2604,6 +2611,7 @@
             document.getElementById('link-common-ground').href = `games/common-ground.html${suffix}`;
             document.getElementById('link-memory').href = `games/memory.html${suffix}`;
             document.getElementById('link-scripture-trail').href = `games/scripture-trail.html${suffix}`;
+            document.getElementById('link-well-of-words').href = `games/well-of-words.html${suffix}`;
 
             // Render the lesson-first portal sections (This Week + Upcoming)
             renderLessonPortal(classroomId, suffix);
@@ -2613,7 +2621,7 @@
                 const generatedIds = new Set();
                 snap.forEach(d => {
                     const data = d.data();
-                    if (data.commonGround?.rounds?.length || data.memory?.pairs?.length || data.scriptureTrail?.stops?.length) {
+                    if (data.commonGround?.rounds?.length || data.memory?.pairs?.length || data.scriptureTrail?.stops?.length || data.wellOfWords?.puzzles?.length) {
                         if (data.lessonId) generatedIds.add(data.lessonId);
                         if (d.id.startsWith('cfm-')) generatedIds.add(d.id.slice(4));
                         generatedIds.add(d.id);

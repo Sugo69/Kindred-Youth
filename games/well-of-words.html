@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Well of Words — Kindred</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0a0a1a;
+    --bg-2:      #0f0f22;
+    --bg-3:      #1a1a35;
+    --ink:       #e8e8f0;
+    --ink-muted: #7a7a9a;
+    --glow:      #ff007f;   /* blossom-pink accent — the well's glow */
+    --glow-soft: #ff5ca8;
+    --water:     #2dd4bf;   /* teal water — NOT Common Ground's cyan */
+    --gold:      #ffc857;   /* capstone tiles only */
+    --border:    #2a2a45;
+  }
+  body { background: var(--bg); color: var(--ink); font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+  /* ── Back nav ── */
+  .back-nav { display: flex; align-items: center; gap: 10px; padding: 10px 20px;
+    background: rgba(10,10,26,0.9); border-bottom: 1px solid var(--border);
+    font-family: 'Orbitron', sans-serif; font-size: 0.65rem; letter-spacing: 2px; position: sticky; top: 0; z-index: 100; }
+  .back-nav a { color: var(--ink-muted); text-decoration: none; }
+  .back-nav a:hover { color: var(--glow); }
+  .back-nav .sep { color: var(--border); }
+  .back-nav .game-name { color: var(--glow); }
+
+  /* ── Scenes ── */
+  .scene { display: none; flex: 1; }
+  .scene.active { display: flex; flex-direction: column; }
+
+  /* ── SETUP SCENE ── */
+  #setup-scene { align-items: center; padding: 24px 16px 40px; }
+  .setup-title { font-family: 'Orbitron', sans-serif; font-size: clamp(1.6rem,5vw,2.8rem);
+    font-weight: 900; color: var(--glow); letter-spacing: 2px; text-align: center;
+    text-shadow: 0 0 24px rgba(255,0,127,0.35); }
+  .setup-subtitle { color: var(--ink-muted); font-size: 1rem; margin: 4px 0 24px; text-align: center; }
+  .setup-card { background: var(--bg-2); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px; width: 100%; max-width: 640px; }
+  .setup-section-label { font-size: 0.72rem; letter-spacing: 2px; color: var(--glow);
+    text-transform: uppercase; font-weight: 700; font-family: 'Orbitron', sans-serif; margin: 18px 0 8px; }
+  .setup-section-label:first-child { margin-top: 0; }
+  .lesson-status { font-size: 0.9rem; color: var(--ink-muted); padding: 10px 14px;
+    background: var(--bg-3); border-radius: 8px; line-height: 1.4; }
+  .lesson-status.loaded { color: var(--water); border: 1px solid rgba(45,212,191,0.3); }
+  .lib-row { display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+    border: 1px solid var(--border); border-radius: 8px; cursor: pointer; margin-bottom: 6px;
+    transition: border-color 0.15s; }
+  .lib-row:hover, .lib-row.selected { border-color: var(--glow); background: rgba(255,0,127,0.05); }
+  .lib-row-name { flex: 1; font-size: 0.95rem; font-weight: 600; }
+  .lib-row-meta { font-size: 0.72rem; color: var(--ink-muted); }
+  .team-inputs { display: flex; gap: 10px; flex-wrap: wrap; }
+  .team-inputs input { flex: 1; min-width: 140px; background: var(--bg-3); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 14px; color: var(--ink); font-family: 'Rajdhani', sans-serif;
+    font-size: 1rem; font-weight: 600; outline: none; }
+  .team-inputs input:focus { border-color: var(--glow); }
+  .start-btn { margin-top: 22px; width: 100%; padding: 16px; border: none; border-radius: 12px;
+    background: linear-gradient(135deg, var(--glow), #c4006a);
+    color: #fff; font-family: 'Orbitron', sans-serif; font-size: 0.9rem;
+    font-weight: 800; letter-spacing: 2px; cursor: pointer; transition: opacity 0.15s; }
+  .start-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .start-btn:not(:disabled):hover { opacity: 0.88; }
+
+  /* ── PLAY SCENE ── */
+  #play-scene { padding: 0; }
+  .play-inner { flex: 1; display: flex; flex-direction: column; align-items: center;
+    padding: 12px 12px 28px; max-width: 1100px; margin: 0 auto; width: 100%; gap: 10px; }
+
+  .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    width: 100%; flex-wrap: wrap; }
+  .topic-block { min-width: 0; }
+  .topic-title { font-family: 'Orbitron', sans-serif; font-size: clamp(0.75rem, 2vw, 1rem);
+    color: var(--glow); letter-spacing: 1.5px; }
+  .topic-sub { font-size: clamp(0.75rem, 1.8vw, 0.9rem); color: var(--ink-muted); }
+  .team-chips { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .team-chip { display: flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 10px;
+    border: 2px solid var(--border); background: var(--bg-2); cursor: pointer;
+    font-family: 'Orbitron', sans-serif; font-size: clamp(0.6rem, 1.5vw, 0.75rem); letter-spacing: 1px;
+    transition: all 0.15s; user-select: none; }
+  .team-chip .score { color: var(--gold); font-size: clamp(0.8rem, 2vw, 1.05rem); }
+  .team-chip.active { border-color: var(--glow); box-shadow: 0 0 18px rgba(255,0,127,0.25); }
+  .team-chip.active::before { content: '▶'; color: var(--glow); font-size: 0.6rem; }
+  .blitz-btn, .hint-btn { padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg-2); color: var(--ink-muted); font-family: 'Orbitron', sans-serif;
+    font-size: 0.65rem; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; }
+  .hint-btn { color: var(--water); border-color: rgba(45,212,191,0.35); }
+  .hint-btn:hover { box-shadow: 0 0 14px rgba(45,212,191,0.2); }
+  .blitz-btn.running { color: var(--gold); border-color: var(--gold); }
+
+  .hint-banner { display: none; width: 100%; background: rgba(45,212,191,0.08);
+    border: 1px solid rgba(45,212,191,0.35); border-radius: 10px; padding: 10px 16px;
+    font-size: clamp(1rem, 2.4vw, 1.25rem); line-height: 1.45; text-align: center; }
+  .hint-banner.show { display: block; animation: fadeIn 0.25s ease-out; }
+  .hint-banner .hint-kind { font-family: 'Orbitron', sans-serif; font-size: 0.6rem;
+    letter-spacing: 2px; color: var(--water); display: block; margin-bottom: 4px; }
+  .hint-banner .hint-emoji { font-size: clamp(2.4rem, 7vw, 4rem); display: block; }
+
+  /* Crossword grid */
+  .grid-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+  .cross-grid { display: grid; gap: clamp(3px, 0.6vw, 6px); }
+  .cell { width: var(--cell); height: var(--cell); border-radius: 6px;
+    background: var(--bg-3); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: 0.08em;
+    font-size: calc(var(--cell) * 0.55); color: var(--ink); position: relative; }
+  .cell.capstone { border-color: rgba(255,200,87,0.55); box-shadow: inset 0 0 8px rgba(255,200,87,0.12); }
+  .cell.hint-letter { color: var(--ink-muted); }
+  .cell.solved { background: rgba(255,0,127,0.14); border-color: var(--glow); }
+  .cell.capstone.solved { background: rgba(255,200,87,0.16); border-color: var(--gold); }
+  .cell.pop { animation: cellPop 0.35s ease-out; }
+  @keyframes cellPop { 0% { transform: scale(0.4); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+  .solo-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .solo-label { font-size: 0.65rem; letter-spacing: 2px; color: var(--ink-muted);
+    font-family: 'Orbitron', sans-serif; }
+  .solo-word { display: flex; gap: clamp(3px, 0.6vw, 6px); }
+
+  /* Bucket (bonus words) */
+  .bucket-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: center;
+    min-height: 26px; }
+  .bucket-label { font-size: 0.7rem; color: var(--ink-muted); font-family: 'Orbitron', sans-serif;
+    letter-spacing: 1px; }
+  .bucket-chip { padding: 3px 10px; border-radius: 999px; background: rgba(45,212,191,0.1);
+    border: 1px solid rgba(45,212,191,0.35); color: var(--water); font-size: 0.8rem; font-weight: 600;
+    animation: fadeIn 0.3s ease-out; }
+
+  /* Word preview */
+  .preview-strip { min-height: 52px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .preview-tile { width: 42px; height: 42px; border-radius: 8px; background: var(--bg-3);
+    border: 1px solid var(--glow-soft); color: var(--ink); display: flex; align-items: center;
+    justify-content: center; font-weight: 700; font-size: 1.3rem; letter-spacing: 0.08em;
+    animation: fadeIn 0.12s ease-out; }
+  .preview-strip.shake { animation: shakeX 0.4s ease-in-out; }
+  @keyframes shakeX { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-10px); }
+    40% { transform: translateX(9px); } 60% { transform: translateX(-6px); } 80% { transform: translateX(4px); } }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* ── Stone-ring wheel (the well mouth) ── */
+  .well-area { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .well-ring { position: relative; width: var(--wheel); height: var(--wheel); touch-action: none; }
+  .well-water { position: absolute; inset: 14%; border-radius: 50%;
+    background: radial-gradient(circle at 50% 42%, rgba(45,212,191,0.28) 0%, rgba(255,0,127,0.16) 45%, rgba(10,10,26,0.9) 78%);
+    border: 2px solid rgba(45,212,191,0.25); box-shadow: inset 0 0 40px rgba(45,212,191,0.18), 0 0 30px rgba(255,0,127,0.10); }
+  .well-water::after { content: ''; position: absolute; inset: 18%; border-radius: 50%;
+    border: 1px solid rgba(255,92,168,0.18); }
+  .drag-svg { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
+  .stone { position: absolute; width: var(--stone); height: var(--stone); border-radius: 30% 34% 32% 30%;
+    background: linear-gradient(145deg, #232345, #14142c); border: 2px solid var(--border);
+    color: var(--ink); font-family: 'Rajdhani', sans-serif; font-weight: 700;
+    font-size: calc(var(--stone) * 0.5); letter-spacing: 0.08em;
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+    user-select: none; -webkit-user-select: none; touch-action: none; z-index: 3;
+    transition: border-color 0.1s, box-shadow 0.1s, background 0.1s; }
+  .stone.sel { border-color: var(--glow); background: linear-gradient(145deg, #3a1330, #240a1e);
+    box-shadow: 0 0 16px rgba(255,0,127,0.45); color: #fff; }
+
+  .wheel-controls { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .wc-btn { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg-2); color: var(--ink); font-family: 'Rajdhani', sans-serif;
+    font-size: 0.95rem; font-weight: 700; cursor: pointer; transition: all 0.12s; }
+  .wc-btn:active { transform: scale(0.96); }
+  .wc-btn.submit { background: var(--glow); border-color: var(--glow); color: #fff;
+    font-family: 'Orbitron', sans-serif; font-size: 0.72rem; letter-spacing: 1.5px; padding: 12px 22px; }
+  .wc-btn.submit:disabled { opacity: 0.35; cursor: not-allowed; }
+
+  /* ── Modals ── */
+  .modal-veil { display: none; position: fixed; inset: 0; background: rgba(6,6,16,0.82);
+    z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+  .modal-veil.show { display: flex; }
+  .modal-card { background: var(--bg-2); border: 1px solid var(--glow); border-radius: 18px;
+    max-width: 860px; width: 100%; max-height: 90vh; overflow-y: auto; padding: clamp(18px, 3vw, 32px);
+    animation: fadeIn 0.25s ease-out; }
+  .modal-card.water-border { border-color: rgba(45,212,191,0.5); }
+
+  /* Well Card */
+  .wellcard-head { display: flex; align-items: center; gap: clamp(14px, 3vw, 28px); flex-wrap: wrap; }
+  .wellcard-icon { font-size: clamp(3.2rem, 9vw, 6rem); line-height: 1; filter: drop-shadow(0 0 18px rgba(255,0,127,0.35)); }
+  .wellcard-word { font-family: 'Orbitron', sans-serif; font-size: clamp(1.5rem, 5vw, 2.6rem);
+    letter-spacing: 4px; color: var(--glow); }
+  .wellcard-word.capstone { color: var(--gold); }
+  .wellcard-def { font-size: clamp(1.05rem, 2.4vw, 1.3rem); color: var(--ink); margin-top: 4px; line-height: 1.4; }
+  .wellcard-verse { background: var(--bg-3); border-left: 3px solid var(--water); border-radius: 8px;
+    padding: 14px 18px; margin-top: 16px; font-size: clamp(1.05rem, 2.6vw, 1.4rem); line-height: 1.55;
+    font-style: italic; }
+  .wellcard-verse .hl { color: var(--glow-soft); font-weight: 700; font-style: normal; }
+  .wellcard-ref { font-family: 'Orbitron', sans-serif; font-size: 0.72rem; letter-spacing: 2px;
+    color: var(--water); margin-top: 8px; }
+  .wellcard-christ { background: rgba(255,200,87,0.07); border: 1px solid rgba(255,200,87,0.3);
+    border-radius: 8px; padding: 12px 16px; margin-top: 12px; font-size: clamp(0.95rem, 2.2vw, 1.15rem);
+    line-height: 1.45; color: var(--gold); }
+  .wellcard-foot { display: flex; align-items: center; justify-content: space-between; gap: 14px;
+    margin-top: 18px; flex-wrap: wrap; }
+  .wellcard-qr { background: #fff; border-radius: 10px; padding: 6px; line-height: 0; }
+  .wellcard-points { font-family: 'Orbitron', sans-serif; color: var(--gold); font-size: 1rem; letter-spacing: 1px; }
+
+  .modal-btn { padding: 12px 26px; border-radius: 10px; border: none; background: var(--glow);
+    color: #fff; font-family: 'Orbitron', sans-serif; font-size: 0.75rem; letter-spacing: 2px;
+    font-weight: 700; cursor: pointer; }
+  .modal-btn.ghost { background: none; border: 1px solid var(--border); color: var(--ink-muted); }
+  .modal-btn.water { background: var(--water); color: #06231f; }
+
+  /* Overflow celebration */
+  .overflow-title { font-family: 'Orbitron', sans-serif; font-size: clamp(1.4rem, 4.5vw, 2.4rem);
+    color: var(--water); text-align: center; letter-spacing: 3px;
+    text-shadow: 0 0 24px rgba(45,212,191,0.5); }
+  .overflow-sub { text-align: center; color: var(--ink-muted); margin-top: 8px; font-size: 1.05rem; }
+  .overflow-scores { display: flex; gap: 18px; justify-content: center; margin: 22px 0; flex-wrap: wrap; }
+  .overflow-score { text-align: center; background: var(--bg-3); border-radius: 12px; padding: 14px 24px;
+    border: 1px solid var(--border); }
+  .overflow-score .name { font-family: 'Orbitron', sans-serif; font-size: 0.65rem; letter-spacing: 1.5px;
+    color: var(--ink-muted); }
+  .overflow-score .pts { font-family: 'Orbitron', sans-serif; font-size: 1.6rem; color: var(--gold); }
+  .discussion-card { background: rgba(45,212,191,0.06); border: 1px solid rgba(45,212,191,0.3);
+    border-radius: 10px; padding: 16px 20px; margin-top: 8px; font-size: clamp(1rem, 2.4vw, 1.25rem);
+    line-height: 1.5; text-align: center; }
+
+  /* Hint panel */
+  .hintword-row { display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+  .hintword-slots { display: flex; gap: 4px; }
+  .hintword-slot { width: 26px; height: 26px; border-radius: 5px; background: var(--bg-3);
+    border: 1px solid var(--border); display:flex; align-items:center; justify-content:center;
+    font-weight:700; font-size:0.9rem; }
+  .hintword-slot.gold { border-color: rgba(255,200,87,0.5); }
+  .ladder-btns { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+  .ladder-btn { padding: 6px 10px; border-radius: 8px; border: 1px solid rgba(45,212,191,0.35);
+    background: none; color: var(--water); font-size: 0.85rem; cursor: pointer; }
+  .ladder-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .ladder-btn.reveal { border-color: rgba(255,0,127,0.4); color: var(--glow-soft); }
+
+  /* Droplet particles */
+  .drop { position: fixed; z-index: 300; pointer-events: none; font-size: 1.2rem;
+    animation: dropFall linear forwards; }
+  @keyframes dropFall { to { transform: translateY(110vh) rotate(40deg); opacity: 0.2; } }
+
+  /* Sizing vars — responsive phone → 4K */
+  :root { --cell: clamp(30px, min(5.5vw, 6.5vh), 62px);
+          --wheel: clamp(240px, min(62vw, 40vh), 420px);
+          --stone: clamp(52px, calc(var(--wheel) * 0.19), 84px); }
+</style>
+</head>
+<body>
+
+<div class="back-nav">
+  <a href="../index.html">← Kindred Hub</a>
+  <span class="sep">|</span>
+  <span class="game-name">Well of Words</span>
+</div>
+
+<!-- ── SETUP SCENE ── -->
+<div class="scene active" id="setup-scene">
+  <div class="setup-title">WELL OF WORDS</div>
+  <div class="setup-subtitle">Draw words from this week's scriptures · John 4:14</div>
+
+  <div class="setup-card">
+    <div class="setup-section-label">This Week's Lesson</div>
+    <div class="lesson-status" id="lesson-status">No lesson linked — pick one from the library below, or play the demo puzzles.</div>
+
+    <div class="setup-section-label">📚 Lesson Library</div>
+    <div id="library-list" style="max-height:260px;overflow-y:auto;">
+      <div class="lesson-status">Loading library…</div>
+    </div>
+
+    <div class="setup-section-label">Teams</div>
+    <div class="team-inputs">
+      <input id="team1-name" value="LIGHT SQUAD" maxlength="18" aria-label="Team 1 name">
+      <input id="team2-name" value="STAR SQUAD" maxlength="18" aria-label="Team 2 name">
+    </div>
+
+    <button class="start-btn" id="start-btn" onclick="window.startGame()">🎲 Play Demo Puzzles</button>
+  </div>
+</div>
+
+<!-- ── PLAY SCENE ── -->
+<div class="scene" id="play-scene">
+  <div class="play-inner">
+    <div class="top-bar">
+      <div class="topic-block">
+        <div class="topic-title" id="topic-title"></div>
+        <div class="topic-sub" id="topic-sub"></div>
+      </div>
+      <div class="team-chips">
+        <div class="team-chip active" id="chip-0" onclick="window.setActiveTeam(0)">
+          <span id="chip-0-name"></span> <span class="score" id="chip-0-score">0</span>
+        </div>
+        <div class="team-chip" id="chip-1" onclick="window.setActiveTeam(1)">
+          <span id="chip-1-name"></span> <span class="score" id="chip-1-score">0</span>
+        </div>
+        <button class="blitz-btn" id="blitz-btn" onclick="window.toggleBlitz()">⏱ BLITZ 90s</button>
+        <button class="hint-btn" onclick="window.openHints()">💡 HINTS</button>
+      </div>
+    </div>
+
+    <div class="hint-banner" id="hint-banner"></div>
+
+    <div class="grid-wrap">
+      <div class="cross-grid" id="cross-grid"></div>
+      <div class="solo-row" id="solo-row" style="display:none;"></div>
+    </div>
+
+    <div class="bucket-row" id="bucket-row" style="display:none;">
+      <span class="bucket-label">🪣 BUCKET</span>
+      <span id="bucket-chips"></span>
+    </div>
+
+    <div class="preview-strip" id="preview-strip"></div>
+
+    <div class="well-area">
+      <div class="well-ring" id="well-ring">
+        <div class="well-water"></div>
+        <svg class="drag-svg" id="drag-svg"></svg>
+      </div>
+      <div class="wheel-controls">
+        <button class="wc-btn" onclick="window.wowShuffle()">🔀 Shuffle</button>
+        <button class="wc-btn" onclick="window.wowBackspace()">⌫</button>
+        <button class="wc-btn" onclick="window.wowClear()">✕</button>
+        <button class="wc-btn submit" id="submit-btn" onclick="window.wowSubmit()" disabled>DRAW ↑</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── WELL CARD modal ── -->
+<div class="modal-veil" id="wellcard-veil">
+  <div class="modal-card">
+    <div class="wellcard-head">
+      <div class="wellcard-icon" id="wc-icon"></div>
+      <div style="min-width:0;">
+        <div class="wellcard-word" id="wc-word"></div>
+        <div class="wellcard-def" id="wc-def"></div>
+      </div>
+    </div>
+    <div class="wellcard-verse" id="wc-verse"></div>
+    <div class="wellcard-ref" id="wc-ref"></div>
+    <div class="wellcard-christ" id="wc-christ" style="display:none;"></div>
+    <div class="wellcard-foot">
+      <div class="wellcard-qr" id="wc-qr-wrap" style="display:none;"><canvas id="wc-qr"></canvas></div>
+      <div class="wellcard-points" id="wc-points"></div>
+      <button class="modal-btn" onclick="window.closeWellCard()">CONTINUE →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── OVERFLOW (puzzle complete) modal ── -->
+<div class="modal-veil" id="overflow-veil">
+  <div class="modal-card water-border">
+    <div class="overflow-title" id="overflow-title">💧 THE WELL OVERFLOWS</div>
+    <div class="overflow-sub" id="overflow-sub"></div>
+    <div class="overflow-scores" id="overflow-scores"></div>
+    <div class="discussion-card" id="overflow-discussion" style="display:none;"></div>
+    <div style="display:flex;justify-content:center;gap:12px;margin-top:22px;flex-wrap:wrap;">
+      <button class="modal-btn water" id="overflow-next" onclick="window.nextPuzzle()">NEXT PUZZLE →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── HINTS panel ── -->
+<div class="modal-veil" id="hints-veil">
+  <div class="modal-card water-border">
+    <div style="font-family:'Orbitron',sans-serif;letter-spacing:2px;color:var(--water);font-size:0.9rem;margin-bottom:6px;">💡 TEACHER HINT LADDER</div>
+    <div style="color:var(--ink-muted);font-size:0.85rem;margin-bottom:14px;line-height:1.4;">
+      One step at a time, in order: 💬 meaning → 📖 verse → 🖼 picture → 🔤 first letter → 👁 reveal.
+      Let the class wrestle before each step — the verse hint is the lesson.
+    </div>
+    <div id="hintword-list"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+      <button class="modal-btn ghost" onclick="window.closeHints()">CLOSE</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+import { getFirestore, doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+};
+
+const appId = 'exodus-feud-final-v10';
+const globalBasePath = `artifacts/${appId}/public/data`;
+
+let db = null;
+async function initFirebase() {
+    try {
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        db = getFirestore(app);
+        await auth.authStateReady();
+        if (!auth.currentUser) await signInAnonymously(auth);
+    } catch (e) {
+        console.warn('[WoW] Firebase unavailable — demo mode only:', e.message);
+        db = null;
+    }
+}
+
+// ── Library list for the setup picker ────────────────────────────────────────
+async function loadLibraryList() {
+    const el = document.getElementById('library-list');
+    if (!db) { el.innerHTML = '<div class="lesson-status">Library unavailable offline — demo puzzles ready below.</div>'; return; }
+    try {
+        const snap = await getDocs(collection(db, `${globalBasePath}/lessonLibrary`));
+        const entries = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(e => e.wellOfWords?.puzzles?.length)
+            .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        if (!entries.length) {
+            el.innerHTML = '<div class="lesson-status">No Well of Words lessons generated yet — ask your admin, or play the demo puzzles.</div>';
+            return;
+        }
+        el.innerHTML = entries.map(e => `
+            <div class="lib-row" onclick="window.pickLibraryEntry('${e.id}')">
+                <div class="lib-row-name">${escSetup(e.name || e.wellOfWords.topic || e.id)}</div>
+                <div class="lib-row-meta">${e.wellOfWords.puzzles.length} puzzles</div>
+            </div>`).join('');
+        window.__wowLibraryEntries = Object.fromEntries(entries.map(e => [e.id, e]));
+    } catch (e) {
+        el.innerHTML = `<div class="lesson-status">Library load failed: ${escSetup(e.message)}</div>`;
+    }
+}
+function escSetup(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+window.pickLibraryEntry = function(id) {
+    const e = window.__wowLibraryEntries?.[id];
+    if (!e) return;
+    window._wowLessonData = e.wellOfWords;
+    document.querySelectorAll('.lib-row').forEach(r => r.classList.remove('selected'));
+    event?.currentTarget?.classList?.add('selected');
+    const status = document.getElementById('lesson-status');
+    status.textContent = `✓ Loaded: ${e.wellOfWords.topic || e.name} (${e.wellOfWords.puzzles.length} puzzles)`;
+    status.classList.add('loaded');
+    document.getElementById('start-btn').textContent = '💧 START — ' + (e.wellOfWords.topic || e.name);
+};
+
+// ── ?lesson= auto-load (cfm- prefix fallback — house rule: always try both) ──
+async function autoLoadFromLesson() {
+    const lessonId = new URLSearchParams(location.search).get('lesson');
+    if (!lessonId || !db) return;
+    const status = document.getElementById('lesson-status');
+    status.textContent = 'Loading this week’s lesson…';
+    try {
+        let snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/${lessonId}`));
+        if (!snap.exists()) snap = await getDoc(doc(db, `${globalBasePath}/lessonLibrary/cfm-${lessonId}`));
+        const data = snap.exists() ? snap.data() : null;
+        if (data?.wellOfWords?.puzzles?.length) {
+            window._wowLessonData = data.wellOfWords;
+            status.textContent = `✓ Loaded: ${data.wellOfWords.topic || data.name} (${data.wellOfWords.puzzles.length} puzzles)`;
+            status.classList.add('loaded');
+            document.getElementById('start-btn').textContent = '💧 START — ' + (data.wellOfWords.topic || data.name);
+        } else {
+            status.textContent = 'This lesson has no Well of Words content yet — pick another from the library, or play the demo puzzles.';
+        }
+    } catch (e) {
+        console.warn('[WoW auto-load]', e.message);
+        status.textContent = 'Lesson load failed — demo puzzles still available.';
+    }
+}
+
+initFirebase().then(() => {
+    loadLibraryList();
+    autoLoadFromLesson();
+});
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   Well of Words — game logic
+   ══════════════════════════════════════════════════════════════════════════ */
+
+// Display scale (Kindred house preset: Mobile 0.55 / Tablet 0.75 / HD 1.0 / 4K 1.3)
+(function applyDisplayScale() {
+    const s = parseFloat(localStorage.getItem('kindred_display_scale'));
+    if (s && s !== 1 && !Number.isNaN(s)) document.body.style.zoom = s;
+})();
+
+// Mode plumbing — 🌱 Spring (K-6) ships in v1.1; only 'well' is exposed in v1.
+const WOW_MODE = 'well';                       // 'well' | 'spring'
+const MODE_MAX_WORD_LEN = { well: 99, spring: 4 };
+
+const POINTS = { capstone: 40, target: 20, bonus: 5 };
+
+// ── Demo puzzles (playable with zero Firestore content) ─────────────────────
+const DEMO_DATA = {
+    topic: 'Deliverance & Covenant — Demo',
+    puzzles: [
+        {
+            n: 1, theme: 'The Passover Lamb',
+            letters: ['L','A','M','B','S'], capstone: 'LAMBS',
+            words: [
+                { word: 'LAMBS', isCapstone: true, definition: 'young sheep — the Good Shepherd gathers them close',
+                  verseBlank: 'he shall gather the ________ with his arm', verseRef: 'Isaiah 40:11',
+                  verseText: 'He shall feed his flock like a shepherd: he shall gather the lambs with his arm, and carry them in his bosom.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/isa/40?lang=eng&id=p11#p11',
+                  icon: '🐑', iconLabel: 'lamb',
+                  christConnection: 'Jesus Christ is both the Lamb of God and the Shepherd who carries His lambs.' },
+                { word: 'LAMB', isCapstone: false, definition: 'the Passover offering — spotless and without blemish',
+                  verseBlank: 'Your ________ shall be without blemish', verseRef: 'Exodus 12:5',
+                  verseText: 'Your lamb shall be without blemish, a male of the first year.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/12?lang=eng&id=p5#p5',
+                  icon: '🐑', iconLabel: 'passover lamb',
+                  christConnection: 'The Passover lamb was a similitude of Jesus Christ, our sinless sacrifice.' },
+                { word: 'ALMS', isCapstone: false, definition: 'gifts given quietly to those in need',
+                  verseBlank: 'do not your ________ before men, to be seen of them', verseRef: 'Matthew 6:1',
+                  verseText: 'Take heed that ye do not your alms before men, to be seen of them.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/matt/6?lang=eng&id=p1#p1',
+                  icon: '🤲', iconLabel: 'giving',
+                  christConnection: 'Jesus Christ taught us to serve quietly, as He served others without seeking praise.' },
+                { word: 'BALM', isCapstone: false, definition: 'a healing ointment — a symbol of the Savior’s healing',
+                  verseBlank: 'Is there no ________ in Gilead', verseRef: 'Jeremiah 8:22',
+                  verseText: 'Is there no balm in Gilead; is there no physician there?',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/jer/8?lang=eng&id=p22#p22',
+                  icon: '🌿', iconLabel: 'healing balm',
+                  christConnection: 'Jesus Christ is the true balm — the Great Physician who heals every wound.' },
+            ],
+            bonusWords: ['SLAB', 'SLAM', 'BAM'],
+        },
+        {
+            n: 2, theme: 'A House of the Lord',
+            letters: ['T','E','M','P','L','E'], capstone: 'TEMPLE',
+            words: [
+                { word: 'TEMPLE', isCapstone: true, definition: 'the house of the Lord — His holiest place on earth',
+                  verseBlank: 'to enquire in his ________', verseRef: 'Psalm 27:4',
+                  verseText: 'One thing have I desired of the Lord… to behold the beauty of the Lord, and to enquire in his temple.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/27?lang=eng&id=p4#p4',
+                  icon: '🏛️', iconLabel: 'temple',
+                  christConnection: 'The temple points to Jesus Christ — every covenant made there draws us closer to Him.' },
+                { word: 'MEET', isCapstone: false, definition: 'to come together with someone — the Lord promises to meet His people',
+                  verseBlank: 'And there I will ________ with thee', verseRef: 'Exodus 25:22',
+                  verseText: 'And there I will meet with thee, and I will commune with thee from above the mercy seat.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/25?lang=eng&id=p22#p22',
+                  icon: '🤝', iconLabel: 'meeting God',
+                  christConnection: 'The mercy seat where the Lord promised to meet Israel points forward to Jesus Christ, our mercy seat.' },
+                { word: 'MELT', isCapstone: false, definition: 'to soften — what happens to hearts that feel God’s power',
+                  verseBlank: 'our hearts did ________', verseRef: 'Joshua 2:11',
+                  verseText: 'And as soon as we had heard these things, our hearts did melt.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/josh/2?lang=eng&id=p11#p11',
+                  icon: '💗', iconLabel: 'softened heart',
+                  christConnection: 'Hearts still melt today when we feel the Spirit testify of Jesus Christ.' },
+                { word: 'LET', isCapstone: false, definition: 'to allow — Moses’ great demand to Pharaoh',
+                  verseBlank: '________ my people go', verseRef: 'Exodus 5:1',
+                  verseText: 'Thus saith the Lord God of Israel, Let my people go.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ex/5?lang=eng&id=p1#p1',
+                  icon: '🕊️', iconLabel: 'set free',
+                  christConnection: 'Jesus Christ is the deliverer who still says, "Let my people go" from sin and bondage.' },
+            ],
+            bonusWords: ['ELM', 'PET', 'MET', 'PELT', 'TEE'],
+        },
+        {
+            n: 3, theme: 'His Promise Stands',
+            letters: ['P','R','O','M','I','S','E'], capstone: 'PROMISE',
+            words: [
+                { word: 'PROMISE', isCapstone: true, definition: 'something God says He will surely do',
+                  verseBlank: 'For the ________ is unto you, and to your children', verseRef: 'Acts 2:39',
+                  verseText: 'For the promise is unto you, and to your children, and to all that are afar off.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/nt/acts/2?lang=eng&id=p39#p39',
+                  icon: '🌈', iconLabel: 'promise',
+                  christConnection: 'Every promise of God is kept through Jesus Christ — He is the surety of the covenant.' },
+                { word: 'ROSE', isCapstone: false, definition: 'a flower that blooms even in the desert',
+                  verseBlank: 'the desert shall rejoice, and blossom as the ________', verseRef: 'Isaiah 35:1',
+                  verseText: 'The wilderness and the solitary place shall be glad for them; and the desert shall rejoice, and blossom as the rose.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/isa/35?lang=eng&id=p1#p1',
+                  icon: '🌹', iconLabel: 'desert rose',
+                  christConnection: 'Jesus Christ makes even our driest, hardest seasons blossom with hope.' },
+                { word: 'RIPE', isCapstone: false, definition: 'ready for harvest',
+                  verseBlank: 'Put ye in the sickle, for the harvest is ________', verseRef: 'Joel 3:13',
+                  verseText: 'Put ye in the sickle, for the harvest is ripe.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/joel/3?lang=eng&id=p13#p13',
+                  icon: '🌾', iconLabel: 'harvest',
+                  christConnection: 'Jesus Christ invites us to gather souls, for the harvest of His gospel is ripe.' },
+                { word: 'MIRE', isCapstone: false, definition: 'deep mud — what the Lord lifts us out of',
+                  verseBlank: 'Deliver me out of the ________', verseRef: 'Psalm 69:14',
+                  verseText: 'Deliver me out of the mire, and let me not sink.',
+                  url: 'https://www.churchofjesuschrist.org/study/scriptures/ot/ps/69?lang=eng&id=p14#p14',
+                  icon: '🕳️', iconLabel: 'lifted out',
+                  christConnection: 'Jesus Christ is the one who lifts us out of the mire of sin and despair.' },
+            ],
+            bonusWords: ['PRIME', 'PROSE', 'PRISM', 'ROPES', 'PORES'],
+        },
+    ],
+};
+
+// ── Crossword packer (deterministic — tested standalone) ────────────────────
+function packCrossword(words) {
+    const sorted = words.map((w, i) => ({ w: w.toUpperCase(), i }))
+        .sort((a, b) => b.w.length - a.w.length || a.i - b.i)
+        .map(x => x.w);
+    const cells = new Map();
+    const placements = [];
+    const solos = [];
+    const key = (r, c) => r + ',' + c;
+
+    function canPlace(word, row, col, dir) {
+        const dr = dir === 'V' ? 1 : 0, dc = dir === 'H' ? 1 : 0;
+        if (cells.has(key(row - dr, col - dc))) return false;
+        if (cells.has(key(row + dr * word.length, col + dc * word.length))) return false;
+        let crossings = 0;
+        for (let k = 0; k < word.length; k++) {
+            const r = row + dr * k, c = col + dc * k;
+            const existing = cells.get(key(r, c));
+            if (existing !== undefined) {
+                if (existing !== word[k]) return false;
+                crossings++;
+            } else {
+                if (dir === 'H' && (cells.has(key(r - 1, c)) || cells.has(key(r + 1, c)))) return false;
+                if (dir === 'V' && (cells.has(key(r, c - 1)) || cells.has(key(r, c + 1)))) return false;
+            }
+        }
+        return crossings > 0 ? crossings : false;
+    }
+    function place(word, row, col, dir) {
+        const dr = dir === 'V' ? 1 : 0, dc = dir === 'H' ? 1 : 0;
+        for (let k = 0; k < word.length; k++) cells.set(key(row + dr * k, col + dc * k), word[k]);
+        placements.push({ word, row, col, dir });
+    }
+    for (const word of sorted) {
+        if (placements.length === 0) { place(word, 0, 0, 'H'); continue; }
+        let best = null;
+        let sumR = 0, sumC = 0, n = 0;
+        for (const k of cells.keys()) { const [r, c] = k.split(',').map(Number); sumR += r; sumC += c; n++; }
+        const midR = sumR / n, midC = sumC / n;
+        for (let k = 0; k < word.length; k++) {
+            for (const [cellKey, letter] of cells) {
+                if (letter !== word[k]) continue;
+                const [r, c] = cellKey.split(',').map(Number);
+                for (const dir of ['V', 'H']) {
+                    const row = dir === 'V' ? r - k : r;
+                    const col = dir === 'H' ? c - k : c;
+                    const crossings = canPlace(word, row, col, dir);
+                    if (!crossings) continue;
+                    const cr = row + (dir === 'V' ? word.length / 2 : 0);
+                    const cc = col + (dir === 'H' ? word.length / 2 : 0);
+                    const dist = Math.abs(cr - midR) + Math.abs(cc - midC);
+                    const score = crossings * 1000 - dist;
+                    if (!best || score > best.score) best = { row, col, dir, score };
+                }
+            }
+        }
+        if (best) place(word, best.row, best.col, best.dir);
+        else solos.push(word);
+    }
+    let minR = Infinity, minC = Infinity, maxR = -Infinity, maxC = -Infinity;
+    for (const k of cells.keys()) {
+        const [r, c] = k.split(',').map(Number);
+        if (r < minR) minR = r; if (c < minC) minC = c;
+        if (r > maxR) maxR = r; if (c > maxC) maxC = c;
+    }
+    for (const p of placements) { p.row -= minR; p.col -= minC; }
+    return { placements, solos, rows: maxR - minR + 1, cols: maxC - minC + 1 };
+}
+
+function spellableFrom(word, letters) {
+    const pool = {};
+    for (const ch of letters) pool[ch] = (pool[ch] || 0) + 1;
+    for (const ch of String(word).toUpperCase()) {
+        if (!pool[ch]) return false;
+        pool[ch]--;
+    }
+    return true;
+}
+
+// ── State ────────────────────────────────────────────────────────────────────
+let puzzles = [];           // validated puzzles
+let gameTopic = '';
+let puzzleIdx = 0;
+let pack = null;            // packer result for current puzzle
+let wordMap = {};           // WORD -> word object
+let solved = new Set();     // solved target words
+let bonusFound = new Set();
+let hintLetters = new Set();// "r,c" cells revealed by 🔤 hints
+let hintTier = {};          // WORD -> highest tier used (1-5)
+let teams = [ { name: 'LIGHT SQUAD', score: 0 }, { name: 'STAR SQUAD', score: 0 } ];
+let activeTeam = 0;
+let stoneOrder = [];        // letters in current wheel arrangement
+let selection = [];         // indices into stoneOrder
+let dragging = false;
+let blitzTimer = null, blitzLeft = 0;
+
+// ── Validation of incoming puzzle data (whitelist is sacred) ─────────────────
+function validatePuzzles(data) {
+    const out = [];
+    for (const p of (data?.puzzles || [])) {
+        if (!Array.isArray(p.letters) || !Array.isArray(p.words)) continue;
+        const letters = p.letters.map(l => String(l).toUpperCase()).filter(l => /^[A-Z]$/.test(l));
+        if (letters.length < 3 || letters.length > 8) continue;
+        const maxLen = MODE_MAX_WORD_LEN[WOW_MODE];
+        const seen = new Set();
+        const words = p.words.filter(w => {
+            const W = String(w.word || '').toUpperCase();
+            if (!/^[A-Z]{2,}$/.test(W) || W.length > maxLen) return false;
+            if (seen.has(W)) return false;
+            if (!spellableFrom(W, letters)) { console.warn('[WoW] dropped unspellable word', W); return false; }
+            seen.add(W);
+            w.word = W;
+            return true;
+        });
+        if (words.length < 2) continue;
+        const bonusWords = (p.bonusWords || []).map(b => String(b).toUpperCase())
+            .filter(b => /^[A-Z]{2,}$/.test(b) && !seen.has(b) && spellableFrom(b, letters));
+        out.push({ ...p, letters, words, bonusWords: [...new Set(bonusWords)] });
+    }
+    return out;
+}
+
+// ── Audio (Web Audio — no files) ─────────────────────────────────────────────
+let audioCtx = null;
+function ac() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); return audioCtx; }
+function tone(freq, start, dur, type = 'sine', gain = 0.18) {
+    try {
+        const ctx = ac(); const o = ctx.createOscillator(); const g = ctx.createGain();
+        o.type = type; o.frequency.value = freq;
+        g.gain.setValueAtTime(0, ctx.currentTime + start);
+        g.gain.linearRampToValueAtTime(gain, ctx.currentTime + start + 0.015);
+        g.gain.linearRampToValueAtTime(0, ctx.currentTime + start + dur);
+        o.connect(g); g.connect(ctx.destination);
+        o.start(ctx.currentTime + start); o.stop(ctx.currentTime + start + dur + 0.05);
+    } catch (e) {}
+}
+const PENTA = [523, 587, 659, 784, 880, 1046, 1175, 1318]; // C5 pentatonic rising
+function sfxSelect(n) { tone(PENTA[Math.min(n, PENTA.length - 1)], 0, 0.12); }
+function sfxValid() { tone(784, 0, 0.12); tone(1046, 0.08, 0.16); tone(1318, 0.16, 0.22); }
+function sfxBonus() { tone(880, 0, 0.1); tone(1175, 0.07, 0.14); }
+function sfxInvalid() { tone(140, 0, 0.25, 'sawtooth', 0.12); }
+function sfxOverflow() { [523, 659, 784, 1046, 1318, 1568].forEach((f, i) => tone(f, i * 0.09, 0.3)); }
+
+// ── Start / scene control ────────────────────────────────────────────────────
+window.startGame = function() {
+    const data = window._wowLessonData || DEMO_DATA;
+    puzzles = validatePuzzles(data);
+    if (!puzzles.length) { alert('No valid puzzles in this lesson — falling back to demo.'); puzzles = validatePuzzles(DEMO_DATA); }
+    gameTopic = data.topic || 'Well of Words';
+    teams = [
+        { name: (document.getElementById('team1-name').value.trim() || 'LIGHT SQUAD').toUpperCase(), score: 0 },
+        { name: (document.getElementById('team2-name').value.trim() || 'STAR SQUAD').toUpperCase(), score: 0 },
+    ];
+    activeTeam = 0;
+    puzzleIdx = 0;
+    showScene('play-scene');
+    loadPuzzle();
+};
+
+function showScene(id) {
+    document.querySelectorAll('.scene').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+}
+
+// ── Puzzle lifecycle ─────────────────────────────────────────────────────────
+function loadPuzzle() {
+    const p = puzzles[puzzleIdx];
+    solved = new Set(); bonusFound = new Set(); hintLetters = new Set(); hintTier = {};
+    selection = [];
+    wordMap = Object.fromEntries(p.words.map(w => [w.word, w]));
+    pack = packCrossword(p.words.map(w => w.word));
+    stoneOrder = [...p.letters];
+    stopBlitz();
+    hideHintBanner();
+    document.getElementById('topic-title').textContent = gameTopic.toUpperCase();
+    document.getElementById('topic-sub').textContent = `Puzzle ${puzzleIdx + 1} of ${puzzles.length} · ${p.theme || ''}`;
+    renderTeams(); renderGrid(); renderBucket(); renderWheel(); renderPreview();
+}
+
+window.nextPuzzle = function() {
+    document.getElementById('overflow-veil').classList.remove('show');
+    if (puzzleIdx < puzzles.length - 1) { puzzleIdx++; loadPuzzle(); }
+    else { showScene('setup-scene'); }   // final overflow already showed closing content
+};
+
+// ── Renders ──────────────────────────────────────────────────────────────────
+function renderTeams() {
+    for (const i of [0, 1]) {
+        document.getElementById(`chip-${i}-name`).textContent = teams[i].name;
+        document.getElementById(`chip-${i}-score`).textContent = teams[i].score;
+        document.getElementById(`chip-${i}`).classList.toggle('active', activeTeam === i);
+    }
+}
+window.setActiveTeam = function(i) { activeTeam = i; renderTeams(); };
+
+function cellsOf(placement) {
+    const out = [];
+    for (let k = 0; k < placement.word.length; k++) {
+        out.push({
+            r: placement.row + (placement.dir === 'V' ? k : 0),
+            c: placement.col + (placement.dir === 'H' ? k : 0),
+            ch: placement.word[k],
+        });
+    }
+    return out;
+}
+
+function renderGrid() {
+    const grid = document.getElementById('cross-grid');
+    grid.style.gridTemplateColumns = `repeat(${pack.cols}, var(--cell))`;
+    const cellInfo = new Map(); // "r,c" -> {ch, words:[], capstone}
+    for (const pl of pack.placements) {
+        const isCap = wordMap[pl.word]?.isCapstone;
+        for (const cc of cellsOf(pl)) {
+            const k = cc.r + ',' + cc.c;
+            const info = cellInfo.get(k) || { ch: cc.ch, words: [], capstone: false };
+            info.words.push(pl.word);
+            if (isCap) info.capstone = true;
+            cellInfo.set(k, info);
+        }
+    }
+    let html = '';
+    for (let r = 0; r < pack.rows; r++) {
+        for (let c = 0; c < pack.cols; c++) {
+            const k = r + ',' + c;
+            const info = cellInfo.get(k);
+            if (!info) { html += '<div style="width:var(--cell);height:var(--cell);"></div>'; continue; }
+            const isSolved = info.words.some(w => solved.has(w));
+            const isHint = !isSolved && hintLetters.has(k);
+            html += `<div class="cell${info.capstone ? ' capstone' : ''}${isSolved ? ' solved' : ''}${isHint ? ' hint-letter' : ''}" data-k="${k}">${(isSolved || isHint) ? info.ch : ''}</div>`;
+        }
+    }
+    grid.innerHTML = html;
+
+    // Solo words (couldn't cross — rendered as labeled mini rows)
+    const soloRow = document.getElementById('solo-row');
+    if (pack.solos.length) {
+        soloRow.style.display = 'flex';
+        soloRow.innerHTML = '<span class="solo-label">ALSO IN THE WELL:</span>' + pack.solos.map(w => {
+            const isCap = wordMap[w]?.isCapstone;
+            const isSolved = solved.has(w);
+            return `<span class="solo-word">${[...w].map((ch, i) =>
+                `<span class="cell${isCap ? ' capstone' : ''}${isSolved ? ' solved' : ''}" data-solo="${w}:${i}">${isSolved ? ch : ''}</span>`).join('')}</span>`;
+        }).join('');
+    } else { soloRow.style.display = 'none'; soloRow.innerHTML = ''; }
+}
+
+function renderBucket() {
+    const p = puzzles[puzzleIdx];
+    const row = document.getElementById('bucket-row');
+    if (!p.bonusWords.length) { row.style.display = 'none'; return; }
+    row.style.display = 'flex';
+    document.getElementById('bucket-chips').innerHTML =
+        [...bonusFound].map(b => `<span class="bucket-chip">${b} +${POINTS.bonus}</span>`).join(' ') ||
+        `<span style="color:var(--ink-muted);font-size:0.78rem;">bonus words land here (+${POINTS.bonus} pts)</span>`;
+}
+
+function renderWheel() {
+    const ring = document.getElementById('well-ring');
+    ring.querySelectorAll('.stone').forEach(s => s.remove());
+    const W = ring.clientWidth || 320;
+    const stoneSize = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--stone')) || 64;
+    const R = (W / 2) - (stoneSize / 2) - 2;
+    const n = stoneOrder.length;
+    stoneOrder.forEach((letter, i) => {
+        const angle = (i / n) * Math.PI * 2 - Math.PI / 2;
+        const x = W / 2 + R * Math.cos(angle) - stoneSize / 2;
+        const y = W / 2 + R * Math.sin(angle) - stoneSize / 2;
+        const el = document.createElement('button');
+        el.className = 'stone';
+        el.textContent = letter;
+        el.dataset.idx = i;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+        el.addEventListener('pointerdown', onStoneDown);
+        ring.appendChild(el);
+    });
+    updateSelectionUI();
+}
+
+function renderPreview() {
+    const strip = document.getElementById('preview-strip');
+    strip.innerHTML = selection.map(i => `<span class="preview-tile">${stoneOrder[i]}</span>`).join('');
+    document.getElementById('submit-btn').disabled = selection.length < 2;
+}
+
+// ── Input: tap + drag on stones ──────────────────────────────────────────────
+function onStoneDown(e) {
+    e.preventDefault();
+    ac(); // unlock audio on first gesture
+    const idx = Number(e.currentTarget.dataset.idx);
+    if (!dragging) {
+        // begin potential drag; also works as a tap
+        dragging = true;
+        addToSelection(idx);
+        window.addEventListener('pointermove', onDragMove);
+        window.addEventListener('pointerup', onDragUp, { once: true });
+    }
+}
+function onDragMove(e) {
+    if (!dragging) return;
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (el?.classList?.contains('stone')) {
+        const idx = Number(el.dataset.idx);
+        const pos = selection.indexOf(idx);
+        if (pos === -1) addToSelection(idx);
+        else if (pos === selection.length - 2) { // backtrack
+            selection.pop(); updateSelectionUI(); renderPreview(); drawDragLines(e);
+        }
+    }
+    drawDragLines(e);
+}
+function onDragUp() {
+    window.removeEventListener('pointermove', onDragMove);
+    const moved = selection.length > 1;
+    dragging = false;
+    clearDragLines();
+    if (moved) window.wowSubmit();
+    // single tap keeps the letter selected for tap-to-build mode
+}
+function addToSelection(idx) {
+    if (selection.includes(idx)) return;
+    selection.push(idx);
+    sfxSelect(selection.length - 1);
+    updateSelectionUI(); renderPreview();
+}
+function updateSelectionUI() {
+    document.querySelectorAll('.stone').forEach(s =>
+        s.classList.toggle('sel', selection.includes(Number(s.dataset.idx))));
+}
+function stoneCenter(idx) {
+    const el = document.querySelector(`.stone[data-idx="${idx}"]`);
+    const ring = document.getElementById('well-ring').getBoundingClientRect();
+    const r = el.getBoundingClientRect();
+    return { x: r.left - ring.left + r.width / 2, y: r.top - ring.top + r.height / 2 };
+}
+function drawDragLines(e) {
+    const svg = document.getElementById('drag-svg');
+    const ring = document.getElementById('well-ring').getBoundingClientRect();
+    let pts = selection.map(stoneCenter);
+    if (e && dragging) pts.push({ x: e.clientX - ring.left, y: e.clientY - ring.top });
+    svg.innerHTML = pts.length > 1
+        ? `<polyline points="${pts.map(p => `${p.x},${p.y}`).join(' ')}" fill="none" stroke="var(--glow)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.75"/>`
+        : '';
+}
+function clearDragLines() { document.getElementById('drag-svg').innerHTML = ''; }
+
+window.wowBackspace = function() { selection.pop(); updateSelectionUI(); renderPreview(); };
+window.wowClear = function() { selection = []; updateSelectionUI(); renderPreview(); };
+window.wowShuffle = function() {
+    for (let i = stoneOrder.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [stoneOrder[i], stoneOrder[j]] = [stoneOrder[j], stoneOrder[i]];
+    }
+    selection = []; renderWheel(); renderPreview();
+};
+
+// ── Submit ───────────────────────────────────────────────────────────────────
+window.wowSubmit = function() {
+    if (selection.length < 2) { selection = []; updateSelectionUI(); renderPreview(); return; }
+    const word = selection.map(i => stoneOrder[i]).join('');
+    const p = puzzles[puzzleIdx];
+    selection = []; updateSelectionUI(); renderPreview();
+
+    if (wordMap[word] && !solved.has(word)) { solveWord(word, { withPoints: true }); return; }
+    if (p.bonusWords.includes(word) && !bonusFound.has(word)) {
+        bonusFound.add(word);
+        teams[activeTeam].score += POINTS.bonus;
+        sfxBonus(); renderBucket(); renderTeams();
+        return;
+    }
+    // already found, or not in this well → gentle ripple
+    sfxInvalid();
+    const strip = document.getElementById('preview-strip');
+    strip.innerHTML = [...word].map(ch => `<span class="preview-tile" style="border-color:var(--border);color:var(--ink-muted);">${ch}</span>`).join('');
+    strip.classList.add('shake');
+    setTimeout(() => { strip.classList.remove('shake'); renderPreview(); }, 450);
+};
+
+function solveWord(word, { withPoints }) {
+    solved.add(word);
+    const w = wordMap[word];
+    const pts = withPoints ? (w.isCapstone ? POINTS.capstone : POINTS.target) : 0;
+    if (pts) teams[activeTeam].score += pts;
+    sfxValid();
+    renderGrid(); renderTeams();
+    // pop animation on the word's cells
+    const pl = pack.placements.find(x => x.word === word);
+    if (pl) cellsOf(pl).forEach((cc, i) => {
+        const el = document.querySelector(`.cell[data-k="${cc.r + ',' + cc.c}"]`);
+        if (el) setTimeout(() => el.classList.add('pop'), i * 60);
+    });
+    showWellCard(w, pts);
+}
+
+// ── Well Card ────────────────────────────────────────────────────────────────
+function esc(s) { return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function showWellCard(w, pts) {
+    document.getElementById('wc-icon').textContent = w.icon || '💧';
+    const wordEl = document.getElementById('wc-word');
+    wordEl.textContent = w.word;
+    wordEl.classList.toggle('capstone', !!w.isCapstone);
+    document.getElementById('wc-def').textContent = w.definition || '';
+    const verseEl = document.getElementById('wc-verse');
+    if (w.verseBlank && /_{3,}/.test(w.verseBlank)) {
+        verseEl.innerHTML = '“' + esc(w.verseBlank).replace(/_{3,}/, `<span class="hl">${esc(w.word)}</span>`) + '”';
+    } else if (w.verseText) {
+        verseEl.innerHTML = '“' + esc(w.verseText) + '”';
+    } else { verseEl.innerHTML = ''; }
+    document.getElementById('wc-ref').textContent = w.verseRef ? `— ${w.verseRef} (KJV)` : '';
+    const christ = document.getElementById('wc-christ');
+    if (w.christConnection) { christ.style.display = 'block'; christ.textContent = '✝ ' + w.christConnection; }
+    else christ.style.display = 'none';
+    const qrWrap = document.getElementById('wc-qr-wrap');
+    if (w.url && window.QRious) {
+        qrWrap.style.display = 'block';
+        new window.QRious({ element: document.getElementById('wc-qr'), value: w.url, size: 120, background: 'white', foreground: '#0a0a20' });
+    } else qrWrap.style.display = 'none';
+    document.getElementById('wc-points').textContent = pts ? `+${pts} · ${teams[activeTeam].name}` : 'revealed — no points';
+    document.getElementById('wellcard-veil').classList.add('show');
+}
+
+window.closeWellCard = function() {
+    document.getElementById('wellcard-veil').classList.remove('show');
+    checkPuzzleComplete();
+};
+
+// ── Puzzle completion — the well overflows ───────────────────────────────────
+function checkPuzzleComplete() {
+    const p = puzzles[puzzleIdx];
+    if (!p.words.every(w => solved.has(w.word))) return;
+    sfxOverflow();
+    rainDroplets();
+    const isLast = puzzleIdx === puzzles.length - 1;
+    document.getElementById('overflow-title').textContent = isLast ? '💧 LIVING WATER' : '💧 THE WELL OVERFLOWS';
+    document.getElementById('overflow-sub').textContent = isLast
+        ? `${gameTopic} — every word drawn from the well.`
+        : `Puzzle ${puzzleIdx + 1} complete — ${p.theme || ''}`;
+    document.getElementById('overflow-scores').innerHTML = teams.map(t =>
+        `<div class="overflow-score"><div class="name">${esc(t.name)}</div><div class="pts">${t.score}</div></div>`).join('');
+    const disc = document.getElementById('overflow-discussion');
+    const discussion = p.discussion ||
+        (isLast ? 'Which word from today’s well means the most to you — and where do you see Jesus Christ in it? (Invite anyone who wants to, to share a short testimony.)' : null);
+    if (discussion) { disc.style.display = 'block'; disc.textContent = '💬 ' + discussion; }
+    else disc.style.display = 'none';
+    document.getElementById('overflow-next').textContent = isLast ? 'FINISH — BACK TO SETUP' : 'NEXT PUZZLE →';
+    setTimeout(() => document.getElementById('overflow-veil').classList.add('show'), 650);
+}
+
+function rainDroplets() {
+    const glyphs = ['💧', '💦', '✦'];
+    for (let i = 0; i < 26; i++) {
+        const d = document.createElement('div');
+        d.className = 'drop';
+        d.textContent = glyphs[i % glyphs.length];
+        d.style.left = Math.random() * 100 + 'vw';
+        d.style.top = '-4vh';
+        d.style.fontSize = (0.8 + Math.random() * 1.4) + 'rem';
+        d.style.animationDuration = (1.2 + Math.random() * 1.6) + 's';
+        d.style.animationDelay = (Math.random() * 0.5) + 's';
+        document.body.appendChild(d);
+        setTimeout(() => d.remove(), 3600);
+    }
+}
+
+// ── Hint ladder (teacher-triggered, in order) ────────────────────────────────
+const HINT_TIERS = [
+    { n: 1, icon: '💬', label: 'Meaning' },
+    { n: 2, icon: '📖', label: 'Verse' },
+    { n: 3, icon: '🖼', label: 'Picture' },
+    { n: 4, icon: '🔤', label: 'First letter' },
+    { n: 5, icon: '👁', label: 'Reveal' },
+];
+
+window.openHints = function() {
+    const p = puzzles[puzzleIdx];
+    const unsolvedWords = p.words.filter(w => !solved.has(w.word));
+    const list = document.getElementById('hintword-list');
+    if (!unsolvedWords.length) {
+        list.innerHTML = '<div class="lesson-status">Every word is drawn — the well is full!</div>';
+    } else {
+        list.innerHTML = unsolvedWords.map(w => {
+            const used = hintTier[w.word] || 0;
+            const slots = [...w.word].map((ch, i) => {
+                const cellK = placedCellKey(w.word, i);
+                const shown = cellK && hintLetters.has(cellK);
+                return `<span class="hintword-slot${w.isCapstone ? ' gold' : ''}">${shown ? ch : ''}</span>`;
+            }).join('');
+            const btns = HINT_TIERS.map(t =>
+                `<button class="ladder-btn${t.n === 5 ? ' reveal' : ''}" ${t.n !== used + 1 ? 'disabled' : ''}
+                    onclick="window.useHint('${w.word}', ${t.n})" title="${t.label}">${t.icon}</button>`).join('');
+            return `<div class="hintword-row">
+                <div class="hintword-slots">${slots}</div>
+                <span style="font-size:0.7rem;color:var(--ink-muted);">${w.word.length} letters${w.isCapstone ? ' · ★ capstone' : ''}</span>
+                <div class="ladder-btns">${btns}</div>
+            </div>`;
+        }).join('');
+    }
+    document.getElementById('hints-veil').classList.add('show');
+};
+window.closeHints = function() { document.getElementById('hints-veil').classList.remove('show'); };
+
+function placedCellKey(word, i) {
+    const pl = pack.placements.find(x => x.word === word);
+    if (!pl) return null;
+    const cc = cellsOf(pl)[i];
+    return cc.r + ',' + cc.c;
+}
+
+window.useHint = function(word, tier) {
+    const w = wordMap[word];
+    if (!w || solved.has(word)) return;
+    hintTier[word] = Math.max(hintTier[word] || 0, tier);
+    if (tier === 1) showHintBanner('💬 MEANING', esc(w.definition || '(no definition provided)'));
+    if (tier === 2) showHintBanner('📖 FROM THE VERSE', '“' + esc(w.verseBlank || w.verseText || '') + '”' + (w.verseRef ? ` <span style="color:var(--water);font-size:0.8em;">— ${esc(w.verseRef)}</span>` : ''));
+    if (tier === 3) showHintBanner('🖼 PICTURE', `<span class="hint-emoji">${esc(w.icon || '💧')}</span>${esc(w.iconLabel || '')}`);
+    if (tier === 4) {
+        const k = placedCellKey(word, 0);
+        if (k) { hintLetters.add(k); renderGrid(); }
+        showHintBanner('🔤 FIRST LETTER', `The word starts with <b style="color:var(--glow-soft)">${word[0]}</b>`);
+    }
+    if (tier === 5) {
+        window.closeHints();
+        solveWord(word, { withPoints: false });
+        return;
+    }
+    window.openHints(); // re-render ladder state
+};
+
+function showHintBanner(kind, html) {
+    const b = document.getElementById('hint-banner');
+    b.innerHTML = `<span class="hint-kind">${kind}</span>${html}`;
+    b.classList.add('show');
+    window.closeHints();
+}
+function hideHintBanner() { const b = document.getElementById('hint-banner'); b.classList.remove('show'); b.innerHTML = ''; }
+
+// ── Blitz timer (facilitation aid — no lockout) ──────────────────────────────
+window.toggleBlitz = function() {
+    const btn = document.getElementById('blitz-btn');
+    if (blitzTimer) { stopBlitz(); return; }
+    blitzLeft = 90;
+    btn.classList.add('running');
+    blitzTimer = setInterval(() => {
+        blitzLeft--;
+        btn.textContent = `⏱ ${blitzLeft}s`;
+        if (blitzLeft <= 0) { stopBlitz(); sfxInvalid(); tone(392, 0.3, 0.5, 'square', 0.15); }
+    }, 1000);
+    btn.textContent = '⏱ 90s';
+};
+function stopBlitz() {
+    if (blitzTimer) clearInterval(blitzTimer);
+    blitzTimer = null;
+    const btn = document.getElementById('blitz-btn');
+    btn.classList.remove('running');
+    btn.textContent = '⏱ BLITZ 90s';
+}
+
+// Re-render wheel on resize so stones stay on the ring
+let resizeT = null;
+window.addEventListener('resize', () => {
+    clearTimeout(resizeT);
+    resizeT = setTimeout(() => { if (document.getElementById('play-scene').classList.contains('active')) renderWheel(); }, 150);
+});
+</script>
+</body>
+</html>

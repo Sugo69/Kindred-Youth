@@ -1,7 +1,7 @@
 # Kindred — CLAUDE.md
 
 ## Project Overview
-**Kindred** ("Youth Learning Together") is a browser-based interactive game platform for LDS church youth groups (ages 14–16). It is a **multi-page Vite app** with a portal home page and **four games** sharing live state via Firebase Firestore.
+**Kindred** ("Youth Learning Together") is a browser-based interactive game platform for LDS church youth groups (ages 14–16). It is a **multi-page Vite app** with a portal home page and **five games** sharing live state via Firebase Firestore.
 
 **Portal entry point:** `index.html` — Kindred hub (lesson-first recommendations for both CFM + Seminary tabs, game catalog, display scale gear menu)
 **Admin portal:** `admin.html` — Google-authenticated admin for teachers, classrooms, lesson library, backlog, and trail board calibration
@@ -11,11 +11,13 @@
 - `games/memory.html` — **Scripture Match** (memory matching pairs, React 18 + Babel CDN; best fit: scripture-heavy lessons)
 - `games/scripture-trail.html` — **Scripture Trail** (sequential story walkthrough with 6 painted curriculum boards; best fit: narrative lessons)
 - `games/by-heart.html` — **By Heart** (Doctrinal Mastery step-by-step memorization, 5 progressive levels: Read → Echo → Recall → Speak → Heart-Set)
+- `games/well-of-words.html` — **Well of Words** (letter-wheel word puzzle; 5–7 letters on stones around a well mouth fill a crossword with lesson vocabulary; pink `#ff007f`, icon 💧; best fit: doctrinal/vocabulary). ⚠ NEW 2026-07-03, HELD UNCOMMITTED pending name TESS check — see `well-of-words-design.md`
 
 **Game views vary:**
 - **Common Ground / Scripture Match** — Monitor View (TV display) + Admin View (phone controller) + Teacher Portal (📚 Library, 🔗 lesson URL pipeline, ✏️ manual editor)
 - **Scripture Trail** — single playing screen + setup scene + new **✏️ Edit Stops** teacher editor (classroom-scoped overrides at `classrooms/{room}/trailLessons/{lessonId}`)
 - **By Heart** — single screen, no Monitor split. Three passage picker modes (📖 This Week DM / 📚 All 25 NT DM / ✏️ Any verse).
+- **Well of Words** — single screen, teacher-driven. Setup (library picker + team names) + play (crossword grid, stone-ring wheel with drag AND tap input, teacher hint ladder 💬→📖→🖼→🔤→👁, Well Card modal with QR per word, 🪣 bonus bucket, 90s blitz timer). **Whitelist-only word validation** — only pipeline/demo words accepted, no dictionary shipped. Grid layout computed client-side by a deterministic crossword packer (never Claude). v1 is teen mode; 💧 Spring (K-6) plumbing exists but hidden (v1.1).
 
 ## Tech Stack
 - **Frontend**: Vite MPA + vanilla HTML/CSS/JS (`index.html` + `games/*.html`)
