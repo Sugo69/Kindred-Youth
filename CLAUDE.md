@@ -69,6 +69,7 @@ Kindred-Youth/                  # Repo: github.com/Sugo69/Kindred-Youth (renamed
 │   ├── settings.json           # Project-level Claude Code permissions (committed)
 │   ├── settings.local.json     # Machine-local permissions (gitignored)
 │   ├── commands/
+│   │   ├── game-builder.md     # /project:game-builder — new-game process driven by GAME-PLAYBOOK.md
 │   │   ├── extract-lesson.md   # /project:extract-lesson — fetch + parse CFM lesson
 │   │   ├── youth-leader.md     # /project:youth-leader — generate lesson plan + game questions
 │   │   └── gamemaster.md       # /project:gamemaster — privacy-safe classroom game session
@@ -346,6 +347,9 @@ Addressable 9×7 WS2812B matrix (63 LEDs) on ESP8266 NodeMCU, controlled from th
 - Lives in `admin.html` (Backlog tab)
 
 ## Claude Code Skills (`.claude/commands/`)
+
+### `/project:game-builder <concept>`
+Designs and ships a NEW Kindred game end-to-end, driven by **`GAME-PLAYBOOK.md`** (repo root) — the accumulated shipped-game lessons: design gates (name/IP hold, cooperative scoring, content density), platform integration checklist, pipeline rules (deterministic checks, per-gameType timeouts), layout/type/scale-gear standards, helper-view pattern (when to build one + the two-tap safeguard model), input gotchas, testing gates (offline fixtures → build → live pipeline run → lesson-reviewer → hardware playtest), and the playtest-loop process. **Update GAME-PLAYBOOK.md after every game ships** — the retrospective step is part of the skill.
 
 ### `/project:extract-lesson <URL>`
 Fetches a Come Follow Me lesson page and extracts:
