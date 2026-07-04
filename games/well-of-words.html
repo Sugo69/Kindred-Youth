@@ -271,6 +271,10 @@
   .helper-row { display: flex; align-items: center; gap: 10px; padding: 10px 12px;
     border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; flex-wrap: wrap; }
   .helper-row.solved { opacity: 0.45; }
+  /* word whose hint is live on the classroom screen — mirrors the grid highlight */
+  .helper-row.active { border-color: var(--water); background: rgba(45,212,191,0.06);
+    box-shadow: 0 0 12px rgba(45,212,191,0.3); }
+  .helper-row.active .hintword-num { color: var(--water); text-shadow: 0 0 8px rgba(45,212,191,0.5); }
   .helper-word { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.15rem;
     letter-spacing: 0.12em; color: var(--ink); }
   .helper-word.capstone { color: var(--gold); }
@@ -1769,14 +1773,15 @@ function renderHelper(state) {
                 <span class="hintword-num">#${w.n} ${w.dir}</span>
                 <span class="helper-word${w.isCapstone ? ' capstone' : ''}">${esc(w.word)}</span>
                 <span style="margin-left:auto;color:var(--water);">✓ drawn</span></div>`;
-            const isOn = (t) => state.activeHint && state.activeHint.word === w.word && state.activeHint.tier === t;
+            const isActiveWord = state.activeHint && state.activeHint.word === w.word;
+            const isOn = (t) => isActiveWord && state.activeHint.tier === t;
             const peeked = helperPeeked.has(w.word);
             const armed = helperArmed === w.word;
             const wordHtml = peeked
                 ? `<span class="helper-word${w.isCapstone ? ' capstone' : ''}" onclick="window.helperUnpeek('${w.word}')" title="Tap to hide" style="cursor:pointer;">${esc(w.word)}${w.isCapstone ? ' ★' : ''}</span>
                    <button class="ladder-btn" onclick="window.helperUnpeek('${w.word}')" title="Hide the answer again">🙈</button>`
                 : `<span class="helper-word" style="color:var(--ink-muted);letter-spacing:0.2em;">${'•'.repeat(w.word.length)}${w.isCapstone ? ' ★' : ''}</span>`;
-            return `<div class="helper-row">
+            return `<div class="helper-row${isActiveWord ? ' active' : ''}">
                 <span class="hintword-num">#${w.n} ${w.dir}</span>
                 ${wordHtml}
                 <span style="font-size:0.68rem;color:var(--ink-muted);">${w.word.length}</span>
