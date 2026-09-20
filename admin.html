@@ -1661,12 +1661,17 @@
                         <div class="record-meta" style="line-height:1.7;">
                             ${c.wardName ? `🏘 ${esc(c.wardName)}` : ''}
                             ${c.country ? ` · 🌐 ${esc(c.country)}` : ''}
+                            ${c.audience === 'primary' ? ` · <span style="color:#34d399;">🧸 Primary</span>` : ` · <span style="color:var(--neon-cyan);">🎓 Youth</span>`}
                             <br>${teacherChips}
                         </div>
                         <div class="inline-edit" id="ce-${c.id}">
                             <input type="text" id="ce-name-${c.id}" value="${esc(label)}" placeholder="Classroom name">
                             <input type="text" id="ce-ward-${c.id}" value="${esc(c.wardName||'')}" placeholder="Ward name">
                             <input type="text" id="ce-country-${c.id}" value="${esc(c.country||'US')}" placeholder="Country code (e.g. US)">
+                            <select id="ce-audience-${c.id}" title="Which version of the games this class plays">
+                                <option value="youth" ${c.audience !== 'primary' ? 'selected' : ''}>🎓 Youth (12–18)</option>
+                                <option value="primary" ${c.audience === 'primary' ? 'selected' : ''}>🧸 Primary (4–11)</option>
+                            </select>
                             <button class="btn-primary" style="padding:8px 16px;font-size:0.85rem" onclick="window.saveClassroom('${c.id}')">Save</button>
                             <button class="btn-secondary" style="padding:8px 14px;font-size:0.85rem" onclick="document.getElementById('ce-${c.id}').classList.remove('open')">Cancel</button>
                         </div>
@@ -1683,8 +1688,9 @@
             const name = document.getElementById(`ce-name-${id}`).value.trim();
             const wardName = document.getElementById(`ce-ward-${id}`).value.trim();
             const country = (document.getElementById(`ce-country-${id}`).value.trim() || 'US').toUpperCase();
+            const audience = document.getElementById(`ce-audience-${id}`)?.value === 'primary' ? 'primary' : 'youth';
             if (!name) return showToast('Classroom name required.', true);
-            await updateDoc(doc(db, `${basePath}/classrooms/${id}`), { name, wardName, country, lastActivityAt: serverTimestamp() });
+            await updateDoc(doc(db, `${basePath}/classrooms/${id}`), { name, wardName, country, audience, lastActivityAt: serverTimestamp() });
             showToast('Classroom updated.');
         };
 
@@ -2135,6 +2141,7 @@
                 const hasCG = !!(entry.commonGround?.rounds?.length);
                 const hasMem = !!(entry.memory?.pairs?.length);
                 const hasWoW = !!(entry.wellOfWords?.puzzles?.length);
+                const hasPrimary = !!(entry.memoryPrimary?.pairs?.length);
                 const cgDate = entry.commonGround?.generatedAt ? new Date(entry.commonGround.generatedAt).toLocaleDateString() : null;
                 const memDate = entry.memory?.generatedAt ? new Date(entry.memory.generatedAt).toLocaleDateString() : null;
                 const wowDate = entry.wellOfWords?.generatedAt ? new Date(entry.wellOfWords.generatedAt).toLocaleDateString() : null;
@@ -2160,6 +2167,11 @@
                             ${!hasCG ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap;" onclick="window.generateLibraryGame('${entry.id}','common-ground')">⚡ CG</button>` : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap;" onclick="window.generateLibraryGame('${entry.id}','common-ground')">↺ CG</button>`}
                             ${!hasMem ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#a78bfa; color:#a78bfa;" onclick="window.generateLibraryGame('${entry.id}','memory')">⚡ Mem</button>` : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#a78bfa; color:#6b7280;" onclick="window.generateLibraryGame('${entry.id}','memory')">↺ Mem</button>`}
                             ${!hasWoW ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:var(--neon-pink); color:var(--neon-pink);" onclick="window.generateLibraryGame('${entry.id}','well-of-words')">⚡ WoW</button>` : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:var(--neon-pink); color:#6b7280;" onclick="window.generateLibraryGame('${entry.id}','well-of-words')">↺ WoW</button>`}
+                            ${hasMem
+                                ? (!hasPrimary
+                                    ? `<button class="btn-add" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#34d399; color:#34d399;" title="Younger-kids version, built from the Scripture Match pairs" onclick="window.generateLibraryGame('${entry.id}','memory-primary')">⚡ Primary</button>`
+                                    : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; border-color:#34d399; color:#6b7280;" title="Regenerate the younger-kids version" onclick="window.generateLibraryGame('${entry.id}','memory-primary')">↺ Primary</button>`)
+                                : `<button class="btn-secondary" style="font-size:0.7rem; padding:6px 12px; white-space:nowrap; opacity:0.4; cursor:not-allowed;" title="Generate Scripture Match first — Primary is built from those pairs" disabled>⚡ Primary</button>`}
                             <button class="btn-icon" title="Delete" onclick="window.deleteLibraryEntry('${entry.id}', '${esc(entry.name||entry.id)}')">🗑</button>
                         </div>
                     </div>
@@ -2314,9 +2326,17 @@
         window.generateLibraryGame = async (entryId, gameType, batchInfo) => {
             const entry = libraryItems.find(e => e.id === entryId);
             if (!entry?.url) { showToast('Entry has no URL.', true); return; }
+            // Primary content is a transformation of the Youth pairs, so those
+            // have to exist first.
+            const isPrimaryJob = gameType === 'memory-primary';
+            if (isPrimaryJob && !entry.memory?.pairs?.length) {
+                showToast('Generate Scripture Match first — the Primary version is built from those pairs.', true);
+                return;
+            }
             const statusEl = document.getElementById(`lib-status-${entryId}`);
             const gameLabel = gameType === 'common-ground' ? 'Common Ground'
-                : gameType === 'well-of-words' ? 'Well of Words' : 'Scripture Match';
+                : gameType === 'well-of-words' ? 'Well of Words'
+                : isPrimaryJob ? 'Primary version' : 'Scripture Match';
             const batchSuffix = batchInfo ? ` (${batchInfo.i}/${batchInfo.total})` : '';
             // Progress bar — eases toward 85% while Claude is running, plus an elapsed timer
             let pct = 0;
@@ -2355,20 +2375,23 @@
             try {
                 const token = await auth.currentUser?.getIdToken();
                 if (!token) throw new Error('Please sign in before generating.');
-                const resp = await fetch(`${API_BASE}/api/lesson-pipeline`, {
+                const resp = await fetch(`${API_BASE}${isPrimaryJob ? '/api/simplify-pairs' : '/api/lesson-pipeline'}`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`,
                     },
-                    body: JSON.stringify({ url: entry.url, gameType }),
+                    body: JSON.stringify(isPrimaryJob
+                        ? { lessonId: entryId, topic: entry.memory.topic, pairs: entry.memory.pairs }
+                        : { url: entry.url, gameType }),
                     signal: ctrl.signal,
                 });
                 clearTimeout(clientTimeout);
                 const data = await resp.json();
                 if (!resp.ok) throw new Error(data.error || 'Pipeline failed');
                 const field = gameType === 'common-ground' ? 'commonGround'
-                    : gameType === 'well-of-words' ? 'wellOfWords' : 'memory';
+                    : gameType === 'well-of-words' ? 'wellOfWords'
+                    : isPrimaryJob ? 'memoryPrimary' : 'memory';
                 await updateDoc(doc(db, `${basePath}/lessonLibrary/${entryId}`), {
                     [field]: { ...data, generatedAt: Date.now() }
                 });

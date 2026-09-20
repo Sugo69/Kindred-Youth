@@ -2366,11 +2366,18 @@
                     rooms = legacySnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 }
 
+                // Remember which version each classroom plays, so the portal can
+                // link Scripture Match to the right mode and badge lessons honestly.
+                window.__kindredRoomAudiences = Object.fromEntries(
+                    rooms.map(r => [r.id, r.audience === 'primary' ? 'primary' : 'youth'])
+                );
+
                 if (rooms.length === 1) {
                     const room = rooms[0];
                     const label = room.name || room.wardName || room.description || 'My Classroom';
                     sessionStorage.setItem(SESSION_KEY, room.id);
                     sessionStorage.setItem(SESSION_NAME_KEY, label);
+                    sessionStorage.setItem('kindred_classroom_audience', room.audience === 'primary' ? 'primary' : 'youth');
                     goPortal(room.id, label);
                     return;
                 }
@@ -2608,8 +2615,15 @@
 
             // Update game card links
             const suffix = classroomId ? `?room=${classroomId}` : '';
+            const _roomAudience = (window.__kindredRoomAudiences || {})[classroomId]
+                || sessionStorage.getItem('kindred_classroom_audience');
+            window.__kindredClassroomAudience = _roomAudience === 'primary' ? 'primary' : 'youth';
+            const _audience = (window.__kindredClassroomAudience === 'primary') ? 'primary' : null;
+            const memSuffix = _audience
+                ? (suffix ? `${suffix}&mode=${_audience}` : `?mode=${_audience}`)
+                : suffix;
             document.getElementById('link-common-ground').href = `games/common-ground.html${suffix}`;
-            document.getElementById('link-memory').href = `games/memory.html${suffix}`;
+            document.getElementById('link-memory').href = `games/memory.html${memSuffix}`;
             document.getElementById('link-scripture-trail').href = `games/scripture-trail.html${suffix}`;
             document.getElementById('link-well-of-words').href = `games/well-of-words.html${suffix}`;
 
@@ -2621,7 +2635,12 @@
                 const generatedIds = new Set();
                 snap.forEach(d => {
                     const data = d.data();
-                    if (data.commonGround?.rounds?.length || data.memory?.pairs?.length || data.scriptureTrail?.stops?.length || data.wellOfWords?.puzzles?.length) {
+                    // A Primary classroom must not be told a lesson is ready on the
+                    // strength of Youth-only content it will never see.
+                    const _memReady = (window.__kindredClassroomAudience === 'primary')
+                        ? !!data.memoryPrimary?.pairs?.length
+                        : !!data.memory?.pairs?.length;
+                    if (data.commonGround?.rounds?.length || _memReady || data.scriptureTrail?.stops?.length || data.wellOfWords?.puzzles?.length) {
                         if (data.lessonId) generatedIds.add(data.lessonId);
                         if (d.id.startsWith('cfm-')) generatedIds.add(d.id.slice(4));
                         generatedIds.add(d.id);
@@ -3070,6 +3089,7 @@
         window.selectRoom = (id, name) => {
             sessionStorage.setItem(SESSION_KEY, id);
             sessionStorage.setItem(SESSION_NAME_KEY, name);
+            sessionStorage.setItem('kindred_classroom_audience', (window.__kindredRoomAudiences || {})[id] || 'youth');
             enterPortal(id, name);
         };
 

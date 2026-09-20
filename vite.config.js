@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import { resolve } from 'path'
 import { runLessonPipeline } from './api/_lib/pipeline.js'
 import { runModeration } from './api/_lib/moderate.js'
+import { runSimplifyPairs } from './api/_lib/simplify.js'
 import { applyCors } from './api/_lib/origin.js'
 import { requireAuth } from './api/_lib/auth.js'
 
@@ -223,6 +224,37 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                                 console.error('[lesson-pipeline dev]', err)
                                 res.statusCode = 500
                                 res.end(JSON.stringify({ error: err.message || 'Pipeline failure' }))
+                            }
+                        })
+                    })
+
+                    // Primary-mode content: transforms a lesson's existing Youth
+                    // pairs into kid language. Same module as the Vercel handler.
+                    server.middlewares.use('/api/simplify-pairs', async (req, res) => {
+                        if (!applyCors(req, res)) return
+                        if (req.method !== 'POST') { res.statusCode = 405; res.setHeader('Content-Type','application/json'); res.end(JSON.stringify({error:'Method not allowed'})); return }
+                        const claims = await requireAuth(req, res, env.VITE_FIREBASE_PROJECT_ID)
+                        if (!claims) return
+                        let body = ''
+                        req.on('data', chunk => body += chunk)
+                        req.on('end', async () => {
+                            res.setHeader('Content-Type', 'application/json')
+                            let payload
+                            try { payload = JSON.parse(body) } catch { res.statusCode = 400; res.end(JSON.stringify({ error: 'Invalid JSON body' })); return }
+                            try {
+                                const { status, body: out } = await runSimplifyPairs({
+                                    pairs: payload.pairs,
+                                    topic: payload.topic,
+                                    lessonId: payload.lessonId,
+                                    apiKey: env.ANTHROPIC_API_KEY,
+                                    enableSafetyReview: env.ENABLE_SAFETY_REVIEW !== 'false',
+                                })
+                                res.statusCode = status
+                                res.end(JSON.stringify(out))
+                            } catch (err) {
+                                console.error('[simplify-pairs dev]', err)
+                                res.statusCode = 500
+                                res.end(JSON.stringify({ error: err.message || 'Simplify failure' }))
                             }
                         })
                     })
