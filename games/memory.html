@@ -119,6 +119,58 @@
             if (!data.memory?.pairs?.length) throw new Error('No memory content in this library entry');
             return data.memory;
         };
+
+        // ── Primary mode ─────────────────────────────────────────────────────
+        // Library doc ids are stored with a `cfm-` prefix but the portal passes
+        // the bare lessonId, so every lookup tries both spellings (CLAUDE.md).
+        async function _getLessonDoc(lessonId) {
+            await _authReady;
+            const ids = lessonId.startsWith('cfm-')
+                ? [lessonId, lessonId.slice(4)]
+                : [lessonId, `cfm-${lessonId}`];
+            for (const id of ids) {
+                const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/lessonLibrary/${id}`));
+                if (snap.exists()) return snap.data();
+            }
+            return null;
+        }
+
+        window.loadMemoryPrimaryFromLibrary = async function(lessonId) {
+            const data = await _getLessonDoc(lessonId);
+            if (!data) throw new Error('Library entry not found');
+            if (!data.memoryPrimary?.pairs?.length) {
+                const err = new Error('No Primary content for this lesson');
+                err.code = 'NO_PRIMARY';
+                err.hasYouth = !!data.memory?.pairs?.length;
+                throw err;
+            }
+            return data.memoryPrimary;
+        };
+
+        // Which version of the game does this room get?
+        //   ?mode=  →  classroom.audience  →  localStorage  →  null (ask)
+        // The classroom field is the one that matters: a Primary teacher should
+        // never have to pick, and localStorage dies on a shared building laptop.
+        window.__kindredAudienceReady = (async function resolveAudience() {
+            const urlMode = new URLSearchParams(location.search).get('mode');
+            if (urlMode === 'primary' || urlMode === 'youth') return urlMode;
+
+            if (classroomId) {
+                try {
+                    await _authReady;
+                    const snap = await getDoc(doc(db, `${window.__kindredGlobalBasePath}/classrooms/${classroomId}`));
+                    const a = snap.exists() ? snap.data().audience : null;
+                    if (a === 'primary' || a === 'youth') return a;
+                } catch (e) { console.warn('Classroom audience lookup failed:', e); }
+            }
+
+            try {
+                const saved = localStorage.getItem('kindred_audience');
+                if (saved === 'primary' || saved === 'youth') return saved;
+            } catch {}
+
+            return null;
+        })();
     </script>
 
     <style>
@@ -207,11 +259,35 @@
             const [generatedMedia, setGeneratedMedia] = useState({ videoLinks: [], talkLinks: [] });
             const [showSettings, setShowSettings] = useState(false);
             const retryTimerRef = useRef(null);
+            const youthLoadedRef = useRef(false);
             const attemptCountRef = useRef(0);
             const progressTimerRef = useRef(null);
             const [libraryEntries, setLibraryEntries] = useState([]);
             const [libraryLoading, setLibraryLoading] = useState(false);
             const [showArchive, setShowArchive] = useState(false);
+
+            // ── Primary mode (ages ~4–11) ──
+            // Same 12 pairs as Youth mode, chunked into 3 short boards with a
+            // movement break between them. See scripture-match-primary-design.md.
+            const [audience, setAudience] = useState(null);       // 'primary' | 'youth' | null = ask
+            const [audienceReady, setAudienceReady] = useState(false);
+            const [primaryData, setPrimaryData] = useState(null); // { boards[], pairs[] }
+            const [boardIdx, setBoardIdx] = useState(0);
+            const [showBreak, setShowBreak] = useState(false);
+            const [primaryMissing, setPrimaryMissing] = useState(false);
+            const isPrimary = audience === 'primary';
+            const boards = primaryData?.boards || [];
+            const currentBoard = boards[boardIdx] || null;
+
+            // A stand-up beat between boards. Hand-written client-side bank —
+            // no API cost, no compliance surface.
+            const WIGGLE_PROMPTS = [
+                'Stand up and reach to heaven! 🙌',
+                'March in place while we count to ten! 🚶',
+                'Give the person next to you a high five! ✋',
+                'Stretch up tall, then touch your toes! 🤸',
+                'Clap three times and sit down softly! 👏',
+            ];
 
             // Apply saved scale
             useEffect(() => {
@@ -219,12 +295,57 @@
                 if (saved && !isNaN(parseFloat(saved))) setScale(parseFloat(saved) * 100);
             }, []);
 
+            // Resolve which version of the game this room gets (see the module
+            // script): ?mode= → classroom.audience → localStorage → ask.
+            useEffect(() => {
+                let cancelled = false;
+                Promise.resolve(window.__kindredAudienceReady).then(a => {
+                    if (cancelled) return;
+                    setAudience(a || null);
+                    setAudienceReady(true);
+                }).catch(() => { if (!cancelled) setAudienceReady(true); });
+                return () => { cancelled = true; };
+            }, []);
+
+            // Primary content load. Runs once the audience is known to be
+            // 'primary' — a different Firestore field from Youth mode, so this
+            // is a content swap, not a re-skin.
+            useEffect(() => {
+                if (!isPrimary) return;
+                const lessonId = window.__kindredLessonId;
+                if (!lessonId || !window.loadMemoryPrimaryFromLibrary) return;
+                let cancelled = false;
+                window.loadMemoryPrimaryFromLibrary(lessonId).then(data => {
+                    if (cancelled) return;
+                    if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
+                    setPrimaryData(data);
+                    setPrimaryMissing(false);
+                    setBoardIdx(0);
+                    setPairsData(data.pairs.filter(p => p.board === 1));
+                    setLessonTopic(data.topic || 'Primary Lesson');
+                    setGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : new Date());
+                    setPortalStatus(`✓ Primary version loaded — ${data.boards.length} boards, ${data.pairs.length} cards.`);
+                }).catch(err => {
+                    if (cancelled) return;
+                    // Never dead-end: say what's missing and leave the Youth
+                    // version reachable from the picker.
+                    setPrimaryMissing(true);
+                    setPortalStatus(err.code === 'NO_PRIMARY'
+                        ? '⚠ No younger-kids version for this lesson yet — an admin needs to generate it.'
+                        : '⚠ Could not load the younger-kids version.');
+                });
+                return () => { cancelled = true; };
+            }, [isPrimary]);
+
             // Auto-load from library when ?lesson= param is set.
             // If the lesson is pre-generated → load pairs immediately.
             // If not yet generated → pre-fill the lesson URL so teacher can click Generate.
             useEffect(() => {
                 const lessonId = window.__kindredLessonId;
                 if (!lessonId || !window.loadMemoryFromLibrary) return;
+                if (!audienceReady || audience === 'primary') return;  // Primary has its own loader above
+                if (youthLoadedRef.current) return;
+                youthLoadedRef.current = true;
                 window.loadMemoryFromLibrary(lessonId).then(memData => {
                     if (retryTimerRef.current) { clearInterval(retryTimerRef.current); retryTimerRef.current = null; }
                     setPairsData(memData.pairs);
@@ -241,7 +362,7 @@
                         setPortalStatus('📚 Lesson not pre-generated yet — click Generate to create it');
                     }
                 });
-            }, []);
+            }, [audienceReady, audience]);
 
             // Build a Gospel-Library URL with the blue verse-highlight bar.
             // Matches "Book Chapter:start" or "Book Chapter:start–end" anywhere in the scripture reference.
@@ -267,18 +388,57 @@
                 if (activeCard?.url) {
                     setTimeout(() => {
                         const el = document.getElementById('qr-canvas');
-                        const href = buildHighlightUrl(activeCard.url, activeCard.cardA);
+                        const href = buildHighlightUrl(activeCard.url, activeCard.verseRef || activeCard.cardA);
                         if (el && window.QRious) new window.QRious({ element: el, value: href, size: 140, background: 'white', foreground: '#0a0a20' });
                     }, 60);
                 }
             }, [activeCard]);
 
-            // Win detection
+            // Win detection. In Primary mode a finished board is not the end of
+            // the game — it's a Wiggle Break and then the next board. Every
+            // board boundary is also a safe exit for a teacher who's out of time.
             useEffect(() => {
                 if (cards.length > 0 && matched.length === cards.length / 2 && !activeCard) {
-                    setGameState('won');
+                    if (isPrimary && boardIdx < boards.length - 1) setShowBreak(true);
+                    else setGameState('won');
                 }
-            }, [matched, cards.length, activeCard]);
+            }, [matched, cards.length, activeCard, isPrimary, boardIdx, boards.length]);
+
+            // Move to the next board after the break.
+            const advanceBoard = () => {
+                const next = boardIdx + 1;
+                const nextPairs = (primaryData?.pairs || []).filter(p => p.board === next + 1);
+                setShowBreak(false);
+                setBoardIdx(next);
+                setPairsData(nextPairs);
+                initGame(nextPairs);
+            };
+
+            // Start Primary play from board 1 (used by the Play button).
+            const startPrimaryGame = () => {
+                const first = (primaryData?.pairs || []).filter(p => p.board === 1);
+                setBoardIdx(0);
+                setShowBreak(false);
+                setPairsData(first);
+                initGame(first);
+                setGameState('playing');
+            };
+
+            // Pick / switch the audience. Persists per device; the classroom
+            // field still wins on the next fresh load elsewhere.
+            const chooseAudience = (next) => {
+                try { localStorage.setItem('kindred_audience', next); } catch {}
+                const u = new URL(location.href);
+                u.searchParams.set('mode', next);
+                history.replaceState(null, '', u.toString());
+                setAudience(next);
+                setPrimaryMissing(false);
+                setBoardIdx(0);
+                setShowBreak(false);
+                setCards([]); setFlipped([]); setMatched([]); setActiveCard(null);
+                if (next === 'youth') { youthLoadedRef.current = false; setPairsData(DEFAULT_PAIRS); }
+                setGameState('portal');
+            };
 
             const initGame = (pairs) => {
                 const gamePairs = pairs || pairsData;
@@ -319,7 +479,7 @@
                     } else {
                         playSound('mismatch');
                         setMismatchIdx(newFlipped);
-                        setTimeout(() => { setFlipped([]); setMismatchIdx([]); setIsChecking(false); }, 900);
+                        setTimeout(() => { setFlipped([]); setMismatchIdx([]); setIsChecking(false); }, isPrimary ? 1400 : 900);
                     }
                 }
             };
@@ -329,7 +489,7 @@
                 setTimeout(() => { setCards(prev => [...prev].sort(() => Math.random() - 0.5)); setIsSabotaging(false); }, 1500);
             };
 
-            const canSabotage = activeCard && matched.length > 0 && matched.length % sabotageEvery === 0 && matched.length < cards.length / 2;
+            const canSabotage = !isPrimary && activeCard && matched.length > 0 && matched.length % sabotageEvery === 0 && matched.length < cards.length / 2;
             const cols = pairsData.length <= 8 ? 4 : pairsData.length <= 12 ? 6 : 6;
 
             // Load library when switching to the library view
@@ -498,6 +658,38 @@
                             </div>
                         </div>
 
+                        {/* Which version is this room playing? */}
+                        {audienceReady && (
+                            <div className="bg-slate-900 border border-emerald-500/30 rounded-xl p-4 mb-4">
+                                <div className="flex items-center justify-between gap-4 flex-wrap">
+                                    <div>
+                                        <div className="text-xs font-bold tracking-widest text-emerald-500 uppercase mb-1" style={{fontFamily:'Orbitron,sans-serif'}}>Who is playing?</div>
+                                        <div className="text-slate-400 text-xs">
+                                            {audience === null
+                                                ? 'Pick the version that fits your class.'
+                                                : isPrimary
+                                                    ? 'Primary — short boards, picture cards, simpler scriptures.'
+                                                    : 'Youth — full board, scripture references, full verses.'}
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2">
+                                        <button onClick={() => chooseAudience('primary')}
+                                            className={`px-4 py-2 rounded-lg font-bold text-xs tracking-widest uppercase border transition-all ${isPrimary ? 'bg-emerald-500 text-black border-emerald-400' : 'border-emerald-500/40 text-emerald-400 hover:bg-emerald-500/10'}`}
+                                            style={{fontFamily:'Orbitron,sans-serif'}}>🧸 Primary</button>
+                                        <button onClick={() => chooseAudience('youth')}
+                                            className={`px-4 py-2 rounded-lg font-bold text-xs tracking-widest uppercase border transition-all ${audience === 'youth' ? 'bg-cyan-500 text-black border-cyan-400' : 'border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10'}`}
+                                            style={{fontFamily:'Orbitron,sans-serif'}}>🎓 Youth</button>
+                                    </div>
+                                </div>
+                                {isPrimary && primaryMissing && (
+                                    <div className="mt-3 text-xs rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 px-3 py-2">
+                                        No Primary version for this lesson yet — an admin needs to generate it.
+                                        You can still play the Youth version with this class.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
                         {/* Current lesson */}
                         {(() => {
                             const cfmLesson = generatedFromUrl && window.__kindredCfmLessonByUrl
@@ -511,7 +703,9 @@
                                         <div className="text-xs font-bold tracking-widest text-cyan-500 uppercase mb-1" style={{fontFamily:'Orbitron,sans-serif'}}>Active Lesson</div>
                                         <div className="text-white font-bold">{lessonTopic}</div>
                                         <div className="text-slate-500 text-xs mt-1 flex items-center gap-2 flex-wrap">
-                                            <span>{pairsData.length} matching pairs loaded</span>
+                                            <span>{isPrimary
+                                                ? `${primaryData?.pairs?.length || 0} cards · ${boards.length} short boards`
+                                                : `${pairsData.length} matching pairs loaded`}</span>
                                             {dateChip && (
                                                 <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 border border-cyan-500/30 text-cyan-300" style={{fontFamily:'Orbitron,sans-serif',fontSize:'0.62rem',letterSpacing:'0.08em'}}>
                                                     {dateChip}
@@ -519,7 +713,7 @@
                                             )}
                                         </div>
                                     </div>
-                                    <button onClick={startGame} disabled={portalLoading}
+                                    <button onClick={isPrimary ? startPrimaryGame : startGame} disabled={portalLoading || (isPrimary && !primaryData)}
                                         className="px-8 py-3 bg-cyan-500 hover:bg-cyan-400 disabled:bg-slate-700 disabled:text-slate-400 disabled:hover:bg-slate-700 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none text-black font-black text-sm tracking-widest uppercase rounded-lg transition-all hover:scale-105 hover:shadow-[0_0_20px_rgba(0,242,255,0.5)]"
                                         style={{fontFamily:'Orbitron,sans-serif'}}>
                                         {portalLoading ? '⏳ Generating…' : 'Play →'}
@@ -879,12 +1073,34 @@
                 <div style={{ position:'fixed', top:'34px', left:0, right:0, bottom:0, overflow:'hidden', background:'#020617', display:'flex', flexDirection:'column' }}>
                     {/* Header — unscaled, fixed at top */}
                     <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-cyan-500/20 flex-shrink-0">
-                        <span className="text-slate-500 text-xs font-bold tracking-widest" style={{fontFamily:'Orbitron,sans-serif'}}>
-                            {matched.length}/{pairsData.length} MATCHED
-                        </span>
-                        <span className="text-xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 tracking-widest" style={{fontFamily:'Orbitron,sans-serif'}}>
-                            SCRIPTURE MATCH
-                        </span>
+                        {isPrimary ? (
+                            /* Progress is a picture strip, never a number — a young
+                               class reads "three more to find", not "3/4". */
+                            <span style={{display:'flex',gap:'0.4rem',alignItems:'center'}}>
+                                {pairsData.map(p => (
+                                    <span key={p.id} style={{fontSize:'1.5rem',lineHeight:1,
+                                        opacity: matched.includes(p.id) ? 1 : 0.22,
+                                        filter: matched.includes(p.id) ? 'drop-shadow(0 0 6px rgba(251,191,36,0.7))' : 'grayscale(1)',
+                                        transition:'opacity 0.3s, filter 0.3s'}}>{p.icon}</span>
+                                ))}
+                            </span>
+                        ) : (
+                            <span className="text-slate-500 text-xs font-bold tracking-widest" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                {matched.length}/{pairsData.length} MATCHED
+                            </span>
+                        )}
+                        {isPrimary ? (
+                            <span style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em',color:'#fde68a',fontSize:'clamp(0.95rem,2vw,1.5rem)',textAlign:'center'}}>
+                                {currentBoard?.title || 'Scripture Match'}
+                                <span style={{display:'block',fontSize:'0.62rem',color:'#64748b',letterSpacing:'0.2em'}}>
+                                    Board {boardIdx + 1} of {boards.length}
+                                </span>
+                            </span>
+                        ) : (
+                            <span className="text-xl font-black italic text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-400 tracking-widest" style={{fontFamily:'Orbitron,sans-serif'}}>
+                                SCRIPTURE MATCH
+                            </span>
+                        )}
                         <button onClick={()=>setShowAdmin(!showAdmin)} className="w-8 h-8 flex items-center justify-center rounded-lg border border-slate-600 text-slate-300 hover:text-cyan-400 hover:border-cyan-500 transition-colors text-base">⚙</button>
                     </header>
 
@@ -903,6 +1119,12 @@
                                     className="w-24" />
                                 <span className="text-cyan-400 text-xs">{scale}%</span>
                             </div>
+                            <button onClick={()=>{
+                                    if (!confirm(isPrimary ? 'Switch to the Youth version? This starts over.' : 'Switch to the Primary version? This starts over.')) return;
+                                    chooseAudience(isPrimary ? 'youth' : 'primary');
+                                }}
+                                className="px-3 py-1 border border-emerald-600 text-emerald-400 text-xs rounded-lg hover:bg-emerald-900/30 uppercase"
+                                style={{fontFamily:'Orbitron,sans-serif'}}>{isPrimary ? '🎓 Youth version' : '🧸 Primary version'}</button>
                             <button onClick={()=>{initGame();setShowAdmin(false);}}
                                 className="px-3 py-1 border border-slate-600 text-slate-400 text-xs rounded-lg hover:bg-slate-800 uppercase"
                                 style={{fontFamily:'Orbitron,sans-serif'}}>↺ Restart</button>
@@ -936,19 +1158,38 @@
                                                 <span className="text-3xl md:text-5xl font-black text-cyan-500/20 select-none">?</span>
                                             </div>
                                             {/* Front */}
-                                            <div className={`absolute inset-0 backface-hidden rotate-y-180 rounded-xl flex flex-col items-center justify-center p-2 text-center border-2 transition-all
+                                            <div className={`absolute inset-0 backface-hidden rotate-y-180 flex flex-col items-center justify-center text-center border-2 transition-all
+                                                ${isPrimary ? 'rounded-3xl p-3' : 'rounded-xl p-2'}
                                                 ${isMatched
-                                                    ? 'bg-slate-900/60 border-slate-700 opacity-40 hover:opacity-90 hover:border-orange-400 hover:shadow-[0_0_15px_rgba(249,115,22,0.35)]'
+                                                    ? (isPrimary
+                                                        // Matched cards stay LIT in Primary mode — they are the record
+                                                        // of what the class has found, not spent tiles.
+                                                        ? 'bg-gradient-to-br from-emerald-800/70 to-slate-900 border-amber-400 shadow-[0_0_25px_rgba(251,191,36,0.45)]'
+                                                        : 'bg-slate-900/60 border-slate-700 opacity-40 hover:opacity-90 hover:border-orange-400 hover:shadow-[0_0_15px_rgba(249,115,22,0.35)]')
                                                     : isFaceA
                                                         ? 'bg-gradient-to-br from-cyan-900/60 to-slate-900 border-cyan-400 shadow-[0_0_20px_rgba(0,242,255,0.3)]'
                                                         : 'bg-gradient-to-br from-purple-900/60 to-slate-900 border-purple-400 shadow-[0_0_20px_rgba(157,0,255,0.3)]'}`}>
-                                                <>
-                                                    <span style={{fontSize:'clamp(2rem,4vw,3.5rem)', lineHeight:1, marginBottom:'0.35em'}}>{card.icon}</span>
-                                                    <div className={`font-bold leading-tight px-1 text-center ${isFaceA ? 'text-cyan-300' : 'text-purple-300'}`}
-                                                        style={{fontFamily: isFaceA ? 'Orbitron,sans-serif' : 'Rajdhani,sans-serif', fontSize:'clamp(0.45rem,1.1vw,0.7rem)'}}>
-                                                        {isFaceA ? card.cardA : card.cardB}
-                                                    </div>
-                                                </>
+                                                {isPrimary ? (
+                                                    <>
+                                                        {/* The emoji is the match key — text is additive, never required,
+                                                            so a pre-reader is never blocked and an older child still
+                                                            gets a second cue on the back face. */}
+                                                        <span style={{fontSize:'clamp(3.5rem,11vw,7rem)', lineHeight:1, marginBottom:'0.1em'}}>{card.icon}</span>
+                                                        <div className={isFaceA ? 'text-cyan-100' : 'text-purple-100'}
+                                                            style={{fontFamily:'Rajdhani,sans-serif', fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', lineHeight:1.1,
+                                                                    fontSize: isFaceA ? 'clamp(1.1rem,2.6vw,1.8rem)' : 'clamp(0.8rem,1.7vw,1.15rem)'}}>
+                                                            {isFaceA ? card.word : card.phrase}
+                                                        </div>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span style={{fontSize:'clamp(2rem,4vw,3.5rem)', lineHeight:1, marginBottom:'0.35em'}}>{card.icon}</span>
+                                                        <div className={`font-bold leading-tight px-1 text-center ${isFaceA ? 'text-cyan-300' : 'text-purple-300'}`}
+                                                            style={{fontFamily: isFaceA ? 'Orbitron,sans-serif' : 'Rajdhani,sans-serif', fontSize:'clamp(0.45rem,1.1vw,0.7rem)'}}>
+                                                            {isFaceA ? card.cardA : card.cardB}
+                                                        </div>
+                                                    </>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -958,8 +1199,120 @@
                     </main>
                     </div>{/* end scaled stage */}
 
+                    {/* ── Story Card (Primary) — the match modal, cut to four blocks.
+                           Plain-language meaning first, then the verbatim fragment in
+                           quotes with its reference. The paraphrase NEVER gets quotes
+                           or a ref: a paraphrase shown as scripture is a misquotation. ── */}
+                    {activeCard && isPrimary && (
+                        <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(2,6,23,0.97)',display:'flex',alignItems:'stretch',justifyContent:'center',padding:'0.5rem'}}>
+                            <div style={{width:'100%',maxWidth:'1800px',display:'flex',flexDirection:'column',border:'3px solid #fbbf24',borderRadius:'1.5rem',background:'#0b0f1a',overflow:'hidden',boxShadow:'0 0 60px rgba(251,191,36,0.25)'}}>
+
+                                <div style={{flex:1,display:'flex',overflow:'hidden',minHeight:0}}>
+                                    {/* Giant picture */}
+                                    <div style={{width:'34%',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'0.5rem',background:'radial-gradient(ellipse at center,#132018,#05040a)',borderRight:'1px solid rgba(251,191,36,0.2)'}}>
+                                        <span style={{fontSize:'clamp(6rem,16vw,13rem)',lineHeight:1,filter:'drop-shadow(0 0 50px rgba(251,191,36,0.3))'}}>{activeCard.icon}</span>
+                                        <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.12em',color:'#fde68a',fontSize:'clamp(1.5rem,3.4vw,2.6rem)'}}>
+                                            {activeCard.word}
+                                        </div>
+                                    </div>
+
+                                    <div style={{flex:1,display:'flex',flexDirection:'column',padding:'1.5rem 2rem',overflow:'auto',justifyContent:'center',gap:'1rem'}}>
+                                        {/* What happens — the teacher reads this aloud */}
+                                        <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#f1f5f9',lineHeight:1.35,fontSize:'clamp(1.4rem,2.8vw,2.3rem)',margin:0}}>
+                                            {activeCard.sentence}
+                                        </p>
+
+                                        {/* The verse — meaning first, in plain words and WITHOUT quotes */}
+                                        {activeCard.verseSimple && (
+                                            <div style={{borderLeft:'4px solid #22d3ee',paddingLeft:'1rem'}}>
+                                                <div style={{fontFamily:'Rajdhani,sans-serif',fontSize:'0.8rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.18em',color:'#22d3ee',marginBottom:'0.25rem'}}>What it means</div>
+                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:600,color:'#cffafe',lineHeight:1.35,fontSize:'clamp(1.2rem,2.4vw,1.9rem)',margin:0}}>
+                                                    {activeCard.verseSimple}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Verbatim scripture — the ONLY text that gets quotes and a reference */}
+                                        {activeCard.versePhrase && (
+                                            <p style={{fontFamily:'Rajdhani,sans-serif',fontStyle:'italic',color:'#94a3b8',lineHeight:1.4,fontSize:'clamp(0.95rem,1.7vw,1.3rem)',margin:0}}>
+                                                “{activeCard.versePhrase}” <span style={{color:'#64748b',fontStyle:'normal'}}>— {activeCard.verseRef}</span>
+                                            </p>
+                                        )}
+
+                                        {/* Christ connection */}
+                                        {activeCard.christConnection && (
+                                            <div style={{background:'rgba(253,224,71,0.08)',border:'1px solid rgba(253,224,71,0.3)',borderRadius:'0.75rem',padding:'0.75rem 1rem'}}>
+                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#fef3c7',lineHeight:1.35,fontSize:'clamp(1.1rem,2.2vw,1.7rem)',margin:0}}>
+                                                    ✝ {activeCard.christConnection}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* One thing the class DOES together */}
+                                        {activeCard.prompt && (
+                                            <div style={{background:'rgba(34,197,94,0.1)',border:'1px solid rgba(34,197,94,0.35)',borderRadius:'0.75rem',padding:'0.85rem 1rem',display:'flex',gap:'0.75rem',alignItems:'flex-start'}}>
+                                                <span style={{fontSize:'1.6rem',lineHeight:1,flexShrink:0}}>👉</span>
+                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#dcfce7',lineHeight:1.35,fontSize:'clamp(1.2rem,2.3vw,1.8rem)',margin:0}}>
+                                                    {activeCard.prompt}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* Teacher-facing QR, small and out of the way */}
+                                        {activeCard.url && (
+                                            <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
+                                                <a href={buildHighlightUrl(activeCard.url, activeCard.verseRef || '')} target="_blank" rel="noopener noreferrer" style={{display:'block',lineHeight:0}}>
+                                                    <canvas id="qr-canvas" style={{borderRadius:'0.4rem',border:'1px solid #374151',cursor:'pointer',width:'74px',height:'74px'}} />
+                                                </a>
+                                                <span style={{fontFamily:'Rajdhani,sans-serif',fontSize:'0.75rem',color:'#64748b',textTransform:'uppercase',letterSpacing:'0.1em'}}>Scan to read the verse</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div style={{borderTop:'1px solid rgba(251,191,36,0.25)',background:'rgba(0,0,0,0.4)',padding:'1rem 1.5rem'}}>
+                                    <button onClick={() => setActiveCard(null)}
+                                        style={{width:'100%',padding:'1rem',background:'linear-gradient(90deg,#f59e0b,#fbbf24)',border:'none',borderRadius:'0.75rem',color:'#0b0f1a',fontFamily:'Rajdhani,sans-serif',fontWeight:700,fontSize:'clamp(1.1rem,1.8vw,1.5rem)',textTransform:'uppercase',letterSpacing:'0.15em',cursor:'pointer'}}>
+                                        Keep Playing →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ── Wiggle Break — fires BETWEEN boards, never mid-board:
+                           shuffling mid-board would destroy the spatial memory the
+                           class just built, which is the whole skill in play. ── */}
+                    {showBreak && (
+                        <div style={{position:'fixed',inset:0,zIndex:60,background:'rgba(2,6,23,0.98)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'1.5rem',padding:'2rem',textAlign:'center'}}>
+                            <div style={{fontSize:'clamp(4rem,12vw,9rem)',lineHeight:1}}>🙌</div>
+                            <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.2em',color:'#34d399',fontSize:'clamp(1rem,2vw,1.4rem)'}}>
+                                Board {boardIdx + 1} complete!
+                            </div>
+                            {boards[boardIdx]?.takeaway && (
+                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#f1f5f9',fontSize:'clamp(1.4rem,3vw,2.4rem)',margin:0,maxWidth:'22ch',lineHeight:1.3}}>
+                                    {boards[boardIdx].takeaway}
+                                </p>
+                            )}
+                            <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#fbbf24',fontSize:'clamp(1.6rem,3.6vw,2.8rem)',margin:0,maxWidth:'20ch',lineHeight:1.25}}>
+                                {WIGGLE_PROMPTS[boardIdx % WIGGLE_PROMPTS.length]}
+                            </p>
+                            <div style={{display:'flex',gap:'1rem',flexWrap:'wrap',justifyContent:'center'}}>
+                                <button onClick={advanceBoard}
+                                    style={{padding:'1rem 2.5rem',background:'linear-gradient(90deg,#059669,#34d399)',border:'none',borderRadius:'0.75rem',color:'#04140d',fontFamily:'Rajdhani,sans-serif',fontWeight:700,fontSize:'clamp(1.1rem,2vw,1.5rem)',textTransform:'uppercase',letterSpacing:'0.15em',cursor:'pointer'}}>
+                                    Next board →
+                                </button>
+                                {/* Every board boundary is a safe exit for a class that's out of time. */}
+                                <button onClick={() => { setShowBreak(false); setGameState('won'); }}
+                                    style={{padding:'1rem 1.75rem',background:'transparent',border:'1px solid #475569',borderRadius:'0.75rem',color:'#94a3b8',fontFamily:'Rajdhani,sans-serif',fontWeight:700,fontSize:'clamp(0.9rem,1.5vw,1.1rem)',textTransform:'uppercase',letterSpacing:'0.1em',cursor:'pointer'}}>
+                                    Finish here
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Match modal — sibling of scaled stage so it is never scaled */}
-                    {activeCard && (
+                    {activeCard && !isPrimary && (
                         <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(2,6,23,0.97)',display:'flex',alignItems:'stretch',justifyContent:'center',padding:'0.5rem'}}>
                             <div style={{width:'100%',maxWidth:'1800px',display:'flex',flexDirection:'column',border:'2px solid #f97316',borderRadius:'1rem',background:'#0b0f1a',overflow:'hidden',boxShadow:'0 0 60px rgba(249,115,22,0.25)'}}>
 

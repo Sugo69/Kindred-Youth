@@ -23,7 +23,7 @@ const ALLOWED_OUTPUT_HOSTS = new Set([
     'abn.churchofjesuschrist.org',
     'speeches.byu.edu',
 ])
-const HARD_BLOCK_TERMS = [
+export const HARD_BLOCK_TERMS = [
     // Sexual / explicit content
     /\bporn/i, /\bnudity\b/i, /\bsexual\b/i, /\bsexually\b/i,
     /\brape\b/i, /\babus(?:e|ed|er|ive)\b/i,
@@ -600,13 +600,13 @@ function backfillPuzzles(parsed, lessonStructure) {
         (p.words || []).length >= 3 && p.words.some(w => w.isCapstone))
 }
 
-function decideOverall(structural, safety) {
+export function decideOverall(structural, safety) {
     if (safety.blockedCount > 0 || structural.hardBlockHits.length > 0) return 'REVIEW_REQUIRED'
     if (structural.reviewCount > 0 || safety.rewrittenCount > 0) return 'PASS_WITH_REWRITES'
     return 'PASS'
 }
 
-function parseJsonLoose(text) {
+export function parseJsonLoose(text) {
     if (!text) return null
     try { return JSON.parse(text) } catch {}
     const m = text.match(/\{[\s\S]*\}/)
@@ -618,7 +618,7 @@ const SOFTENING_PREAMBLE = `SAFETY NOTE: You are generating content for 13–16 
 
 `
 
-async function callClaude(headers, bodyObj, timeoutMs = 180000) {
+export async function callClaude(headers, bodyObj, timeoutMs = 180000) {
     // Per-call timeout so a silently hung Claude connection surfaces as an
     // error instead of keeping the whole pipeline waiting forever. Sonnet 4.6
     // generation on 25+ scripture-ref lessons can legitimately take 90–120s;
