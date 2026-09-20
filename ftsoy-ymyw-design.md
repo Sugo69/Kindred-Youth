@@ -1,6 +1,6 @@
 # YM/YW (Third Hour) — For the Strength of Youth curriculum
 
-**Date:** 2026-09-20 · **Status:** DRAFT — Phase 1 scoped and in build · **Scope:** a third *curriculum*, not a new game · **Playbook:** `GAME-PLAYBOOK.md`
+**Date:** 2026-09-20 · **Status:** Phase 1 BUILT + trialled 2026-09-20 — Phases 2-4 open · **Scope:** a third *curriculum*, not a new game · **Playbook:** `GAME-PLAYBOOK.md`
 
 ---
 
@@ -22,7 +22,16 @@ Verified against the live site (2026-09-20):
 
 `01-fast-sunday` is ~250–300 words and reads as a teaching *framework* ("select an eternal truth · read supporting scriptures · share experiences · bear testimony · choose an invitation"). It carries no discussion questions of its own and no leader quotes. The substance is in the guide chapter it points to — for September, *"You are blessed by priesthood keys and authority"*, pages 46–49 of the FSY guide.
 
-**Consequence:** generation must read the **FSY guide chapter** as its content source, with the magazine week supplying that Sunday's angle. Generating from the magazine page alone would produce a game about how to teach a lesson, not about the doctrine.
+**Predicted consequence:** generation would need to read the **FSY guide chapter** as its content source, because generating from the magazine page alone would produce a game about how to teach a lesson rather than about the doctrine.
+
+> **TRIAL RESULT (2026-09-20) — this did not happen.** Two live runs against the September issue, including the thinnest page (`01-fast-sunday`, which is literally "study the chapter from the FSY guide"):
+>
+> | lesson | rounds | structural | safety | hard blocks |
+> |---|---|---|---|---|
+> | `03-third-sunday` (priesthood keys) | 8 | 8 pass / 0 review | 2 rewritten | 0 |
+> | `01-fast-sunday` (guide chapter) | 8 | 8 pass / 0 review | 3 rewritten | 0 |
+>
+> Both produced real doctrinal questions with correct citations (D&C 13:1, 65:2, 107:8, 27:12–13) and a Christ connection on every round. The extraction step follows the page's scripture references rather than being limited to its prose, so the thin page was not a thin lesson. **Reading the guide chapter is therefore a Phase 2+ enhancement, not a prerequisite.** Both games are seeded in the library under `ftsoy-2026-09-*` for inspection.
 
 Structurally, a month is therefore: **one guide chapter + four weekly angles**, which is a nicer shape than CFM (where each week is an unrelated block of scripture).
 
@@ -32,7 +41,7 @@ Structurally, a month is therefore: **one guide chapter + four weekly angles**, 
 
 FSY teaches these topics **on purpose**: October 2026 is "Your Body Is Sacred" — Word of Wisdom (second Sunday) and the law of chastity (third Sunday). The first October generation would flag legitimate curriculum as `REVIEW_REQUIRED` and strip real content.
 
-**This is the single biggest technical risk in the project** and it must be handled before any FSY content is generated.
+**This is the single biggest technical risk in the project** and it must be handled before any FSY content is generated. *(Handled in Phase 1 — see below. Neither September trial tripped a hard block, but September's theme is priesthood keys; October's "Your Body Is Sacred" is the real test and should be generated before that month is taught.)*
 
 The precedent already exists: the block list deliberately allows biblical words (`ass`, `hell`, `harlot`) because a scripture lesson needs them. The same reasoning extends to curriculum-aware handling — the rule is not "never say these words", it is "never say these words *inappropriately*", which is a job for the AI safety review, not a regex.
 
@@ -74,7 +83,7 @@ What fits is the structure built for Primary mode on 2026-09-20: **short boards 
 
 ## 6. Phasing
 
-**Phase 1 (this build)** — prove the content before building any scheduling:
+**Phase 1 — BUILT 2026-09-20** (commit `ab0506a`), 41 offline tests:
 1. `src/lib/ftsoy-schedule.js` + unit tests (Sunday maths is exactly what deterministic tests are for).
 2. `/study/ftsoy/` added to the pipeline source allowlist (it is currently rejected with a 400).
 3. Curriculum-aware compliance posture (§2b).
