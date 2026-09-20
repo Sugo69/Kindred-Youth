@@ -1225,36 +1225,32 @@
                                     </div>
 
                                     <div id="story-scroll" style={{flex:1,display:'flex',flexDirection:'column',padding:'1.5rem 2rem',overflowY:'auto',justifyContent:'flex-start',gap:'0.9rem',overflowAnchor:'none'}}>
-                                        {/* What happens — the teacher reads this aloud */}
-                                        <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#f1f5f9',lineHeight:1.35,fontSize:'clamp(1.4rem,2.8vw,2.3rem)',margin:0}}>
-                                            {activeCard.sentence}
-                                        </p>
+                                        {/* ── ONE scripture block ──
+                                               The plain-language meaning is the big line (a six-year-old
+                                               reads/hears this), the verbatim fragment sits directly under
+                                               it, and the Christ connection closes the same block. The
+                                               separate "what happens" line was cut: it restated the
+                                               meaning line almost word for word.
 
-                                        {/* The verse — meaning first, in plain words and WITHOUT quotes */}
-                                        {activeCard.verseSimple && (
-                                            <div style={{borderLeft:'4px solid #22d3ee',paddingLeft:'1rem'}}>
-                                                <div style={{fontFamily:'Rajdhani,sans-serif',fontSize:'0.8rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.18em',color:'#22d3ee',marginBottom:'0.25rem'}}>What it means</div>
-                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:600,color:'#cffafe',lineHeight:1.35,fontSize:'clamp(1.2rem,2.4vw,1.9rem)',margin:0}}>
+                                               The paraphrase still gets NO quotes and NO reference —
+                                               only the verbatim text does. Adjacent, never confusable. ── */}
+                                        <div style={{borderLeft:'4px solid #22d3ee',paddingLeft:'1.1rem',display:'flex',flexDirection:'column',gap:'0.6rem'}}>
+                                            {activeCard.verseSimple && (
+                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#f1f5f9',lineHeight:1.3,fontSize:'clamp(1.5rem,3.1vw,2.6rem)',margin:0}}>
                                                     {activeCard.verseSimple}
                                                 </p>
-                                            </div>
-                                        )}
-
-                                        {/* Verbatim scripture — the ONLY text that gets quotes and a reference */}
-                                        {activeCard.versePhrase && (
-                                            <p style={{fontFamily:'Rajdhani,sans-serif',fontStyle:'italic',color:'#94a3b8',lineHeight:1.4,fontSize:'clamp(0.95rem,1.7vw,1.3rem)',margin:0}}>
-                                                “{activeCard.versePhrase}” <span style={{color:'#64748b',fontStyle:'normal'}}>— {activeCard.verseRef}</span>
-                                            </p>
-                                        )}
-
-                                        {/* Christ connection */}
-                                        {activeCard.christConnection && (
-                                            <div style={{background:'rgba(253,224,71,0.08)',border:'1px solid rgba(253,224,71,0.3)',borderRadius:'0.75rem',padding:'0.75rem 1rem'}}>
-                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#fef3c7',lineHeight:1.35,fontSize:'clamp(1.1rem,2.2vw,1.7rem)',margin:0}}>
+                                            )}
+                                            {activeCard.versePhrase && (
+                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontStyle:'italic',color:'#94a3b8',lineHeight:1.4,fontSize:'clamp(1rem,1.8vw,1.35rem)',margin:0}}>
+                                                    “{activeCard.versePhrase}” <span style={{color:'#64748b',fontStyle:'normal'}}>— {activeCard.verseRef}</span>
+                                                </p>
+                                            )}
+                                            {activeCard.christConnection && (
+                                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#fcd34d',lineHeight:1.35,fontSize:'clamp(1.1rem,2.1vw,1.6rem)',margin:0}}>
                                                     ✝ {activeCard.christConnection}
                                                 </p>
-                                            </div>
-                                        )}
+                                            )}
+                                        </div>
 
                                         {/* One thing the class DOES together */}
                                         {activeCard.prompt && (
