@@ -925,6 +925,18 @@
             <div class="bl-box" style="margin-bottom:18px;">
                 <div style="color:var(--neon-cyan); font-family:'Orbitron',sans-serif; font-size:0.9rem; margin-bottom:12px;">Add Library Entry</div>
 
+                <!-- YM/YW third hour: add a whole month of FSY lessons at once.
+                     The magazine publishes about a month ahead, so the horizon
+                     is this month plus the next two. -->
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:14px;">
+                    <select id="ftsoy-month" style="flex:1; min-width:190px; padding:12px; background:var(--bg-2); border:1px solid #3a7d44; border-radius:6px; color:#8ede9b; font-family:'Orbitron',sans-serif; font-size:0.82rem;"></select>
+                    <button class="bl-add-btn" onclick="window.addFtsoyMonth()"
+                        style="padding:12px 18px; font-size:0.9rem; background:linear-gradient(180deg,#0f3d1c,#07240f); border-color:#3a7d44; color:#8ede9b; white-space:nowrap;">
+                        ➕ Add FSY month (YM/YW)
+                    </button>
+                </div>
+                <div id="ftsoy-status" style="display:none; margin-bottom:14px; font-family:'Orbitron',sans-serif; font-size:0.75rem; color:#8ede9b;"></div>
+
                 <!-- Quick path: one-click for this week's CFM lesson -->
                 <button class="bl-add-btn" onclick="window.fillCurrentCfmLesson()"
                     style="width:100%; padding:14px; font-size:0.95rem; background:linear-gradient(180deg,#4a2f00,#2d1d00); border-color:#f8b500; margin-bottom:14px;">
@@ -1087,6 +1099,7 @@
             query, orderBy, onSnapshot, serverTimestamp, getDocs, getDoc, writeBatch, arrayUnion, arrayRemove, limit
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         import { resolveLessonIdFromUrl, getCurrentCfmLesson, getUpcomingCfmLessons, isGeneratableLessonUrl } from "/src/lib/cfm-schedule.js";
+        import { getFtsoyHorizon, getFtsoyMonth } from "/src/lib/ftsoy-schedule.js";
         import {
             APP_ID,
             createFirebaseStack,
@@ -2014,6 +2027,7 @@
             onSnapshot(query(libraryCol, orderBy('createdAt', 'asc')), snap => {
                 libraryItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderLibrary();
+                window.renderFtsoyMonths();
                 const count = libraryItems.length;
                 document.getElementById('stat-library').textContent = count;
                 const countEl = document.getElementById('lib-count');
@@ -2240,6 +2254,59 @@
                 showToast('Library entry added.');
             } catch(e) {
                 showLibStatus(statusEl, `Error: ${e.message}`, true);
+            }
+        };
+
+        // ── YM/YW (For the Strength of Youth) ────────────────────────────
+        window.renderFtsoyMonths = function renderFtsoyMonths() {
+            const sel = document.getElementById('ftsoy-month');
+            if (!sel) return;
+            sel.innerHTML = getFtsoyHorizon(new Date(), 3)
+                .map(m => `<option value="${m.year}-${m.month}">${m.monthLabel} — ${m.lessons.length} lessons</option>`)
+                .join('');
+        };
+
+        // Creates the month's five lesson entries (four Sundays; the last is
+        // split YM/YW). Idempotent: existing entries are left alone, so this is
+        // safe to press again when only some of the month has been added.
+        window.addFtsoyMonth = async () => {
+            const sel = document.getElementById('ftsoy-month');
+            const statusEl = document.getElementById('ftsoy-status');
+            if (!sel?.value) return;
+            const [year, month] = sel.value.split('-').map(Number);
+            const m = getFtsoyMonth(year, month);
+
+            statusEl.style.display = 'block';
+            statusEl.textContent = `Adding ${m.monthLabel}…`;
+
+            let added = 0, skipped = 0;
+            try {
+                for (const lesson of m.lessons) {
+                    const ref = doc(db, `${basePath}/lessonLibrary/${lesson.lessonId}`);
+                    if ((await getDoc(ref)).exists()) { skipped++; continue; }
+                    await setDoc(ref, {
+                        name: lesson.name,
+                        url: lesson.url,
+                        lessonId: lesson.lessonId,
+                        // Marks this as third-hour content: the pipeline uses a
+                        // curriculum-aware compliance posture for it, and the
+                        // portal will scope it to YM/YW classrooms.
+                        curriculum: 'ftsoy',
+                        track: lesson.track,
+                        sundayDate: lesson.date,
+                        monthLabel: m.monthLabel,
+                        guideUrl: m.guideUrl,
+                        createdAt: Date.now(),
+                    });
+                    added++;
+                }
+                const openNote = m.openSundays.length
+                    ? ` · ⚠ ${m.openSundays.length} Sunday with no assigned lesson (${m.openSundays.join(', ')})`
+                    : '';
+                statusEl.textContent = `✓ ${m.monthLabel}: ${added} added, ${skipped} already there${openNote}`;
+                showToast(`FSY ${m.monthLabel}: ${added} lesson${added===1?'':'s'} added.`);
+            } catch(e) {
+                statusEl.textContent = `Error: ${e.message}`;
             }
         };
 
@@ -2630,6 +2697,9 @@
             });
             document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
             document.getElementById(`tab-${name}`).classList.add('active');
+            // The FSY horizon is relative to today, so rebuild it each time the
+            // Library tab opens rather than once at load.
+            if (name === 'library') window.renderFtsoyMonths?.();
         }
 
         function toggleForm(id) {

@@ -15,6 +15,7 @@ const ALLOWED_SOURCE_PATH_PREFIXES = [
     '/study/ensign/',
     '/study/liahona/',
     '/study/new-era/',
+    '/study/ftsoy/',   // For the Strength of Youth magazine — YM/YW third hour
 ]
 const ALLOWED_OUTPUT_HOSTS = new Set([
     'www.churchofjesuschrist.org',
@@ -42,6 +43,34 @@ export const HARD_BLOCK_TERMS = [
     /\bvap(?:e|ing)\b/i, /\bcrack\s+cocaine\b/i, /\bmeth(?:amphetamine)?\b/i,
 ]
 
+// Terms the FSY curriculum teaches ON PURPOSE. The hard-block list was written
+// for CFM scripture lessons, where these words only ever appear as a safety
+// failure — but the Word of Wisdom and the law of chastity are literally the
+// October 2026 YM/YW curriculum ("Your Body Is Sacred"), so a regex that strips
+// them would gut legitimate content.
+//
+// This is the same reasoning that already allows biblical words (ass, hell,
+// harlot) through: the rule is not "never say this word", it is "never say it
+// inappropriately" — a judgement about context, and therefore the AI safety
+// review's job rather than a regex's.
+//
+// These are PROBES, not copies of the patterns. A copied regex has to match the
+// original character-for-character, and one lost backslash silently relaxes
+// nothing; probing the real list cannot drift out of sync with it.
+const FTSOY_CONTEXTUAL_PROBES = [
+    'sexual', 'sexually',
+    'cannabis', 'marijuana', 'heroin', 'cocaine', 'crack cocaine',
+    'vape', 'vaping', 'meth', 'methamphetamine',
+]
+
+// Deliberately still blocked, even for FSY: pornography, abuse, rape, self-harm
+// and suicide. FSY does address several of those, but a generated youth GAME
+// built around them needs a human to look, so they still escalate to review.
+export function blockTermsFor(curriculum) {
+    if (curriculum !== 'ftsoy') return HARD_BLOCK_TERMS
+    return HARD_BLOCK_TERMS.filter(rx => !FTSOY_CONTEXTUAL_PROBES.some(probe => rx.test(probe)))
+}
+
 // ── Public entrypoint ────────────────────────────────────────────────────────
 const DEFAULT_MODELS = {
     extraction: 'claude-sonnet-4-6',
@@ -49,7 +78,7 @@ const DEFAULT_MODELS = {
     safety:     'claude-sonnet-4-6',
 }
 
-export async function runLessonPipeline({ url, gameType = 'common-ground', questionType = 'mixed', apiKey, enableSafetyReview = true, models = {} }) {
+export async function runLessonPipeline({ url, gameType = 'common-ground', questionType = 'mixed', curriculum = 'default', apiKey, enableSafetyReview = true, models = {} }) {
     if (!url) return { status: 400, body: { error: 'Missing URL' } }
     if (!apiKey) return { status: 500, body: { error: 'ANTHROPIC_API_KEY not configured' } }
 
@@ -153,7 +182,7 @@ export async function runLessonPipeline({ url, gameType = 'common-ground', quest
     stage(`generation parsed: ${(parsed.rounds || parsed.pairs || parsed.stops || parsed.puzzles || []).length} items`)
 
     // Step 3: structural compliance (server-side, cannot be prompted away)
-    const structural = runStructuralCompliance(parsed, lessonStructure, gameType)
+    const structural = runStructuralCompliance(parsed, lessonStructure, gameType, curriculum)
     stage(`structural compliance: pass=${structural.passCount} review=${structural.reviewCount}`)
 
     // Step 4: optional AI safety review
@@ -280,7 +309,8 @@ function spellableFrom(word, letters) {
     return true
 }
 
-function runStructuralCompliance(parsed, lessonStructure, gameType) {
+function runStructuralCompliance(parsed, lessonStructure, gameType, curriculum = 'default') {
+    const blockTerms = blockTermsFor(curriculum)
     const items = parsed.rounds || parsed.pairs || parsed.stops || parsed.puzzles || []
 
     // well-of-words pre-pass: scrub the bonus whitelist BEFORE the generic
@@ -297,7 +327,7 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
             for (const b0 of (p.bonusWords || [])) {
                 const b = String(b0).toUpperCase()
                 if (!/^[A-Z]{2,}$/.test(b) || !spellableFrom(b, p.letters)) continue
-                if (HARD_BLOCK_TERMS.some(rx => rx.test(b))) { removedProfane.push(b); continue }
+                if (blockTerms.some(rx => rx.test(b))) { removedProfane.push(b); continue }
                 kept.push(b)
             }
             p.bonusWords = kept
@@ -326,7 +356,7 @@ function runStructuralCompliance(parsed, lessonStructure, gameType) {
 
         // Hard-block keyword scan across all string fields.
         const text = JSON.stringify(item).toLowerCase()
-        for (const rx of HARD_BLOCK_TERMS) {
+        for (const rx of blockTerms) {
             if (rx.test(text)) {
                 report.hardBlockHits.push({ idx, term: rx.source })
                 findings.push(`Hard-block term matched: ${rx.source}`)

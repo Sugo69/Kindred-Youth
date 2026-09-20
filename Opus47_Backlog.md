@@ -673,3 +673,16 @@ The intent is additive: run the Opus review alongside the existing backlog and p
 - `lesson-reviewer` PASS with a children 4–11 rubric; playtested with a real Primary class
 **Effort:** M (down from L — simplify pass replaces a full pipeline branch)
 **Status:** Design DRAFT v3 (2026-09-20) — all gates answered; only open question is playtest access to a real Primary class
+
+---
+
+### OPUS-063 · YM/YW third hour — For the Strength of Youth curriculum
+**Problem:** Kindred serves Sunday School (CFM) and Seminary. Under the current schedule the second hour is split — 30 minutes Sunday School, 30 minutes YM/YW — and the YM/YW half runs a different curriculum entirely: one For the Strength of Youth guide chapter per month plus that month's "FSY Sunday Lessons" from the FSY magazine. Kindred covers none of it, and the magazine publishes only about a month ahead, so it cannot be pre-loaded a year at a time like CFM or Seminary.
+**Solution:** Treat FSY as a third *curriculum*, not a new product — same pipeline, same five games. `src/lib/ftsoy-schedule.js` derives each month from the calendar plus a fixed slug pattern (`/study/ftsoy/{YYYY}/{MM}/fsy-lessons/{code}`), verified live: four teaching Sundays, five lesson slots (the last Sunday splits YW `04a` / AP `04b`). Phased: (1) schedule module + allowlist + curriculum-aware compliance + admin "Add FSY month"; (2) portal YM/YW tab + classroom `curriculum`/`track`; (3) daily idempotent Vercel cron + new-month notification; (4) opening sequence (theme recitation, business, guide-chapter summary). Full spec: `ftsoy-ymyw-design.md`.
+**Acceptance:**
+- A month's five entries are created from one admin click with correct URLs, Sunday dates and track; ids are `ftsoy-` prefixed and never routed through the `cfm-` fallback
+- The pipeline accepts `/study/ftsoy/` URLs (previously a 400)
+- FSY generation does not strip Word of Wisdom / law of chastity vocabulary, while pornography, abuse, rape, self-harm and suicide stay hard-blocked; CFM posture is unchanged
+- A classroom sees only its own curriculum's week — never all three at once
+**Effort:** L (Phase 1: M)
+**Status:** Phase 1 built 2026-09-20 — schedule module (41 tests), allowlist, compliance posture, admin month picker. Phases 2–4 held pending review of real generated FSY output.

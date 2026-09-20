@@ -28,6 +28,7 @@ export default async function handler(req, res) {
             url: payload.url,
             gameType: payload.gameType || 'common-ground',
             questionType: payload.questionType || 'mixed',
+            curriculum: payload.curriculum || 'default',
             apiKey: process.env.ANTHROPIC_API_KEY,
             enableSafetyReview: process.env.ENABLE_SAFETY_REVIEW !== 'false',
         })

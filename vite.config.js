@@ -215,6 +215,7 @@ A ready-to-paste prompt the developer can drop into Claude Code to implement thi
                                     url: payload.url,
                                     gameType: payload.gameType || 'common-ground',
                                     questionType: payload.questionType || 'mixed',
+                                    curriculum: payload.curriculum || 'default',
                                     apiKey: env.ANTHROPIC_API_KEY,
                                     enableSafetyReview: env.ENABLE_SAFETY_REVIEW !== 'false',
                                 })
