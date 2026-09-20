@@ -1,10 +1,16 @@
 # Scripture Match — Primary Mode (younger-kids mode)
 
-**Date:** 2026-09-20 · **Status:** DRAFT v3 — all design gates answered except playtest access (§13); ready to build · **Scope:** a second *mode* inside `games/memory.html` + one small API endpoint · **Playbook:** written against `GAME-PLAYBOOK.md` (§1 design gates, §2 integration, §3 pipeline, §4 compliance, §5 layout, §7 helper, §8 testing)
+**Date:** 2026-09-20 · **Status:** BUILT v1 — shipped to prod 2026-09-20, awaiting first classroom playtest · **Scope:** a second *mode* inside `games/memory.html` + one small API endpoint · **Playbook:** written against `GAME-PLAYBOOK.md` (§1 design gates, §2 integration, §3 pipeline, §4 compliance, §5 layout, §7 helper, §8 testing)
 
 ---
 
 ## 0. Locked decisions (Lewis, 2026-09-20)
+
+> **Build note (2026-09-20):** v1 shipped the same day for a live Primary class. Implemented in
+> `games/memory.html`, `api/_lib/simplify.js`, `api/simplify-pairs.js`, `admin.html`, `index.html`,
+> `vite.config.js`. Tests: `scripts/simplify.test.mjs` (22 checks). Ops: `scripts/simplify-lesson.mjs`,
+> `scripts/revalidate-primary.mjs`, `scripts/upload-primary.mjs`.
+> Two rules changed during the build and this doc has been updated to match — see #9 and #10 below.
 
 1. **Keep 12 pairs per lesson** — same content volume as Youth mode. The problem was never how much lesson there is, it's how it's delivered.
 2. **Fewer cards per board, more boards** — 3 boards × 4 pairs (8 cards each), chunked **client-side**.
@@ -13,7 +19,9 @@
 5. **UI labels: "🧸 Primary" and "🎓 Youth."** The org-name exposure was raised (the reasoning that kept *Doctrinal Mastery* out of By Heart's name) and Lewis's call is to use the plainly descriptive term. Recorded here so the decision is traceable if it's ever revisited.
 6. **One younger tier, not two.** A single Primary mode spanning ages ~4–11 — no Little/Junior split. See §3 for how one tier serves both a pre-reader and a ten-year-old without patronising either.
 7. **Primary content is derived from the Youth pairs by a cheap simplify pass** (§8) — `/api/simplify-pairs` takes the *already generated* Youth pairs as input and rewrites them into kid language, cached to `lessonLibrary/{id}.memoryPrimary`. No second lesson extraction, no new `gameType` branch in the pipeline.
-8. **Pre-generation:** "Generate Next 8 Weeks" includes the Primary pass behind a checkbox, default on for classrooms whose audience is Primary.
+8. **Pre-generation:** "Generate Next 8 Weeks" includes the Primary pass behind a checkbox, default on for classrooms whose audience is Primary. *(Not yet built — the per-entry ⚡ Primary button shipped first; batch wiring is the remaining admin task.)*
+9. **Meaning beats brevity** (added mid-build). The first real Isaiah run flagged all 12 cards for running over the word caps while the content itself was good. Caps are now *guidance* for every field except `phrase` (which must physically fit a card face), and going over is a **soft note, not a compliance finding**. Only integrity problems — archaic language, a misquoted fragment, a drifted reference, a hard-blocked term — turn a card amber. `CAPS` in `api/_lib/simplify.js` feeds both the prompt and the validator, so the model can never be told one limit and judged against another.
+10. **Gospel vocabulary is not "too hard"** (added mid-build). The reading-level guard flagged *righteousness*, *commandment* and *understanding* — words a Primary child hears every week. Flagging them would push the model to water down doctrine, which is the opposite of the goal, so the long-word allowlist now carries weekly Primary vocabulary.
 
 ---
 
@@ -127,8 +135,8 @@ The verse is the reason the game exists, so it stays on screen. It just stops ar
 
 | Field | What it is | Rules |
 |---|---|---|
-| `verseSimple` | The verse's meaning in kid language | ≤12 words · present tense · concrete nouns · no archaic forms (thee/thou/ye/hath/unto/wist/behold) · no abstract nouns a child can't picture |
-| `versePhrase` | A short **verbatim** fragment of the KJV | ≤10 words · must be a literal substring of the Youth pair's `verse` · chosen as the most quotable, concrete part |
+| `verseSimple` | The verse's meaning in kid language | present tense · concrete nouns · no archaic forms (thee/thou/ye/hath/unto/wist/behold) · aim ~22 words but **keep what the verse promises or commands** — simplify the language, never the doctrine |
+| `versePhrase` | A short **verbatim** fragment of the KJV | must be a literal substring of the Youth pair's `verse` · the shortest fragment that still means something · length is guidance only, because truncating scripture to hit a number damages the quote |
 | `verseRef` | Standard reference | **Copied verbatim from the Youth pair — never regenerated** |
 
 On screen they are **visually distinct and never confusable**:

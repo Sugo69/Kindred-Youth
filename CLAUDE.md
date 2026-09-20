@@ -8,7 +8,7 @@
 
 **Games:**
 - `games/common-ground.html` — **Common Ground** (survey/Family Feud-style; best fit: doctrinal lessons)
-- `games/memory.html` — **Scripture Match** (memory matching pairs, React 18 + Babel CDN; best fit: scripture-heavy lessons)
+- `games/memory.html` — **Scripture Match** (memory matching pairs, React 18 + Babel CDN; best fit: scripture-heavy lessons). **Two audiences:** 🎓 Youth (12–18, unchanged) and 🧸 **Primary** (ages ~4–11, NEW 2026-09-20) — same 12 pairs chunked client-side into 3 boards of 4, emoji on both card faces as the match key, Story Card replacing the match modal, 🙌 Wiggle Break between boards. See `scripture-match-primary-design.md`.
 - `games/scripture-trail.html` — **Scripture Trail** (sequential story walkthrough with 6 painted curriculum boards; best fit: narrative lessons)
 - `games/by-heart.html` — **By Heart** (Doctrinal Mastery step-by-step memorization, 5 progressive levels: Read → Echo → Recall → Speak → Heart-Set)
 - `games/well-of-words.html` — **Well of Words** (letter-wheel word puzzle; 5–7 letters on stones around a well mouth fill a crossword with lesson vocabulary; pink `#ff007f`, icon 💧; best fit: doctrinal/vocabulary). ⚠ NEW 2026-07-03, HELD UNCOMMITTED pending name TESS check — see `well-of-words-design.md`
@@ -50,6 +50,7 @@ Kindred-Youth/                  # Repo: github.com/Sugo69/Kindred-Youth (renamed
 │   ├── scripture-trail.html    # Scripture Trail — board + setup + Edit Stops editor (gold, narrative-best)
 │   └── by-heart.html           # By Heart — Doctrinal Mastery cloze memorisation (purple, 5 levels)
 ├── api/
+│   ├── simplify-pairs.js       # Vercel serverless — Scripture Match Primary content (thin wrapper on _lib/simplify.js)
 │   ├── generate.js             # Vercel serverless — AI backlog story generator
 │   ├── fetch-content.js        # Vercel serverless — URL proxy/scraper for Teacher Portal
 │   ├── generate-questions.js   # Vercel serverless — question generator (3 types)
@@ -57,6 +58,7 @@ Kindred-Youth/                  # Repo: github.com/Sugo69/Kindred-Youth (renamed
 │   ├── moderate.js             # Thin Vercel wrapper around _lib/moderate.js — teacher-input AI moderation
 │   └── _lib/
 │       ├── pipeline.js         # Shared pipeline v3 — dev + prod use the same module; 3 game types
+│       ├── simplify.js         # Shared simplify-v1 — turns Youth pairs into Primary (kid-language) content
 │       └── moderate.js         # Shared runModeration() — Haiku context check on teacher-entered content
 ├── src/
 │   └── lib/
@@ -126,6 +128,7 @@ artifacts/exodus-feud-final-v10/public/data/
 │   ├── name, url, createdAt
 │   ├── commonGround:   { topic, rounds[], sourceUrl, generatedAt, videoLinks[], talkLinks[], complianceReport }
 │   ├── memory:         { topic, pairs[],  sourceUrl, generatedAt, videoLinks[], talkLinks[], complianceReport }
+│   ├── memoryPrimary:  { topic, boards[3], pairs[12], derivedFrom:'memory', pipeline:'simplify-v1', complianceReport }
 │   └── scriptureTrail: { topic, stops[],  sourceUrl, generatedAt, videoLinks[], talkLinks[], complianceReport }
 ├── trailThemes/{key}                          # Admin-calibrated board positions (global, ot/nt/bom/dc/moses/abraham)
 │   └── { positions[10], regions[4], savedAt } # set by admin "🗺 Calibrate" tab
@@ -432,6 +435,14 @@ Archived under `archive/` (see `archive/README.md` for why they're kept):
 5. **P2 — Southern hemisphere Seminary support.** North-only (Aug→May); South needs Jan→Oct.
 6. **P3 — Delete hidden legacy `display:none` sections** in [index.html](index.html).
 7. **P3 — `mockups/` folder cleanup.** Still untracked at 198 MB.
+
+## Scripture Match — Primary mode (`?mode=primary`)
+- **Audience resolution order:** `?mode=primary|youth` → `classrooms/{room}.audience` → `localStorage.kindred_audience` → on-screen picker. Default is `youth`, so existing classrooms are unchanged.
+- **Content:** `lessonLibrary/{id}.memoryPrimary`, produced by `/api/simplify-pairs` from the lesson's EXISTING `.memory` pairs — Youth content is a prerequisite (the admin ⚡ Primary button is disabled without it). No second lesson extraction, no new `gameType` in `pipeline.js`.
+- **The model may only write kid-facing language.** `verseRef`, `url`, `verse` and `icon` are copied from the source pair in code (`reanchor()`), so a Primary card can never drift off the Youth card's scripture.
+- **Headline check:** `versePhrase` must be a normalised substring of the source verse — this is what stops "simplify the scripture" becoming "rewrite the scripture and leave it in quotes". A paraphrase is shown WITHOUT quotes or a reference; only verbatim text gets both.
+- **Meaning beats brevity** (Lewis, 2026-09-20): word caps are guidance and a soft note, except `phrase` (hard — card-face geometry). Only integrity problems turn a card amber. `CAPS` feeds both the prompt and the validator.
+- Tests: `node scripts/simplify.test.mjs` (22 checks, no API needed). Ops: `scripts/simplify-lesson.mjs`, `scripts/revalidate-primary.mjs`, `scripts/upload-primary.mjs`.
 
 ## Key Constraints
 - Dev port **must be 5173** — the other project on this machine now uses 5174
