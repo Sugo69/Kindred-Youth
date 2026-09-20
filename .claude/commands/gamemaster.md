@@ -438,11 +438,12 @@ Generate one card per scripture pair. Each card maps directly to the Scripture M
 | Tent / tabernacle / home | ⛺ |
 | Staff / rod / path | 🪄 |
 | Lamb / sacrifice / Atonement | 🐑 |
-| Cross / Christ-connection | ✝ |
 | Sun / day / dawn | ☀️ |
 | Cloud / pillar / presence | ☁️ |
 
-If no icon fits clearly, use ✝ (the Atonement connects to every scripture).
+If no icon fits clearly, use 🙏.
+
+**Never use ✝ or any other cross symbol.** The Church of Jesus Christ of Latter-day Saints does not use the cross as a symbol of its faith, so a cross on a classroom screen reads as wrong to these students. Point to Christ with light, a lamb, a crown, or prayer instead.
 
 **Output format per card:**
 

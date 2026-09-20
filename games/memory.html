@@ -260,6 +260,8 @@
             const [showSettings, setShowSettings] = useState(false);
             const retryTimerRef = useRef(null);
             const youthLoadedRef = useRef(false);
+            const playHeaderRef = useRef(null);
+            const [playHeaderH, setPlayHeaderH] = useState(40);
             const attemptCountRef = useRef(0);
             const progressTimerRef = useRef(null);
             const [libraryEntries, setLibraryEntries] = useState([]);
@@ -411,6 +413,25 @@
                     else setGameState('won');
                 }
             }, [matched, cards.length, activeCard, isPrimary, boardIdx, boards.length]);
+
+            // The Story Card and the Wiggle Break sit BELOW the play header so the
+            // ⚙ gear and the progress strip stay reachable while a card is open.
+            // Measured rather than hardcoded — the header grows when the progress
+            // strip wraps on a narrow tablet.
+            useEffect(() => {
+                if (gameState !== 'playing') return;
+                const measure = () => setPlayHeaderH(playHeaderRef.current?.offsetHeight || 40);
+                measure();
+                window.addEventListener('resize', measure);
+                window.addEventListener('orientationchange', measure);
+                return () => {
+                    window.removeEventListener('resize', measure);
+                    window.removeEventListener('orientationchange', measure);
+                };
+            }, [gameState, showAdmin, isPrimary, boardIdx, matched.length]);
+
+            // 34px is the fixed Kindred back-nav above the play area.
+            const overlayTop = `${34 + playHeaderH}px`;
 
             // Move to the next board after the break.
             const advanceBoard = () => {
@@ -1079,8 +1100,9 @@
             // the viewport (clipped); at sf < 1 slate background shows around it.
             return (
                 <div style={{ position:'fixed', top:'34px', left:0, right:0, bottom:0, overflow:'hidden', background:'#020617', display:'flex', flexDirection:'column' }}>
-                    {/* Header — unscaled, fixed at top */}
-                    <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-cyan-500/20 flex-shrink-0">
+                    {/* Header — unscaled, fixed at top. zIndex keeps the ⚙ gear
+                        clickable even while a Story Card is open. */}
+                    <header ref={playHeaderRef} className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-cyan-500/20 flex-shrink-0" style={{position:'relative', zIndex:70}}>
                         {isPrimary ? (
                             /* Progress is a picture strip, never a number — a young
                                class reads "three more to find", not "3/4". */
@@ -1114,7 +1136,7 @@
 
                     {/* Admin panel — unscaled, below header */}
                     {showAdmin && (
-                        <div className="bg-slate-900 border-b border-slate-700 px-4 py-3 flex gap-4 items-center flex-shrink-0 flex-wrap">
+                        <div className="bg-slate-900 border-b border-slate-700 px-4 py-3 flex gap-4 items-center flex-shrink-0 flex-wrap" style={{position:'relative', zIndex:70}}>
                             <div className="flex items-center gap-2">
                                 <span className="text-slate-500 text-xs" style={{fontFamily:'Orbitron,sans-serif'}}>SABOTAGE EVERY</span>
                                 <input type="number" value={sabotageEvery} min="1" max="6" onChange={e=>setSabotageEvery(parseInt(e.target.value)||2)}
@@ -1212,7 +1234,7 @@
                            quotes with its reference. The paraphrase NEVER gets quotes
                            or a ref: a paraphrase shown as scripture is a misquotation. ── */}
                     {activeCard && isPrimary && (
-                        <div style={{position:'fixed',inset:0,zIndex:50,background:'rgba(2,6,23,0.97)',display:'flex',alignItems:'stretch',justifyContent:'center',padding:'0.5rem'}}>
+                        <div style={{position:'fixed',top:overlayTop,left:0,right:0,bottom:0,zIndex:50,background:'rgba(2,6,23,0.97)',display:'flex',alignItems:'stretch',justifyContent:'center',padding:'0.5rem'}}>
                             <div style={{width:'100%',maxWidth:'1800px',display:'flex',flexDirection:'column',border:'3px solid #fbbf24',borderRadius:'1.5rem',background:'#0b0f1a',overflow:'hidden',boxShadow:'0 0 60px rgba(251,191,36,0.25)'}}>
 
                                 <div style={{flex:1,display:'flex',overflow:'hidden',minHeight:0}}>
@@ -1247,7 +1269,7 @@
                                             )}
                                             {activeCard.christConnection && (
                                                 <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#fcd34d',lineHeight:1.35,fontSize:'clamp(1.1rem,2.1vw,1.6rem)',margin:0}}>
-                                                    ✝ {activeCard.christConnection}
+                                                    {activeCard.christConnection}
                                                 </p>
                                             )}
                                         </div>
@@ -1288,7 +1310,7 @@
                            shuffling mid-board would destroy the spatial memory the
                            class just built, which is the whole skill in play. ── */}
                     {showBreak && (
-                        <div style={{position:'fixed',inset:0,zIndex:60,background:'rgba(2,6,23,0.98)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'1.5rem',padding:'2rem',textAlign:'center'}}>
+                        <div style={{position:'fixed',top:overlayTop,left:0,right:0,bottom:0,zIndex:60,background:'rgba(2,6,23,0.98)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'1.5rem',padding:'2rem',textAlign:'center'}}>
                             <div style={{fontSize:'clamp(4rem,12vw,9rem)',lineHeight:1}}>🙌</div>
                             <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.2em',color:'#34d399',fontSize:'clamp(1rem,2vw,1.4rem)'}}>
                                 Board {boardIdx + 1} complete!
@@ -1362,7 +1384,7 @@
                                         {/* Christ connection */}
                                         {activeCard.christConnection && (
                                             <div style={{background:'rgba(253,224,71,0.08)',border:'1px solid rgba(253,224,71,0.3)',borderRadius:'0.5rem',padding:'0.65rem 1rem',flexShrink:0}}>
-                                                <div style={{fontFamily:'Orbitron,sans-serif',fontSize:'0.6rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.15em',color:'#facc15',marginBottom:'0.35rem'}}>✝ Christ Connection</div>
+                                                <div style={{fontFamily:'Orbitron,sans-serif',fontSize:'0.6rem',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.15em',color:'#facc15',marginBottom:'0.35rem'}}>Christ Connection</div>
                                                 <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:600,color:'#fef3c7',lineHeight:1.5,fontSize:'clamp(0.95rem,1.7vw,1.3rem)',margin:0}}>{activeCard.christConnection}</p>
                                             </div>
                                         )}

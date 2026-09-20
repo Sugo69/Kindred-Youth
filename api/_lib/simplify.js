@@ -149,6 +149,15 @@ export async function runSimplifyPairs({ pairs, topic, lessonId, apiKey, enableS
 // Youth pairs carry the reference inside cardA ("Isaiah 12 — God Is My
 // Salvation"); memory.html itself derives it with the same split. Doing it in
 // code keeps the reference out of the model's reach entirely.
+// Older library content predates the no-cross rule, so swap any cross icon on
+// the way through rather than trusting what is already stored.
+// Stored icons carry the emoji variation selector (U+FE0F) — "✝️" is not "✝" —
+// so strip it before comparing or the guard silently never fires.
+const CROSS_ICONS = new Set(['✝', '✞', '✟', '†', '☨', '✚', '🕇', '🕈'])
+export function isCrossIcon(icon) {
+    return CROSS_ICONS.has(String(icon || '').replace(/[︎️]/g, '').trim())
+}
+
 function normaliseSource(p, i) {
     const cardA = String(p.cardA || '')
     const verseRef = cardA.split(' — ')[0].split(' - ')[0].trim()
@@ -160,7 +169,7 @@ function normaliseSource(p, i) {
         verse: String(p.verse || ''),
         question: String(p.question || ''),
         christConnection: String(p.christConnection || ''),
-        icon: String(p.icon || '📖'),
+        icon: isCrossIcon(p.icon) ? '🙏' : String(p.icon || '📖'),
         iconLabel: String(p.iconLabel || ''),
         url: String(p.url || ''),
         verseRef,
@@ -515,6 +524,7 @@ Also produce ${boardCount} board headers:
 - "takeaway": ≤12 words, the one thing the class learned on that board.
 
 ## Rules that are not negotiable
+- Never use ✝ or any other cross symbol. The Church does not use the cross as a symbol of its faith.
 - Do NOT change, modernise or "fix" the verse text. The only verbatim scripture you output is "versePhrase", copied character-for-character from the verse given above.
 - The plain-language line ("verseSimple") is a paraphrase and will be shown WITHOUT quotation marks. Never write it as if it were scripture.
 - Everything must be picturable. If a verse is abstract, describe the concrete image inside it.
@@ -537,6 +547,6 @@ Return ONLY valid JSON:
 
 export const __testables = {
     normaliseSource, reanchor, buildBoards, runStructuralChecks,
-    isVerbatimFragment, normaliseForMatch, cleanWord, rebalanceBoards,
+    isVerbatimFragment, normaliseForMatch, cleanWord, rebalanceBoards, isCrossIcon,
     buildSimplifyPrompt, ARCHAIC_TOKENS, ACTION_VERBS,
 }

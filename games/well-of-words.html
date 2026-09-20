@@ -1428,7 +1428,7 @@ function showWellCard(w, pts) {
     } else { verseEl.innerHTML = ''; }
     document.getElementById('wc-ref').textContent = w.verseRef ? `— ${w.verseRef} (${scriptureLabel(w.verseRef)})` : '';
     const christ = document.getElementById('wc-christ');
-    if (w.christConnection) { christ.style.display = 'block'; christ.textContent = '✝ ' + w.christConnection; }
+    if (w.christConnection) { christ.style.display = 'block'; christ.textContent = w.christConnection; }
     else christ.style.display = 'none';
     const qrWrap = document.getElementById('wc-qr-wrap');
     const qrUrl = buildVerseUrl(w);

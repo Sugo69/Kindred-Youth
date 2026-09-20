@@ -745,6 +745,7 @@ function buildGenerationPrompt(lessonStructure, sourceUrl, gameType, questionTyp
 - **Content safety**: NEVER include explicit violence, sexual content, substances (alcohol, drugs, tobacco, vaping), self-harm, or content that could expose a youth's family situation or mental-health struggles.
 - **URL safety**: every URL in your output must be on churchofjesuschrist.org, media.churchofjesuschrist.org, or speeches.byu.edu. Do NOT use external sites.
 - **Copyright**: scripture quotes only from the LDS standard works; no copyrighted game boards or trademarked names (Family Feud®, Sorry®).
+- **No cross symbols**: never emit ✝, ✞, ✟, †, or any other cross as an icon or in text. The Church of Jesus Christ of Latter-day Saints does not use the cross as a symbol of its faith. Point to Christ with light, a lamb, a crown, prayer (🙏) or an open scripture instead.
 
 For every item, include a "christConnection" field — one sentence tying the item to Jesus Christ.
 `
