@@ -659,3 +659,16 @@ The intent is additive: run the Opus review alongside the existing backlog and p
 - Local folder is `…/GitHub/Kindred-Youth`
 - Repo still pushes to `Sugo69/Kindred-Youth`; build + dev server unaffected
 **Effort:** S
+
+---
+
+### OPUS-062 · Scripture Match — Primary mode (younger-kids mode)
+**Problem:** Scripture Match is tuned for ages 14–16 and is unusable in a Primary class: 12 pairs on one 24-card board runs 20–30 min, card faces are scripture references in Orbitron, the match modal is six dense blocks, and the verse arrives as full KJV. Younger kids can't decode any of it, and attention is gone by card 8. The mechanic itself (face-down pairs) is already age-appropriate — only the content and pacing fail.
+**Solution:** A second mode inside `games/memory.html` — same 12 pairs, chunked client-side into 3 boards of 4 pairs; picture-first cards (emoji dominant, one uppercase word); scripture in two registers (`verseSimple` plain-language line + verbatim `versePhrase` in quotes with its ref); a 4-block Story Card replacing the match modal; 🙌 Wiggle Break replacing Sabotage between boards. New pipeline gameType `memory-primary` → `lessonLibrary/{id}.memoryPrimary`, same token budget as the existing memory call. Mode resolves from `?mode=` → classroom `audience` field → localStorage → launch picker. Full spec: `scripture-match-primary-design.md`.
+**Acceptance:**
+- `?mode=little|junior|youth` renders the right version; classroom `audience` field drives the default with no per-session picking
+- Deterministic server check: `versePhrase` is a normalised substring of the real verse text (guards against the model rewriting scripture into kid language inside quotes)
+- Portal ✓ ready pill and admin missing-counter are audience-aware; missing Primary content offers an exit, never a dead end
+- `lesson-reviewer` PASS with a children 4–11 rubric; playtested with a real Primary class
+**Effort:** L
+**Status:** Design DRAFT v2 (2026-09-20) — §13 decision gates open (mode label, one tier or two, separate generation, pre-generation batch, playtest access)
