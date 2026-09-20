@@ -383,6 +383,14 @@
                 } catch { return rawUrl; }
             };
 
+            // Every Story Card opens at the top — the scripture is the point, and
+            // the QR at the bottom must never be what the class sees first.
+            useEffect(() => {
+                if (!activeCard) return;
+                const el = document.getElementById('story-scroll');
+                if (el) el.scrollTop = 0;
+            }, [activeCard]);
+
             // QR code — uses the highlight URL so the scanned page lights up the verse.
             useEffect(() => {
                 if (activeCard?.url) {
@@ -1216,7 +1224,7 @@
                                         </div>
                                     </div>
 
-                                    <div style={{flex:1,display:'flex',flexDirection:'column',padding:'1.5rem 2rem',overflow:'auto',justifyContent:'center',gap:'1rem'}}>
+                                    <div id="story-scroll" style={{flex:1,display:'flex',flexDirection:'column',padding:'1.5rem 2rem',overflowY:'auto',justifyContent:'flex-start',gap:'0.9rem',overflowAnchor:'none'}}>
                                         {/* What happens — the teacher reads this aloud */}
                                         <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#f1f5f9',lineHeight:1.35,fontSize:'clamp(1.4rem,2.8vw,2.3rem)',margin:0}}>
                                             {activeCard.sentence}
@@ -1262,7 +1270,7 @@
                                         {activeCard.url && (
                                             <div style={{display:'flex',alignItems:'center',gap:'0.6rem'}}>
                                                 <a href={buildHighlightUrl(activeCard.url, activeCard.verseRef || '')} target="_blank" rel="noopener noreferrer" style={{display:'block',lineHeight:0}}>
-                                                    <canvas id="qr-canvas" style={{borderRadius:'0.4rem',border:'1px solid #374151',cursor:'pointer',width:'74px',height:'74px'}} />
+                                                    <canvas id="qr-canvas" style={{borderRadius:'0.4rem',border:'1px solid #374151',cursor:'pointer',width:'58px',height:'58px'}} />
                                                 </a>
                                                 <span style={{fontFamily:'Rajdhani,sans-serif',fontSize:'0.75rem',color:'#64748b',textTransform:'uppercase',letterSpacing:'0.1em'}}>Scan to read the verse</span>
                                             </div>
