@@ -106,11 +106,19 @@ export async function runSimplifyPairs({ pairs, topic, lessonId, apiKey, enableS
 
     // Re-anchor every kid pair to its source pair. Anything the model tried to
     // change about the scripture itself is discarded here, not merely flagged.
-    const { pairsOut, fatal } = reanchor(parsed.pairs, sources, boardCount, perBoard)
+    const { pairsOut, moved, fatal } = reanchor(parsed.pairs, sources, boardCount, perBoard)
     if (fatal) return { status: 502, body: { error: fatal } }
 
     const boardsOut = buildBoards(parsed.boards, boardCount)
     const structural = runStructuralChecks(pairsOut, boardsOut, sources)
+    // A moved card sits under a title that may not describe it — that breaks
+    // the "each board teaches one idea" promise, so it is a real finding.
+    if (moved && moved.length) {
+        structural.reviewCount += moved.length
+        structural.findings.push({
+            findings: [`Uneven boards from the model — ${moved.length} card(s) moved to balance them (${moved.map(m => `${m.id}: board ${m.from}→${m.to}`).join(', ')}); check they still fit their board's theme`],
+        })
+    }
 
     let safety = { reviewed: 0, passCount: 0, rewrittenCount: 0, blockedCount: 0, skipped: true }
     if (enableSafetyReview) {
@@ -217,7 +225,8 @@ function reanchor(modelPairs, sources, boardCount, perBoard) {
         return { pairsOut: [], fatal: `Model omitted ${missing.length} of ${sources.length} pairs (${missing.map(m => m.id).join(', ')})` }
     }
 
-    return { pairsOut: rebalanceBoards(out, boardCount, perBoard), fatal: null }
+    const { pairs, moved } = rebalanceBoards(out, boardCount, perBoard)
+    return { pairsOut: pairs, moved, fatal: null }
 }
 
 function clampBoard(n, boardCount) {
@@ -225,11 +234,35 @@ function clampBoard(n, boardCount) {
     return Number.isFinite(b) && b >= 1 && b <= boardCount ? b : 1
 }
 
-// The model groups pairs into story beats; this guarantees the arithmetic
-// regardless of how it counted. Order within a board is preserved.
+// The model groups pairs into story beats and writes a title per beat, so a
+// card's board assignment is CONTENT, not arithmetic. Respect the model's
+// grouping wherever it is already valid and move as few cards as possible —
+// reassigning by position (the old behaviour) quietly broke the themes
+// whenever the model returned uneven boards.
+//
+// Returns the moved cards so the caller can flag them: a card that had to be
+// moved is on a board whose title may no longer describe it.
 function rebalanceBoards(pairsOut, boardCount, perBoard) {
-    const ordered = [...pairsOut].sort((a, b) => a.board - b.board)
-    return ordered.map((p, i) => ({ ...p, board: Math.min(boardCount, Math.floor(i / perBoard) + 1) }))
+    const byBoard = new Map()
+    for (let n = 1; n <= boardCount; n++) byBoard.set(n, [])
+    for (const p of pairsOut) byBoard.get(clampBoard(p.board, boardCount)).push(p)
+
+    const moved = []
+    // Take from the fullest board, give to the emptiest, until every board is
+    // the right size. The last card of an over-full board is the one that moves,
+    // since the model lists its strongest fit for a beat first.
+    for (let guard = 0; guard < pairsOut.length; guard++) {
+        const over = [...byBoard.entries()].filter(([, v]) => v.length > perBoard).sort((a, b) => b[1].length - a[1].length)[0]
+        const under = [...byBoard.entries()].filter(([, v]) => v.length < perBoard).sort((a, b) => a[1].length - b[1].length)[0]
+        if (!over || !under) break
+        const card = over[1].pop()
+        under[1].push(card)
+        moved.push({ id: card.id, from: over[0], to: under[0] })
+    }
+
+    const out = []
+    for (let n = 1; n <= boardCount; n++) for (const p of byBoard.get(n)) out.push({ ...p, board: n })
+    return { pairs: out, moved }
 }
 
 function cleanWord(w, fallbackLabel) {
@@ -510,7 +543,7 @@ Only "phrase" is a hard limit; it sits on the card face and cannot wrap.
 
 ## What you must produce for every card
 - "id": copy the source id exactly. Every id must appear exactly once.
-- "board": ${boardCount} boards of ${perBoard} cards each, numbered 1–${boardCount}. Group cards into story beats that belong together, and order them so each board makes sense on its own — a class that stops after board 2 must still have had a complete lesson.
+- "board": ${boardCount} boards of **exactly ${perBoard} cards each**, numbered 1–${boardCount}. **Each board must teach ONE idea**, and every card on it must illustrate that idea — a board is a mini-lesson, not a bucket. A child should be able to finish a board and say what it was about. If a card does not clearly belong to any of your ${boardCount} ideas, choose different ideas so that it does; never park a leftover card on whichever board has room. Order the boards so each stands on its own — a class that stops after board 2 must still have had a complete lesson.
 - "word": ONE word, 1–8 letters, UPPERCASE, A–Z only. The concrete thing in the picture (ARK, LAMB, LIGHT). Never an abstract doctrine word.
 - "phrase": a simple clue a 9-year-old can read ("a big boat God planned").
 - "sentence": what happens on this card, in grade-1/2 vocabulary. This is what the teacher reads aloud.
@@ -519,9 +552,10 @@ Only "phrase" is a hard limit; it sits on the card face and cannot wrap.
 - "christConnection": kid language, connecting the card to Jesus Christ.
 - "prompt": one thing the class DOES together. It MUST begin with an action verb: Point, Show, Say, Find, Touch, Count, Stand, Clap, Look, Name, Whisper, Wave, Sing, Repeat, Raise, Hold, Pretend, Act, Draw, Listen, Think, Smile, March, Reach, Shine. NEVER ask a child to talk about their own life, family, feelings or struggles.
 
-Also produce ${boardCount} board headers:
-- "title": ≤5 words naming that beat ("Noah Builds the Ark").
-- "takeaway": ≤12 words, the one thing the class learned on that board.
+Also produce ${boardCount} board headers. The title is announced to the class BEFORE they play that board and the takeaway is read out after, so they are the teaching frame, not decoration:
+- "title": ≤5 words naming that board's one idea ("God Promises a Savior").
+- "takeaway": ≤12 words, the one thing the class should carry away from it.
+- Check each board before you answer: do all ${perBoard} of its cards really teach its title? If one does not, regroup.
 
 ## Rules that are not negotiable
 - Never use ✝ or any other cross symbol. The Church does not use the cross as a symbol of its faith.

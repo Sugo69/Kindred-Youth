@@ -21,10 +21,21 @@ t('falls back to iconLabel', cleanWord('', 'Song of Trust') === 'SONGOFTR')
 t('falls back to WORD', cleanWord('', '') === 'WORD')
 
 console.log('\n— rebalanceBoards (4/4/4 regardless of model counting) —')
+// Already balanced: the model's grouping is CONTENT (each board carries its
+// own title), so nothing may move.
+const good = [1,1,1,1,2,2,2,2,3,3,3,3].map((b, i) => ({ id: `p${i + 1}`, board: b }))
+const okRes = rebalanceBoards(good, 3, 4)
+t('balanced input is left completely alone', okRes.moved.length === 0
+  && okRes.pairs.every((p, i) => p.board === good[i].board && p.id === good[i].id))
+
+// Lopsided: fix the arithmetic, move as FEW cards as possible, and report them.
 const lop = Array.from({ length: 12 }, (_, i) => ({ id: `p${i + 1}`, board: i < 9 ? 1 : 3 }))
 const bal = rebalanceBoards(lop, 3, 4)
-const counts = [1, 2, 3].map(n => bal.filter(p => p.board === n).length)
-t('boards are 4/4/4', JSON.stringify(counts) === '[4,4,4]')
+const counts = [1, 2, 3].map(n => bal.pairs.filter(p => p.board === n).length)
+t('boards end up 4/4/4', JSON.stringify(counts) === '[4,4,4]')
+t('moved cards are reported so they can be flagged', bal.moved.length > 0)
+t('board 1 keeps its first four cards (theme preserved)',
+  bal.pairs.filter(p => p.board === 1).map(p => p.id).join(',') === 'p1,p2,p3,p4')
 
 console.log('\n— reanchor drops invented ids and fails on omissions —')
 const sources = Array.from({ length: 4 }, (_, i) => normaliseSource({

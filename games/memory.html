@@ -284,6 +284,7 @@
             const [primaryData, setPrimaryData] = useState(null); // { boards[], pairs[] }
             const [boardIdx, setBoardIdx] = useState(0);
             const [showBreak, setShowBreak] = useState(false);
+            const [showBoardIntro, setShowBoardIntro] = useState(false);
             const [primaryMissing, setPrimaryMissing] = useState(false);
             const isPrimary = audience === 'primary';
             const boards = primaryData?.boards || [];
@@ -449,6 +450,7 @@
                 setBoardIdx(next);
                 setPairsData(nextPairs);
                 initGame(nextPairs);
+                setShowBoardIntro(true);
             };
 
             // Start Primary play from board 1 (used by the Play button).
@@ -459,6 +461,7 @@
                 setPairsData(first);
                 initGame(first);
                 setGameState('playing');
+                setShowBoardIntro(true);
             };
 
             // Pick / switch the audience. Persists per device; the classroom
@@ -472,6 +475,7 @@
                 setPrimaryMissing(false);
                 setBoardIdx(0);
                 setShowBreak(false);
+                setShowBoardIntro(false);
                 setCards([]); setFlipped([]); setMatched([]); setActiveCard(null);
                 if (next === 'youth') { youthLoadedRef.current = false; setPairsData(DEFAULT_PAIRS); }
                 setGameState('portal');
@@ -1349,6 +1353,33 @@
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {/* ── Board intro — names the concept BEFORE the class plays it.
+                           Each board teaches one idea; without this the title only
+                           ever appeared in small type in the header, so the boards
+                           played as a random pile of cards. ── */}
+                    {showBoardIntro && currentBoard && (
+                        <div style={{position:'fixed',top:overlayTop,left:0,right:0,bottom:0,zIndex:65,background:'rgba(2,6,23,0.98)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'1.25rem',padding:'2rem',textAlign:'center'}}>
+                            <div style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,textTransform:'uppercase',letterSpacing:'0.22em',color:'#64748b',fontSize:'clamp(0.85rem,1.6vw,1.1rem)'}}>
+                                Board {boardIdx + 1} of {boards.length}
+                            </div>
+                            <div style={{display:'flex',gap:'0.75rem',fontSize:'clamp(2.5rem,7vw,4.5rem)',lineHeight:1}}>
+                                {pairsData.map(p => <span key={p.id}>{p.icon}</span>)}
+                            </div>
+                            <h2 style={{fontFamily:'Rajdhani,sans-serif',fontWeight:700,color:'#fde68a',fontSize:'clamp(2rem,5.5vw,4rem)',margin:0,lineHeight:1.15,maxWidth:'18ch'}}>
+                                {currentBoard.title}
+                            </h2>
+                            {currentBoard.takeaway && (
+                                <p style={{fontFamily:'Rajdhani,sans-serif',fontWeight:600,color:'#cbd5e1',fontSize:'clamp(1.2rem,2.6vw,2rem)',margin:0,maxWidth:'26ch',lineHeight:1.3}}>
+                                    {currentBoard.takeaway}
+                                </p>
+                            )}
+                            <button onClick={() => setShowBoardIntro(false)}
+                                style={{marginTop:'0.5rem',padding:'1rem 3rem',background:'linear-gradient(90deg,#f59e0b,#fbbf24)',border:'none',borderRadius:'0.75rem',color:'#0b0f1a',fontFamily:'Rajdhani,sans-serif',fontWeight:700,fontSize:'clamp(1.1rem,2vw,1.5rem)',textTransform:'uppercase',letterSpacing:'0.15em',cursor:'pointer'}}>
+                                Let's find them →
+                            </button>
                         </div>
                     )}
 
