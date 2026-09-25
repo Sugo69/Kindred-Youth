@@ -672,7 +672,8 @@ The intent is additive: run the Opus review alongside the existing backlog and p
 - Portal ✓ ready pill and admin missing-counter are audience-aware; missing Primary content offers an exit, never a dead end; ⚡ Primary disabled until `.memory` exists
 - `lesson-reviewer` PASS with a children 4–11 rubric; playtested with a real Primary class
 **Effort:** M (down from L — simplify pass replaces a full pipeline branch)
-**Status:** Design DRAFT v3 (2026-09-20) — all gates answered; only open question is playtest access to a real Primary class
+**Status:** Done (2026-09-20) — built and shipped to prod the same day, then playtested live with a real Primary class. Commits `edde6df` → `d728a0d`. Playtest fixes that followed: Story Card opens at the scripture rather than the QR; cut from five blocks to two; cross symbols removed platform-wide; the ⚙ gear stays reachable while a card is open; the library works in Primary mode (it had listed only Youth lessons, could hang forever, and would have loaded blank cards); each board now announces its concept before play.
+**Remaining (not blocking):** the Primary checkbox on "Generate Next 8 Weeks" is still unbuilt, so Primary content is per-lesson only. Lesson 38's boards carry one off-theme card (🔍 BOOK on "God Makes Us Clean") — a re-run of the simplify pass would regroup all three boards.
 
 ---
 
